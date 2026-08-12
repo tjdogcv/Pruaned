@@ -1,33 +1,71 @@
 /**
- * PRUANED A.G. - Módulo de Integración Supabase / PostgreSQL & Bucket S3
- * Configuración para conexión con base de datos relacional y almacenamiento de archivos PDF en la nube.
+ * PRUANED A.G. — Cliente Supabase
+ * PostgreSQL (base de datos) + Auth JWT + Storage S3-compatible
+ *
+ * Configura las variables en .env.local:
+ *   VITE_SUPABASE_URL=https://TU_ID.supabase.co
+ *   VITE_SUPABASE_ANON_KEY=eyJ...
  */
+import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://pruaned-db.supabase.co";
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabaseClientConfig = {
-  url: SUPABASE_URL,
-  anonKey: SUPABASE_ANON_KEY,
-  storageBuckets: {
-    cartasIntencion: "cartas-intencion-pdf",
-    facturasEgresos: "facturas-egresos-pdf",
-    memoriasAnuales: "memorias-anuales-pdf"
-  }
+// Aviso amigable en desarrollo cuando no están configuradas las credenciales
+if (import.meta.env.DEV && (!supabaseUrl || supabaseUrl === 'PENDING')) {
+  console.warn(
+    '[PRUANED] ⚠️  Supabase pendiente de configuración.\n' +
+    'Agrega en .env.local:\n' +
+    '  VITE_SUPABASE_URL=https://tu-proyecto.supabase.co\n' +
+    '  VITE_SUPABASE_ANON_KEY=eyJ...\n' +
+    'La app funciona en modo offline (localStorage) hasta entonces.'
+  );
+}
+
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
+);
+
+/** ¿Está Supabase realmente configurado? */
+export const isSupabaseReady = () =>
+  !!supabaseUrl &&
+  supabaseUrl !== 'PENDING' &&
+  !!supabaseAnonKey &&
+  supabaseAnonKey !== 'PENDING';
+
+/** Buckets de Storage */
+export const BUCKETS = {
+  perfiles:   'perfiles',
+  firmas:     'firmas-oficiales',
+  documentos: 'documentos-publicos',
+  cartasIntension: 'cartas-intencion',
 };
 
 /**
- * Simulación / Helper para subir archivos a S3 / Supabase Storage
+ * Subir archivo a Supabase Storage
+ * Si Supabase no está configurado, devuelve la URL de objeto local (DataURL)
  */
-export const uploadFileToS3Bucket = async (file, bucketName) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const mockUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucketName}/${Date.now()}_${file.name}`;
-      resolve({
-        success: true,
-        url: mockUrl,
-        filename: file.name
-      });
-    }, 500);
-  });
+export const uploadFile = async (file, bucket, path) => {
+  if (!isSupabaseReady()) {
+    // Fallback offline: convertir a DataURL
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve({ url: reader.result, error: null });
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const filePath = path || `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(filePath, file, { upsert: true });
+
+  if (error) return { url: null, error };
+
+  const { data: { publicUrl } } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(filePath);
+
+  return { url: publicUrl, error: null };
 };
