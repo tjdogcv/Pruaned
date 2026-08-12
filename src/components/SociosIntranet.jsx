@@ -414,9 +414,12 @@ export const SociosIntranet = () => {
   const saldoCaja = totalIngresos - totalEgresos;
 
   const filteredSocios = sociosList.filter(s => {
+    // Ocultar cuenta de sistema
+    if (s.email === 'ag.pruaned@gmail.com') return false;
+
     const matchesSearch = s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.rut.includes(searchTerm) ||
-                          s.email.toLowerCase().includes(searchTerm.toLowerCase());
+                          (s.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesEstado = selectedEstado === 'TODOS' || s.estadoCuota === selectedEstado;
     const matchesCat = selectedCategory === 'TODAS' || s.categoria === selectedCategory;
     return matchesSearch && matchesEstado && matchesCat;
