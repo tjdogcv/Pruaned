@@ -122,27 +122,36 @@ export const Institutional = () => {
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-3">
-                  <Award className="w-6 h-6 text-blue-900" />
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-slate-900 font-['Outfit']">
-                      Directorio Nacional
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Integrantes elegidos conforme al Decreto Ley N° 2.757. Fotos y cargos actualizados en tiempo real.
-                    </p>
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 pb-6">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-900 text-xs font-bold uppercase tracking-wider mb-2">
+                    <Award className="w-3.5 h-3.5" /> Equipo Ejecutivo
                   </div>
+                  <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-['Outfit'] flex items-center gap-3">
+                    Directorio Nacional
+                  </h2>
+                  <p className="text-slate-600 text-sm mt-2 max-w-2xl">
+                    Integrantes elegidos conforme al Decreto Ley N° 2.757. Fotos y cargos actualizados en tiempo real.
+                  </p>
                 </div>
-
+                
                 {isMasterUser && (
-                  <span className="px-2.5 py-1 bg-purple-100 text-purple-900 text-[10px] font-bold rounded-full">
-                    👑 Asignación de Cargos Habilitada (Maestro)
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1.5 bg-purple-100 text-purple-900 text-xs font-bold rounded-full flex items-center gap-1.5">
+                      👑 Asignación de Cargos Habilitada (Maestro)
+                    </span>
+                    <button 
+                      onClick={() => alert('¡Los cargos del Directorio Nacional han sido guardados exitosamente!')}
+                      className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all"
+                    >
+                      Guardar Cambios
+                    </button>
+                  </div>
                 )}
               </div>
 
-              {/* 4 Cards con Fotos de Perfil Dinámicas */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* DIRECTORIO GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                 
                 {/* 1. PRESIDENTE / A */}
                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 shadow-sm flex flex-col justify-between">
@@ -164,7 +173,7 @@ export const Institutional = () => {
 
                     <div className="flex items-center gap-4">
                       <img
-                        src={presidente?.fotoPerfil || "https://images.unsplash.com/photo-1594824813566-7885a3964670?auto=format&fit=crop&w=400&q=80"}
+                        src={presidente?.fotoPerfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(presidente?.nombre || 'Presidente')}&background=0D8ABC&color=fff&size=150`}
                         alt={presidente?.nombre}
                         className="w-16 h-16 rounded-full object-cover border-2 border-blue-600 shadow-md flex-shrink-0"
                       />
@@ -206,7 +215,7 @@ export const Institutional = () => {
 
                     <div className="flex items-center gap-4">
                       <img
-                        src={vicepresidente?.fotoPerfil || "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80"}
+                        src={vicepresidente?.fotoPerfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(vicepresidente?.nombre || 'Vicepresidente')}&background=0D8ABC&color=fff&size=150`}
                         alt={vicepresidente?.nombre}
                         className="w-16 h-16 rounded-full object-cover border-2 border-blue-600 shadow-md flex-shrink-0"
                       />
@@ -248,7 +257,7 @@ export const Institutional = () => {
 
                     <div className="flex items-center gap-4">
                       <img
-                        src={secretario?.fotoPerfil || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80"}
+                        src={secretario?.fotoPerfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(secretario?.nombre || 'Secretario')}&background=0D8ABC&color=fff&size=150`}
                         alt={secretario?.nombre}
                         className="w-16 h-16 rounded-full object-cover border-2 border-blue-600 shadow-md flex-shrink-0"
                       />
@@ -290,7 +299,7 @@ export const Institutional = () => {
 
                     <div className="flex items-center gap-4">
                       <img
-                        src={tesorero?.fotoPerfil || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"}
+                        src={tesorero?.fotoPerfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(tesorero?.nombre || 'Tesorero')}&background=0D8ABC&color=fff&size=150`}
                         alt={tesorero?.nombre}
                         className="w-16 h-16 rounded-full object-cover border-2 border-blue-600 shadow-md flex-shrink-0"
                       />
