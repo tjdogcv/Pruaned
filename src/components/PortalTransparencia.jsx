@@ -13,7 +13,8 @@ import {
   FileText, 
   Search, 
   PieChart,
-  CheckCircle2
+  CheckCircle2,
+  Info
 } from 'lucide-react';
 
 export const PortalTransparencia = () => {
@@ -23,21 +24,20 @@ export const PortalTransparencia = () => {
     deleteDonacion, 
     expensesList, 
     sociosList, 
-    financialSettings, 
     currentUser 
   } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDonacionModalOpen, setIsAddDonacionModalOpen] = useState(false);
 
-  // Donación Form State
+  // Donación Form State (Campos opcionales flexibilizados)
   const [newDonacion, setNewDonacion] = useState({
     donante: '',
     rutODocumentoDonante: '',
     monto: '',
     banco: 'BancoEstado (Cta. Corriente PRUANED A.G.)',
     numeroComprobante: '',
-    destinoAporte: 'Fondo Emergencias & Botiquines Terreno'
+    destinoAporte: ''
   });
 
   // Financial Calculations
@@ -52,20 +52,30 @@ export const PortalTransparencia = () => {
   const saldoCaja = totalIngresos - totalEgresos;
 
   const filteredDonaciones = donacionesList.filter(d => 
-    d.donante.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.numeroComprobante.includes(searchTerm) ||
-    d.destinoAporte.toLowerCase().includes(searchTerm.toLowerCase())
+    (d.donante || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (d.numeroComprobante || '').includes(searchTerm) ||
+    (d.destinoAporte || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddDonacionSubmit = (e) => {
     e.preventDefault();
-    if (newDonacion.donante && newDonacion.monto && newDonacion.numeroComprobante) {
+    if (newDonacion.monto) {
+      const finalDonante = newDonacion.donante.trim() || 'Aporte Anónimo / Depósito Directo por Caja';
+      const finalRut = newDonacion.rutODocumentoDonante.trim() || 'No Especificado';
+      const finalComprobante = newDonacion.numeroComprobante.trim() || `DEP-${Date.now().toString().slice(-6)}`;
+      const finalDestino = newDonacion.destinoAporte.trim() || 'Fondo General de Emergencias PRUANED';
+
       addDonacion({
-        ...newDonacion,
+        donante: finalDonante,
+        rutODocumentoDonante: finalRut,
         monto: Number(newDonacion.monto),
+        banco: newDonacion.banco,
+        numeroComprobante: finalComprobante,
+        destinoAporte: finalDestino,
         fecha: new Date().toISOString().split('T')[0],
         publico: true
       });
+
       setIsAddDonacionModalOpen(false);
       setNewDonacion({
         donante: '',
@@ -73,9 +83,9 @@ export const PortalTransparencia = () => {
         monto: '',
         banco: 'BancoEstado (Cta. Corriente PRUANED A.G.)',
         numeroComprobante: '',
-        destinoAporte: 'Fondo Emergencias & Botiquines Terreno'
+        destinoAporte: ''
       });
-      alert('¡Donación bancaria registrada exitosamente en el Portal de Transparencia y Balance!');
+      alert('¡Donación bancaria registrada exitosamente! Si faltaban datos como el nombre del donante o RUT, el sistema los catalogó como "Aporte Anónimo / Depósito por Caja" sin alterar el balance.');
     }
   };
 
@@ -106,6 +116,14 @@ export const PortalTransparencia = () => {
               Registrar Donación Bancaria
             </button>
           )}
+        </div>
+
+        {/* Info Banner for Flexible Data Entry */}
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl flex items-center gap-3 text-xs text-blue-950 shadow-sm">
+          <Info className="w-5 h-5 text-blue-700 flex-shrink-0" />
+          <p>
+            <strong>Flexibilidad Contable:</strong> Si un depósito bancario no incluye el RUT, el nombre del donante o el destino específico, el sistema asigna automáticamente las etiquetas <i>"Aporte Anónimo / Depósito por Caja"</i> y <i>"Fondo General"</i>. Lo fundamental para cuadrar la caja es ingresar el <strong>Monto ($ CLP)</strong>.
+          </p>
         </div>
 
         {/* Global Financial KPI Cards */}
@@ -202,7 +220,7 @@ export const PortalTransparencia = () => {
 
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900">{don.donante}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">RUT/Doc: {don.rutODocumentoDonante || 'N/A'}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">RUT/Doc: {don.rutODocumentoDonante}</div>
                     </td>
 
                     <td className="py-3 px-4 text-slate-700 font-medium">
@@ -237,7 +255,7 @@ export const PortalTransparencia = () => {
           </div>
         </div>
 
-        {/* MODAL REGISTRAR DONACIÓN BANCARIA (ADMIN/TESORERÍA) */}
+        {/* MODAL REGISTRAR DONACIÓN BANCARIA (FLEXIBLE) */}
         {isAddDonacionModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
             <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 relative border border-slate-200">
@@ -254,17 +272,28 @@ export const PortalTransparencia = () => {
                   Registrar Donación Bancaria Recibida
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Se actualizará el Balance General y el Portal de Transparencia.
+                  Solo el monto es obligatorio. Si desconoces algún dato, el sistema lo catalogará automáticamente.
                 </p>
               </div>
 
               <form onSubmit={handleAddDonacionSubmit} className="space-y-3 text-xs">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nombre Donante / Entidad *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Monto de la Donación ($ CLP) *</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="Ej: 150000"
+                    value={newDonacion.monto}
+                    onChange={(e) => setNewDonacion({...newDonacion, monto: e.target.value})}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-extrabold text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nombre Donante / Entidad (Opcional)</label>
                   <input
                     type="text"
-                    required
-                    placeholder="Ej: Fundación Internacional Protección Animal"
+                    placeholder="Si se desconoce, queda como 'Aporte Anónimo / Depósito por Caja'"
                     value={newDonacion.donante}
                     onChange={(e) => setNewDonacion({...newDonacion, donante: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
@@ -273,7 +302,7 @@ export const PortalTransparencia = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">RUT o ID Donante</label>
+                    <label className="block font-bold text-slate-700 mb-1">RUT / ID (Opcional)</label>
                     <input
                       type="text"
                       placeholder="Ej: 65.102.940-2"
@@ -284,14 +313,13 @@ export const PortalTransparencia = () => {
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Monto ($ CLP) *</label>
+                    <label className="block font-bold text-slate-700 mb-1">N° Comprobante (Opcional)</label>
                     <input
-                      type="number"
-                      required
-                      placeholder="Ej: 250000"
-                      value={newDonacion.monto}
-                      onChange={(e) => setNewDonacion({...newDonacion, monto: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
+                      type="text"
+                      placeholder="Ej: TRF-992014"
+                      value={newDonacion.numeroComprobante}
+                      onChange={(e) => setNewDonacion({...newDonacion, numeroComprobante: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-mono text-slate-900"
                     />
                   </div>
                 </div>
@@ -310,23 +338,10 @@ export const PortalTransparencia = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">N° Comprobante / Transferencia *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Destino del Aporte (Opcional)</label>
                   <input
                     type="text"
-                    required
-                    placeholder="Ej: TRF-992014"
-                    value={newDonacion.numeroComprobante}
-                    onChange={(e) => setNewDonacion({...newDonacion, numeroComprobante: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-mono text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Destino del Aporte</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: Fondo Emergencias & Botiquines Terreno"
+                    placeholder="Ej: Fondo Emergencias / Si no especifica, queda como Fondo General"
                     value={newDonacion.destinoAporte}
                     onChange={(e) => setNewDonacion({...newDonacion, destinoAporte: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
