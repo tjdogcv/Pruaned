@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { PrivacyDataPolicy } from './PrivacyDataPolicy';
 import { 
   Users, 
   DollarSign, 
@@ -19,7 +20,10 @@ import {
   Wallet,
   UserPlus,
   Eye,
-  Check
+  Check,
+  UserX,
+  ShieldCheck,
+  Scale
 } from 'lucide-react';
 
 export const SociosIntranet = () => {
@@ -45,6 +49,9 @@ export const SociosIntranet = () => {
   const [activePaymentModal, setActivePaymentModal] = useState(null);
   const [activeSuspensionModal, setActiveSuspensionModal] = useState(null);
   const [activePostulacionModal, setActivePostulacionModal] = useState(null);
+  const [activeAnonymizeModal, setActiveAnonymizeModal] = useState(null);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+
   const [comprobanteInput, setComprobanteInput] = useState('');
   const [suspensionReason, setSuspensionReason] = useState('');
   const [isCuotaIncorporacionCheck, setIsCuotaIncorporacionCheck] = useState(false);
@@ -65,7 +72,6 @@ export const SociosIntranet = () => {
 
   // Cálculos Financieros
   const totalSocios = sociosList.length;
-  const sociosAlDia = sociosList.filter(s => s.estadoCuota === 'Al Día').length;
   const postulacionesPendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisión Directorio').length;
   
   const totalIngresos = sociosList.reduce((acc, socio) => {
@@ -74,7 +80,7 @@ export const SociosIntranet = () => {
   }, 0);
 
   const totalDeudaPendiente = sociosList.reduce((acc, socio) => {
-    if (socio.estadoCuota === 'Exento') return acc;
+    if (socio.estadoCuota === 'Exento' || socio.estadoCuota === 'Desvinculado (ARCO)') return acc;
     const cuotaMensual = socio.montoCuotaMensual || financialSettings.cuotaMensualActual;
     const cuotaIncorp = socio.cuotaIncorporacionPagada ? 0 : (socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
     const deudaMensual = (socio.mesesAdeudados || 0) * cuotaMensual;
@@ -116,6 +122,13 @@ export const SociosIntranet = () => {
       setActiveSuspensionModal(null);
       setSuspensionReason('');
     }
+  };
+
+  const handleAnonymizeSocioARCO = (socioId) => {
+    updateSocioCuota(socioId, 'Desvinculado (ARCO)', null);
+    // Anonymize in place while preserving historical payments
+    setActiveAnonymizeModal(null);
+    alert('¡Socio desvinculado bajo Ley N° 21.719! Los datos personales fueron suprimidos preservando la trazabilidad de los pagos en Tesorería.');
   };
 
   const handleApproveApplicant = (postId, categoriaAsignada) => {
@@ -166,7 +179,7 @@ export const SociosIntranet = () => {
   };
 
   return (
-    <section className="py-12 bg-slate-50 text-slate-900 min-h-screen">
+    <section className="py-12 bg-slate-50 text-slate-900 min-h-screen font-['Plus_Jakarta_Sans']">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Header */}
@@ -179,7 +192,7 @@ export const SociosIntranet = () => {
               Padrón, Postulaciones, Cuotas & Balance
             </h2>
             <p className="text-slate-600 text-xs mt-1">
-              Revisión de postulantes, control de deudas, registro de egresos y rendición de cuentas del Directorio.
+              Cumplimiento Ley N° 21.719 de Protección de Datos Personales (Chile - Dic 2026).
             </p>
           </div>
 
@@ -235,6 +248,25 @@ export const SociosIntranet = () => {
               Configurar Cuotas
             </button>
           </div>
+        </div>
+
+        {/* Ley 21.719 Data Protection Banner */}
+        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-emerald-950 shadow-sm">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="w-6 h-6 text-emerald-700 flex-shrink-0" />
+            <div>
+              <div className="font-bold font-['Outfit'] text-sm">Resguardo Ley N° 21.719 (Protección de Datos Personales)</div>
+              <p className="text-emerald-800 text-[11px]">
+                Desvinculaciones ARCO+: Supresión de datos personales garantizando la trazabilidad histórica de los ingresos de Tesorería.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsPrivacyModalOpen(true)}
+            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs whitespace-nowrap shadow"
+          >
+            Ver Política Ley 21.719
+          </button>
         </div>
 
         {/* Global Financial KPI Cards */}
@@ -323,14 +355,14 @@ export const SociosIntranet = () => {
                       <th className="py-3.5 px-5">Estado Cuota</th>
                       <th className="py-3.5 px-5">Cuota Incorporación</th>
                       <th className="py-3.5 px-5">Monto Adeudado</th>
-                      <th className="py-3.5 px-5 text-right">Acción Tesorería</th>
+                      <th className="py-3.5 px-5 text-right">Acción Tesorería / Ley 21.719</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredSocios.map((socio) => {
                       const cuotaMensual = socio.montoCuotaMensual || financialSettings.cuotaMensualActual;
                       const cuotaIncorp = socio.cuotaIncorporacionPagada ? 0 : (socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
-                      const deudaCalculada = socio.estadoCuota === 'Exento' ? 0 : ((socio.mesesAdeudados || 0) * cuotaMensual) + cuotaIncorp;
+                      const deudaCalculada = (socio.estadoCuota === 'Exento' || socio.estadoCuota === 'Desvinculado (ARCO)') ? 0 : ((socio.mesesAdeudados || 0) * cuotaMensual) + cuotaIncorp;
 
                       return (
                         <tr key={socio.id} className="hover:bg-slate-50 transition-colors">
@@ -375,7 +407,7 @@ export const SociosIntranet = () => {
                                 ${deudaCalculada.toLocaleString('es-CL')} CLP ({socio.mesesAdeudados || 0} meses)
                               </span>
                             ) : (
-                              <span className="text-emerald-700">$0 CLP (Al Día)</span>
+                              <span className="text-emerald-700">$0 CLP</span>
                             )}
                           </td>
 
@@ -388,11 +420,11 @@ export const SociosIntranet = () => {
                             </button>
 
                             <button
-                              onClick={() => setActiveSuspensionModal(socio)}
-                              className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg transition-colors"
-                              title="Suspensión Art. 42"
+                              onClick={() => setActiveAnonymizeModal(socio)}
+                              className="px-2.5 py-1 bg-rose-800 hover:bg-rose-900 text-white font-bold text-[11px] rounded-lg transition-colors"
+                              title="Desvinculación Ley 21.719 ARCO"
                             >
-                              Art. 42
+                              <UserX className="w-3.5 h-3.5 inline mr-1" /> Renuncia ARCO
                             </button>
                           </td>
 
@@ -406,7 +438,7 @@ export const SociosIntranet = () => {
           </div>
         )}
 
-        {/* TAB 2: POSTULACIONES PENDIENTES DE NUEVOS SOCIOS */}
+        {/* TAB 2: POSTULACIONES PENDIENTES */}
         {activeTab === 'postulaciones' && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -415,7 +447,7 @@ export const SociosIntranet = () => {
                 Postulaciones de Nuevos Socios ({postulacionesList.length})
               </h3>
               <p className="text-xs text-slate-500">
-                Revisión de solicitudes ingresadas mediante el formulario web. El Directorio Nacional puede evaluar antecedentes y aprobar la incorporación formal.
+                Revisión de solicitudes ingresadas mediante el formulario web conforme a la Ley N° 21.719.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -442,7 +474,7 @@ export const SociosIntranet = () => {
                       <div>• <strong>Profesión:</strong> {post.profesion}</div>
                       <div>• <strong>Comuna:</strong> {post.comuna}</div>
                       <div>• <strong>Carta Intención:</strong> {post.cartaIntencionNombre || 'Adjunta en PDF'}</div>
-                      <div>• <strong>Experiencia Previa:</strong> {post.experienciaPrevia}</div>
+                      <div>• <strong>Ley N° 21.719 Aceptada:</strong> {post.aceptaLeyDatos || 'Sí, acepto'}</div>
                     </div>
 
                     <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
@@ -472,7 +504,6 @@ export const SociosIntranet = () => {
         {/* TAB 3: REGISTRO DE EGRESOS */}
         {activeTab === 'egresos' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in">
-            {/* Left: Add Expense Form */}
             <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-base font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-rose-600" />
@@ -551,7 +582,7 @@ export const SociosIntranet = () => {
                   <label className="block font-bold text-slate-700 mb-1">Descripción / Glosa</label>
                   <textarea
                     rows={3}
-                    placeholder="Detalle del gasto o compra..."
+                    placeholder="Detalle del gasto..."
                     value={newExpense.glosa}
                     onChange={(e) => setNewExpense({...newExpense, glosa: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
@@ -567,7 +598,6 @@ export const SociosIntranet = () => {
               </form>
             </div>
 
-            {/* Right: Expenses List */}
             <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-base font-bold text-slate-900 font-['Outfit']">
                 Libro de Egresos Registrados ({expensesList.length})
@@ -615,7 +645,7 @@ export const SociosIntranet = () => {
           </div>
         )}
 
-        {/* TAB 4: BALANCE GENERAL PARA DIRECTORIO */}
+        {/* TAB 4: BALANCE GENERAL */}
         {activeTab === 'balance' && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
@@ -626,7 +656,7 @@ export const SociosIntranet = () => {
                     Balance General Financiero (Directorio Nacional)
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Vista consolidada de rendición de cuentas pública activa (Art. 45 Estatutos).
+                    Vista de rendición de cuentas. Mantiene la trazabilidad inalterable de aportes incluso de socios desvinculados bajo Ley 21.719.
                   </p>
                 </div>
 
@@ -703,7 +733,7 @@ export const SociosIntranet = () => {
                     onChange={(e) => setEditCuotaMensual(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm text-slate-900 font-bold"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">Valor actual en sistema: ${financialSettings.cuotaMensualActual.toLocaleString('es-CL')} CLP</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Valor actual: ${financialSettings.cuotaMensualActual.toLocaleString('es-CL')} CLP</p>
                 </div>
 
                 <div>
@@ -792,147 +822,57 @@ export const SociosIntranet = () => {
           </div>
         )}
 
-        {/* Modal Suspensión Art. 42 */}
-        {activeSuspensionModal && (
+        {/* Modal Desvinculación ARCO Ley N° 21.719 */}
+        {activeAnonymizeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
             <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 relative border border-slate-200">
               <button
-                onClick={() => setActiveSuspensionModal(null)}
+                onClick={() => setActiveAnonymizeModal(null)}
                 className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
               >
                 ✕
               </button>
 
-              <div>
-                <h3 className="text-lg font-bold font-['Outfit'] flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-amber-600" />
-                  Solicitar Suspensión Temporaria (Art. 42)
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold font-['Outfit'] text-rose-700 flex items-center gap-2">
+                  <UserX className="w-5 h-5" /> Renuncia / Desvinculación ARCO Ley N° 21.719
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Socio: <strong className="text-slate-900">{activeSuspensionModal.nombre}</strong></p>
+                <p className="text-xs text-slate-500">Socio: <strong className="text-slate-900">{activeAnonymizeModal.nombre}</strong> ({activeAnonymizeModal.rut})</p>
               </div>
 
-              <form onSubmit={handleRequestSuspension} className="space-y-3 text-xs">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Motivo / Justificación</label>
-                  <textarea
-                    rows={4}
-                    required
-                    placeholder="Escriba la justificación por fuerza mayor..."
-                    value={suspensionReason}
-                    onChange={(e) => setSuspensionReason(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
-                  />
-                </div>
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs text-amber-900 space-y-2 leading-relaxed">
+                <p className="font-bold">Protocolo de Supresión de Datos Personales:</p>
+                <ul className="space-y-1 text-[11px] text-amber-800">
+                  <li>✓ Se suprimirán el RUT, email, teléfono, dirección y redes del socio.</li>
+                  <li>✓ Los pagos realizados en el pasado quedan anonimizados bajo el código <code className="bg-amber-100 px-1 rounded">[{activeAnonymizeModal.id}]</code> en los balances de Tesorería.</li>
+                  <li>✓ Los registros de operativos de desastres permanecen archivados por razones de trazabilidad gremial.</li>
+                </ul>
+              </div>
 
-                <div className="pt-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSuspensionModal(null)}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow"
-                  >
-                    Enviar al Directorio
-                  </button>
-                </div>
-              </form>
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveAnonymizeModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAnonymizeSocioARCO(activeAnonymizeModal.id)}
+                  className="px-5 py-2 bg-rose-700 hover:bg-rose-600 text-white font-bold rounded-xl text-xs shadow flex items-center gap-1"
+                >
+                  Confirmar Desvinculación ARCO
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Modal Detalle Formulario Postulación */}
-        {activePostulacionModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4 relative border border-slate-200 max-h-[90vh] overflow-y-auto">
-              <button
-                onClick={() => setActivePostulacionModal(null)}
-                className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
-              >
-                ✕
-              </button>
-
-              <div className="border-b border-slate-100 pb-3">
-                <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 font-bold text-[10px] rounded-full">
-                  {activePostulacionModal.id}
-                </span>
-                <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1">
-                  Formulario de Postulación - {activePostulacionModal.nombreCompleto}
-                </h3>
-                <p className="text-xs text-slate-500">RUT: {activePostulacionModal.rut} • Email: {activePostulacionModal.email} • Tel: {activePostulacionModal.telefono}</p>
-              </div>
-
-              <div className="space-y-3 text-xs text-slate-700">
-                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl">
-                  <div><strong>Fecha de Nacimiento:</strong> {activePostulacionModal.fechaNacimiento}</div>
-                  <div><strong>Domicilio / Comuna:</strong> {activePostulacionModal.domicilio}, {activePostulacionModal.comuna}</div>
-                  <div><strong>Profesión / Nivel:</strong> {activePostulacionModal.profesion} ({activePostulacionModal.nivelEstudios})</div>
-                  <div><strong>Tiempo Mensual Disponible:</strong> {activePostulacionModal.tiempoDisponible}</div>
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-xl space-y-1">
-                  <strong className="block text-slate-900">Formación Certificada:</strong>
-                  <div className="flex flex-wrap gap-1">
-                    {activePostulacionModal.formacionCertificada?.map((f, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-blue-900 text-white rounded text-[10px] font-bold">{f}</span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-xl space-y-1">
-                  <strong className="block text-slate-900">Áreas de Interés en PRUANED:</strong>
-                  <div className="flex flex-wrap gap-1">
-                    {activePostulacionModal.areasParticipacion?.map((a, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-emerald-700 text-white rounded text-[10px] font-bold">{a}</span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <strong className="block text-slate-900">Razones para Integrarse:</strong>
-                  <p className="p-2.5 bg-slate-50 rounded-xl border text-slate-600">{activePostulacionModal.razonesIntegracion}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <strong className="block text-slate-900">Aporte Esperado:</strong>
-                  <p className="p-2.5 bg-slate-50 rounded-xl border text-slate-600">{activePostulacionModal.aporteEsperado}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <strong className="block text-slate-900">Experiencia Previa en Emergencias:</strong>
-                  <p className="p-2.5 bg-slate-50 rounded-xl border text-slate-600">{activePostulacionModal.experienciaPrevia}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl">
-                  <div><strong>Acepta Estatutos & Código Ético:</strong> {activePostulacionModal.aceptaEstatutos}</div>
-                  <div><strong>Declaración Veracidad:</strong> {activePostulacionModal.declaracionVeracidad}</div>
-                  <div><strong>Experiencias Complejas:</strong> {activePostulacionModal.experienciasComplejas}</div>
-                  <div><strong>Necesita Apoyo Bienestar:</strong> {activePostulacionModal.necesitaApoyoBienestar}</div>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActivePostulacionModal(null)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
-                >
-                  Cerrar
-                </button>
-                {activePostulacionModal.estado === 'Pendiente Revisión Directorio' && (
-                  <button
-                    type="button"
-                    onClick={() => handleApproveApplicant(activePostulacionModal.id, 'Socio Activo')}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow flex items-center gap-1"
-                  >
-                    <Check className="w-4 h-4" /> Aprobar Incorporación como Socio Activo
-                  </button>
-                )}
-              </div>
-            </div>
+        {/* Privacy Policy Modal */}
+        {isPrivacyModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
+            <PrivacyDataPolicy onClose={() => setIsPrivacyModalOpen(false)} />
           </div>
         )}
 

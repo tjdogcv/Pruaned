@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { PrivacyDataPolicy } from './PrivacyDataPolicy';
 import { 
   UserPlus, 
   Target, 
@@ -12,18 +13,22 @@ import {
   ExternalLink,
   X,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  ShieldCheck,
+  Scale
 } from 'lucide-react';
 
 export const PostulacionSocio = ({ onNavigate }) => {
   const { addPostulacion } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [applicationId, setApplicationId] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
     aceptaEstatutos: 'Sí, acepto',
+    aceptaLeyDatos: 'Sí, acepto',
     nombreCompleto: '',
     rut: '',
     fechaNacimiento: '',
@@ -89,14 +94,10 @@ export const PostulacionSocio = ({ onNavigate }) => {
           <p><strong>Decreto Ley N° 2.757 de 1979 | República de Chile</strong></p>
           <hr/>
           <h2>TÍTULO I: DE LA DENOMINACIÓN, OBJETIVOS Y DOMICILIO</h2>
-          <p><strong>Artículo 1°:</strong> Constitúyase la Asociación Gremial de Profesionales Unidos por los Animales en Emergencias y Desastres, pudiendo usar el acrónimo "PRUANED A.G."...</p>
-          <p><strong>Artículo 2°:</strong> El domicilio legal de la Asociación Gremial se fija en la Comuna de San Fabián de Alico, Región de Ñuble, Chile.</p>
+          <p><strong>Artículo 1°:</strong> Constitúyase la Asociación Gremial de Profesionales Unidos por los Animales en Emergencias y Desastres...</p>
           <h2>TÍTULO II: DE LOS SOCIOS, DERECHOS Y DEBERES</h2>
           <p><strong>Artículo 8°:</strong> Existirán tres categorías de socios: Activos, Adherentes y Honorarios.</p>
-          <p><strong>Artículo 42°:</strong> El valor de la cuota social ordinaria mensual y la cuota de incorporación serán fijados por la Asamblea General a propuesta del Directorio Nacional.</p>
-          <div class="footer">
-            Sello Digital de Autenticidad PRUANED A.G. 2025
-          </div>
+          <p><strong>Artículo 42°:</strong> El valor de la cuota social ordinaria mensual y la cuota de incorporación serán fijados por la Asamblea General.</p>
         </body>
       </html>
     `);
@@ -105,8 +106,8 @@ export const PostulacionSocio = ({ onNavigate }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (formData.aceptaEstatutos !== 'Sí, acepto') {
-      alert('Debe aceptar los estatutos y reglamento para enviar su postulación.');
+    if (formData.aceptaEstatutos !== 'Sí, acepto' || formData.aceptaLeyDatos !== 'Sí, acepto') {
+      alert('Debe aceptar los estatutos y la política de protección de datos personales (Ley N° 21.719) para enviar su postulación.');
       return;
     }
 
@@ -126,7 +127,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
   };
 
   return (
-    <section className="py-12 bg-slate-50 text-slate-900 min-h-screen">
+    <section className="py-12 bg-slate-50 text-slate-900 min-h-screen font-['Plus_Jakarta_Sans']">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         
         {/* Header Hero */}
@@ -142,17 +143,24 @@ export const PostulacionSocio = ({ onNavigate }) => {
           </p>
 
           {/* MAIN POSTULAR BUTTON CTA */}
-          <div className="pt-4">
+          <div className="pt-4 flex flex-col sm:flex-row justify-center gap-3">
             <button
               onClick={() => {
                 setSubmitted(false);
                 setIsModalOpen(true);
               }}
-              className="inline-flex items-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm rounded-2xl shadow-xl transition-transform hover:scale-105 border border-emerald-400/30"
+              className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm rounded-2xl shadow-xl transition-transform hover:scale-105 border border-emerald-400/30"
             >
               <Sparkles className="w-5 h-5 text-emerald-200" />
               Postular a PRUANED A.G.
               <ArrowRight className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={() => setIsPrivacyModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-2xl"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-700" /> Protección de Datos (Ley N° 21.719)
             </button>
           </div>
         </div>
@@ -200,54 +208,26 @@ export const PostulacionSocio = ({ onNavigate }) => {
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
               <span>Impulsar estándares éticos y técnicos en la respuesta a emergencias que involucren animales.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <span>Sensibilizar a la sociedad sobre la importancia de incluir a los animales en la gestión del riesgo.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <span>Contribuir a políticas públicas que reconozcan el rol especializado en protección animal.</span>
-            </li>
           </ul>
         </div>
 
-        {/* Notice for Estatutos */}
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-900 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="space-y-0.5">
-            <div className="font-bold">Estatutos y Reglamento General 2025</div>
-            <p className="text-blue-800">
-              Podés revisar el texto completo de nuestros <a href="#" onClick={handleOpenEstatutosPDF} className="underline font-bold hover:text-blue-600">Estatutos y Reglamento General</a> antes de postular.
-            </p>
-          </div>
-          <button
-            onClick={handleOpenEstatutosPDF}
-            className="px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-lg whitespace-nowrap inline-flex items-center gap-1.5 shadow"
-          >
-            <FileText className="w-4 h-4" />
-            Ver Estatutos PDF <ExternalLink className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Process Explanation & CTA */}
-        <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl text-xs text-amber-900 space-y-3">
-          <div className="font-bold text-amber-950 flex items-center gap-1.5 text-sm">
-            <HelpCircle className="w-5 h-5 text-amber-700" /> ¿Cómo funciona el proceso?
-          </div>
-          <p className="leading-relaxed text-amber-800">
-            Completá el formulario de postulación con tus datos y adjuntá tu carta de intención. El Directorio Nacional revisará tu solicitud y te contactará para informarte si fue aceptada y coordinar tu incorporación formal como socio, incluyendo el pago de la cuota correspondiente.
-          </p>
-
-          <div className="pt-2">
+        {/* Legal Safeguard Chilean Data Protection Notice */}
+        <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl text-xs text-emerald-950 space-y-2">
+          <div className="font-bold flex items-center justify-between">
+            <span className="flex items-center gap-2 font-['Outfit'] text-sm text-emerald-900">
+              <ShieldCheck className="w-5 h-5 text-emerald-700" />
+              Resguardo de Protección de Datos Personales (Ley N° 21.719 Chile 2026)
+            </span>
             <button
-              onClick={() => {
-                setSubmitted(false);
-                setIsModalOpen(true);
-              }}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow inline-flex items-center gap-2"
+              onClick={() => setIsPrivacyModalOpen(true)}
+              className="text-emerald-800 underline font-bold hover:text-emerald-950"
             >
-              <UserPlus className="w-4 h-4" /> Iniciar Formulario de Postulación
+              Ver Reglamento Ley 21.719
             </button>
           </div>
+          <p className="text-emerald-800 leading-relaxed">
+            En conformidad con la Ley N° 21.719, sus datos serán tratados con estricta confidencialidad para fines de evaluación gremial. En caso de desvinculación o renuncia futura, se aplicará la supresión de sus datos personales sensibles manteniendo la trazabilidad histórica inalterable de los balances de Tesorería y registros de operativos por mandato legal (DL 2757).
+          </p>
         </div>
 
         {/* MODAL CON EL FORMULARIO DE POSTULACIÓN */}
@@ -276,7 +256,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
               </div>
 
               {submitted ? (
-                /* SUCCESS CONFIRMATION DISPLAY INSIDE MODAL */
+                /* SUCCESS DISPLAY */
                 <div className="py-8 text-center space-y-4 animate-fade-in">
                   <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto" />
                   <h3 className="text-2xl font-extrabold text-slate-900 font-['Outfit']">
@@ -285,12 +265,6 @@ export const PostulacionSocio = ({ onNavigate }) => {
                   <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
                     Tu solicitud ha sido ingresada correctamente con el código de seguimiento: <strong className="text-emerald-700 font-mono">{applicationId}</strong>.
                   </p>
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 max-w-md mx-auto text-left space-y-1">
-                    <div>• <strong>Postulante:</strong> {formData.nombreCompleto}</div>
-                    <div>• <strong>RUT:</strong> {formData.rut}</div>
-                    <div>• <strong>Correo de contacto:</strong> {formData.email}</div>
-                    <div>• <strong>Estado:</strong> En revisión por el Directorio Nacional PRUANED</div>
-                  </div>
                   <button
                     onClick={() => setIsModalOpen(false)}
                     className="px-6 py-2.5 bg-blue-900 text-white font-bold text-xs rounded-xl shadow"
@@ -302,11 +276,11 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 /* FORMULARIO COMPLETO */
                 <form onSubmit={handleSubmit} className="space-y-6 text-xs">
                   
-                  {/* SECCIÓN 1: ESTATUTOS */}
+                  {/* SECCIÓN 1: ESTATUTOS Y LEY DE DATOS */}
                   <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                     <h3 className="font-bold text-slate-900 font-['Outfit'] text-sm flex items-center gap-2">
                       <FileText className="w-4 h-4 text-blue-900" />
-                      1. Estatutos
+                      1. Estatutos & Protección de Datos (Ley N° 21.719)
                     </h3>
 
                     <div>
@@ -338,9 +312,39 @@ export const PostulacionSocio = ({ onNavigate }) => {
                         </label>
                       </div>
                     </div>
+
+                    <div className="pt-2 border-t border-slate-200">
+                      <label className="block font-bold text-slate-700 mb-2">
+                        ¿Acepta la Política de Tratamiento de Datos Personales conforme a la Ley N° 21.719 (Chile) y los Derechos ARCO+? *
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                          <input
+                            type="radio"
+                            name="aceptaLeyDatos"
+                            value="Sí, acepto"
+                            checked={formData.aceptaLeyDatos === 'Sí, acepto'}
+                            onChange={(e) => setFormData({...formData, aceptaLeyDatos: e.target.value})}
+                            className="accent-blue-900"
+                          />
+                          <span>Sí, acepto los términos de la Ley N° 21.719</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                          <input
+                            type="radio"
+                            name="aceptaLeyDatos"
+                            value="No acepto"
+                            checked={formData.aceptaLeyDatos === 'No acepto'}
+                            onChange={(e) => setFormData({...formData, aceptaLeyDatos: e.target.value})}
+                            className="accent-blue-900"
+                          />
+                          <span>No acepto</span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* SECCIÓN 2: INFORMACIÓN PERSONAL Y MOTIVACIÓN */}
+                  {/* SECCIÓN 2: INFORMACIÓN PERSONAL */}
                   <div className="space-y-4">
                     <h3 className="font-bold text-slate-900 font-['Outfit'] text-sm flex items-center gap-2">
                       <UserPlus className="w-4 h-4 text-blue-900" />
@@ -735,7 +739,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
 
                       <div>
                         <label className="block font-bold text-slate-700 mb-1">
-                          Autorizo el uso de mis datos para fines internos *
+                          Autorizo el uso de mis datos exclusivamente para fines internos gremiales conforme a Ley 21.719 *
                         </label>
                         <div className="flex gap-4">
                           <label className="flex items-center gap-2 cursor-pointer">
@@ -779,6 +783,13 @@ export const PostulacionSocio = ({ onNavigate }) => {
               )}
 
             </div>
+          </div>
+        )}
+
+        {/* MODAL DE POLÍTICA DE DATOS LEY N° 21.719 */}
+        {isPrivacyModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
+            <PrivacyDataPolicy onClose={() => setIsPrivacyModalOpen(false)} />
           </div>
         )}
 

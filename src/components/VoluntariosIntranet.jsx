@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { CertificateModal } from './CertificateModal';
+import { PrivacyDataPolicy } from './PrivacyDataPolicy';
 import { generateCertificateHash } from '../utils/security';
 import { 
   GraduationCap, 
@@ -8,7 +9,9 @@ import {
   Award, 
   CheckCircle2, 
   Search, 
-  HelpCircle
+  HelpCircle,
+  ShieldCheck,
+  UserX
 } from 'lucide-react';
 
 export const VoluntariosIntranet = () => {
@@ -19,6 +22,7 @@ export const VoluntariosIntranet = () => {
   const [examResult, setExamResult] = useState(null);
   const [certData, setCertData] = useState(null);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   const activeVol = voluntariosList.find(v => v.email === currentUser?.email) || voluntariosList[0];
@@ -64,7 +68,7 @@ export const VoluntariosIntranet = () => {
   });
 
   return (
-    <section className="py-12 bg-slate-50 text-slate-900 min-h-screen">
+    <section className="py-12 bg-slate-50 text-slate-900 min-h-screen font-['Plus_Jakarta_Sans']">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Header */}
@@ -99,6 +103,25 @@ export const VoluntariosIntranet = () => {
               Trazabilidad Voluntarios
             </button>
           </div>
+        </div>
+
+        {/* Data Protection Banner Ley N° 21.719 for Volunteers */}
+        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-emerald-950 shadow-sm">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="w-6 h-6 text-emerald-700 flex-shrink-0" />
+            <div>
+              <div className="font-bold font-['Outfit'] text-sm">Resguardo Ley N° 21.719 para Voluntarios</div>
+              <p className="text-emerald-800 text-[11px]">
+                En caso de desvinculación, sus datos personales serán eliminados bajo derechos ARCO+ preservando la bitácora técnica de horas operativas e hitos de emergencia.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsPrivacyModalOpen(true)}
+            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs whitespace-nowrap shadow"
+          >
+            Ver Política Ley 21.719
+          </button>
         </div>
 
         {/* SUBTAB 1: LMS & VIDEOTECA */}
@@ -152,8 +175,6 @@ export const VoluntariosIntranet = () => {
 
             {/* Right: Video & Exam */}
             <div className="lg:col-span-8 space-y-6">
-              
-              {/* Video Player */}
               <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
@@ -181,18 +202,6 @@ export const VoluntariosIntranet = () => {
                 <p className="text-xs text-slate-600 leading-relaxed font-normal">
                   {selectedCourse.description}
                 </p>
-
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-xs">
-                  <div className="font-bold text-slate-800 uppercase">Módulos del Curso:</div>
-                  <ul className="space-y-1 text-slate-600">
-                    {selectedCourse.modules.map((mod, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                        <span>{mod}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               </div>
 
               {/* Exam */}
@@ -317,7 +326,7 @@ export const VoluntariosIntranet = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-xs font-bold text-slate-800">Historial de Despliegues:</div>
+                    <div className="text-xs font-bold text-slate-800">Historial de Despliegues Operativos:</div>
                     {vol.despliegues.length === 0 ? (
                       <p className="text-xs text-slate-500 italic">Sin despliegues registrados aún.</p>
                     ) : (
@@ -349,6 +358,13 @@ export const VoluntariosIntranet = () => {
           onClose={() => setIsCertModalOpen(false)}
           certificateData={certData}
         />
+
+        {/* Privacy Policy Modal Ley N° 21.719 */}
+        {isPrivacyModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
+            <PrivacyDataPolicy onClose={() => setIsPrivacyModalOpen(false)} />
+          </div>
+        )}
 
       </div>
     </section>
