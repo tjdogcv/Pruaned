@@ -15,6 +15,13 @@ export const INITIAL_FINANCIAL_SETTINGS = {
   cuotaIncorporacionActual: 30000
 };
 
+export const INITIAL_DIRECTORIO_CARGOS = {
+  presidenteId: "soc-101",
+  vicepresidenteId: "soc-102",
+  secretarioId: "soc-103",
+  tesoreroId: "soc-104"
+};
+
 export const INITIAL_DONACIONES = [
   {
     id: "don-101",
@@ -225,6 +232,9 @@ export const INITIAL_SOCIOS = [
     categoria: "Socio Activo",
     voto: true,
     email: "camila.morales@pruaned.cl",
+    telefono: "+56 9 9876 5432",
+    domicilio: "Av. Bernardo O'Higgins 1204",
+    comuna: "San Fabián",
     region: "Región de Ñuble",
     fechaIngreso: "2025-01-10",
     estadoCuota: "Al Día",
@@ -234,6 +244,7 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Agosto 2026",
     permisoGestionVoluntarios: true,
+    fotoPerfil: "https://images.unsplash.com/photo-1594824813566-7885a3964670?auto=format&fit=crop&w=400&q=80",
     historialPagos: [
       { mes: "Julio 2026", monto: 15000, fecha: "2026-07-02", comprobante: "TRF-9821" },
       { mes: "Agosto 2026", monto: 15000, fecha: "2026-08-01", comprobante: "TRF-1049" },
@@ -248,6 +259,9 @@ export const INITIAL_SOCIOS = [
     categoria: "Socio Activo",
     voto: true,
     email: "roberto.silva@pruaned.cl",
+    telefono: "+56 9 8765 4321",
+    domicilio: "Calle Prat 450",
+    comuna: "Concepción",
     region: "Región del Biobío",
     fechaIngreso: "2025-01-12",
     estadoCuota: "Al Día",
@@ -257,6 +271,7 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Agosto 2026",
     permisoGestionVoluntarios: false,
+    fotoPerfil: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80",
     historialPagos: [
       { mes: "Agosto 2026", monto: 15000, fecha: "2026-08-03", comprobante: "TRF-1102" },
       { mes: "Cuota Incorporación", monto: 30000, fecha: "2025-01-12", comprobante: "TRF-002" }
@@ -270,6 +285,9 @@ export const INITIAL_SOCIOS = [
     categoria: "Socio Adherente",
     voto: false,
     email: "javiera.araya@gmail.com",
+    telefono: "+56 9 7654 3210",
+    domicilio: "Av. Libertad 890",
+    comuna: "Valparaíso",
     region: "Región de Valparaíso",
     fechaIngreso: "2025-03-01",
     estadoCuota: "En Mora",
@@ -279,6 +297,7 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 3,
     ultimaCuotaPagada: "Mayo 2026",
     permisoGestionVoluntarios: false,
+    fotoPerfil: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
     historialPagos: [
       { mes: "Mayo 2026", monto: 15000, fecha: "2026-05-10", comprobante: "TRF-8820" }
     ]
@@ -291,6 +310,9 @@ export const INITIAL_SOCIOS = [
     categoria: "Socio Honorario",
     voto: false,
     email: "hsepulveda@uchile.cl",
+    telefono: "+56 9 6543 2109",
+    domicilio: "Av. Providencia 2030",
+    comuna: "Santiago",
     region: "Región Metropolitana",
     fechaIngreso: "2025-01-05",
     estadoCuota: "Exento",
@@ -300,6 +322,7 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Exento Por Estatuto",
     permisoGestionVoluntarios: false,
+    fotoPerfil: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
     historialPagos: []
   }
 ];
@@ -402,6 +425,6 @@ export const INITIAL_COURSES = [
 ];
 
 export const INITIAL_SECURITY_LOGS = [
-  { id: "log-1", date: "2026-08-12 04:30:12", user: "admin@pruaned.cl", ip: "190.160.45.12", event: "LOGIN_SUCCESS_2FA", severity: "INFO" },
+  { id: "log-1", date: "2026-08-12 04:30:12", user: "ag.pruaned@gmail.com", ip: "190.160.45.12", event: "LOGIN_SUCCESS_2FA", severity: "INFO" },
   { id: "log-2", date: "2026-08-12 04:15:00", user: "camila.morales@pruaned.cl", ip: "200.75.12.88", event: "SOCIO_INTRANET_ACCESS", severity: "INFO" }
 ];

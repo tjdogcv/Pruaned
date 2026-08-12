@@ -9,7 +9,8 @@ import {
   INITIAL_SECURITY_LOGS,
   INITIAL_FINANCIAL_SETTINGS,
   INITIAL_EXPENSES,
-  INITIAL_DONACIONES
+  INITIAL_DONACIONES,
+  INITIAL_DIRECTORIO_CARGOS
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
 
@@ -19,6 +20,12 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [is2FAVerified, setIs2FAVerified] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
+
+  // Directorio Nacional Assignments State
+  const [directorioCargos, setDirectorioCargos] = useState(() => {
+    const saved = localStorage.getItem('pruaned_directorio_cargos');
+    return saved ? JSON.parse(saved) : INITIAL_DIRECTORIO_CARGOS;
+  });
 
   // Donaciones Bancarias State
   const [donacionesList, setDonacionesList] = useState(() => {
@@ -109,6 +116,10 @@ export const AuthProvider = ({ children }) => {
 
   // Sync localStorage
   useEffect(() => {
+    localStorage.setItem('pruaned_directorio_cargos', JSON.stringify(directorioCargos));
+  }, [directorioCargos]);
+
+  useEffect(() => {
     localStorage.setItem('pruaned_donaciones', JSON.stringify(donacionesList));
   }, [donacionesList]);
 
@@ -165,20 +176,59 @@ export const AuthProvider = ({ children }) => {
   };
 
   // RBAC PERMISSION HELPERS
-  // 1. Maestro (Super Admin): Acceso TOTAL (ag.pruaned@gmail.com o rol master/admin)
   const isMasterUser = currentUser?.email === 'ag.pruaned@gmail.com' || currentUser?.role === 'master' || currentUser?.role === 'admin';
-  
-  // 2. Directiva Nacional: Finanzas, Gestión Voluntarios, CMS
   const isDirectiva = currentUser?.role === 'directiva' || isMasterUser;
-
-  // 3. Socio Habilitado para Voluntarios: Permiso delegado especial
   const socioPermisoVoluntarios = sociosList.find(s => s.email === currentUser?.email)?.permisoGestionVoluntarios || currentUser?.permisoGestionVoluntarios || false;
 
   const canManageVoluntarios = isMasterUser || isDirectiva || socioPermisoVoluntarios;
   const canManageFinances = isMasterUser || isDirectiva;
   const canPublishCMS = isMasterUser || isDirectiva;
 
-  // Toggle Permiso de Voluntarios para un Socio (Habilitación Delegada)
+  // MI CUENTA & PERFIL DE SOCIO HANDLERS
+  const updateSocioPerfil = (socioId, perfilData) => {
+    setSociosList(prev => prev.map(s => {
+      if (s.id === socioId || s.email === perfilData.email) {
+        const updated = {
+          ...s,
+          email: perfilData.email || s.email,
+          telefono: perfilData.telefono || s.telefono,
+          domicilio: perfilData.domicilio || s.domicilio,
+          comuna: perfilData.comuna || s.comuna,
+          fotoPerfil: perfilData.fotoPerfil || s.fotoPerfil
+        };
+        return updated;
+      }
+      return s;
+    }));
+
+    // Update currentUser in real time if editing own profile
+    if (currentUser && (currentUser.email === perfilData.email || currentUser.id === socioId)) {
+      setCurrentUser(prev => ({
+        ...prev,
+        email: perfilData.email || prev.email,
+        fotoPerfil: perfilData.fotoPerfil || prev.fotoPerfil
+      }));
+    }
+
+    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_PROFILE_${socioId}`, currentUser?.email, "INFO"));
+  };
+
+  // DIRECTORIO CARGOS REASSIGNMENT HANDLER
+  const updateDirectorioCargo = (cargoKey, newSocioId) => {
+    setDirectorioCargos(prev => ({
+      ...prev,
+      [cargoKey]: newSocioId
+    }));
+    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_DIRECTORIO_CARGO_${cargoKey}_TO_${newSocioId}`, currentUser?.email, "INFO"));
+  };
+
+  // Helper to get Directorio Member Socio Object
+  const getDirectorioMember = (cargoKey) => {
+    const socioId = directorioCargos[cargoKey];
+    return sociosList.find(s => s.id === socioId) || sociosList[0];
+  };
+
+  // Toggle Permiso de Voluntarios para un Socio
   const togglePermisoGestionVoluntariosSocio = (socioId) => {
     setSociosList(prev => prev.map(s => {
       if (s.id === socioId) {
@@ -247,6 +297,7 @@ export const AuthProvider = ({ children }) => {
         mesesAdeudados: 1,
         ultimaCuotaPagada: 'Pendiente Pago Incorporación',
         permisoGestionVoluntarios: false,
+        fotoPerfil: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
         historialPagos: []
       };
       setSociosList(prev => [newSocio, ...prev]);
@@ -401,6 +452,11 @@ export const AuthProvider = ({ children }) => {
       canManageFinances,
       canPublishCMS,
       togglePermisoGestionVoluntariosSocio,
+      // Directorio Cargos & Profile
+      directorioCargos,
+      updateDirectorioCargo,
+      getDirectorioMember,
+      updateSocioPerfil,
       // Data
       donacionesList,
       addDonacion,
