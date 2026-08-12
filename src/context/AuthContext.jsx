@@ -202,6 +202,43 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : INITIAL_COURSES;
   });
 
+  // FETCH DESDE SUPABASE CUANDO ESTÁ CONECTADO
+  useEffect(() => {
+    if (isSupabaseReady() && currentUser) {
+      const fetchSupabaseData = async () => {
+        try {
+          const [sociosRes, volRes, newsRes, docsRes, donRes] = await Promise.all([
+            supabase.from('socios').select('*'),
+            supabase.from('voluntarios').select('*'),
+            supabase.from('noticias').select('*'),
+            supabase.from('documentos').select('*'),
+            supabase.from('donaciones').select('*')
+          ]);
+
+          if (sociosRes.data && sociosRes.data.length > 0) setSociosList(sociosRes.data);
+          else if (sociosRes.data && sociosRes.data.length === 0) setSociosList([]); 
+
+          if (volRes.data && volRes.data.length > 0) setVoluntariosList(volRes.data);
+          else if (volRes.data && volRes.data.length === 0) setVoluntariosList([]);
+
+          if (newsRes.data && newsRes.data.length > 0) setNewsList(newsRes.data);
+          else if (newsRes.data && newsRes.data.length === 0) setNewsList([]);
+
+          if (docsRes.data && docsRes.data.length > 0) setDocumentsList(docsRes.data);
+          else if (docsRes.data && docsRes.data.length === 0) setDocumentsList([]);
+
+          if (donRes.data && donRes.data.length > 0) setDonacionesList(donRes.data);
+          else if (donRes.data && donRes.data.length === 0) setDonacionesList([]);
+
+        } catch (error) {
+          console.error("Error sincronizando con Supabase:", error);
+        }
+      };
+      
+      fetchSupabaseData();
+    }
+  }, [currentUser]);
+
   const [securityLogs, setSecurityLogs] = useState(() => {
     const saved = localStorage.getItem('pruaned_security_logs');
     return saved ? JSON.parse(saved) : INITIAL_SECURITY_LOGS;
