@@ -5,16 +5,16 @@ import {
   Lock, 
   UserX, 
   CheckCircle2, 
-  AlertTriangle, 
   Scale, 
   Database,
   Building,
-  HelpCircle
+  BookOpen,
+  Info
 } from 'lucide-react';
 
 export const PrivacyDataPolicy = ({ onClose }) => {
   return (
-    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-4xl w-full shadow-2xl space-y-6 relative border border-slate-200 max-h-[90vh] overflow-y-auto font-['Plus_Jakarta_Sans']">
+    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-4xl w-full shadow-2xl space-y-6 relative border border-slate-200 max-h-[90vh] overflow-y-auto font-['Plus_Jakarta_Sans'] text-xs">
       
       {onClose && (
         <button
@@ -27,122 +27,98 @@ export const PrivacyDataPolicy = ({ onClose }) => {
 
       {/* Header */}
       <div className="border-b border-slate-100 pb-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold uppercase tracking-wider mb-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-700" />
-          Cumplimiento Ley N° 21.719 (Chile - Dic 2026)
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-900 text-xs font-bold uppercase tracking-wider mb-2">
+          <Scale className="w-4 h-4 text-blue-800" />
+          Harmonización Legal: Decreto Ley 2.757 & Ley N° 21.719
         </div>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-['Outfit']">
-          Política de Protección de Datos Personales & Transparencia
+          Reglamento de Registros de Socios & Protección de Datos
         </h2>
-        <p className="text-xs text-slate-600 mt-1">
-          Reglamento de Tratamiento de Datos, Derechos ARCO+ y Protocolo de Desvinculación de Socios y Voluntarios en PRUANED A.G.
+        <p className="text-slate-600 mt-1">
+          Ajuste normativo entre la obligación legal de Padrón Gremial (DL 2.757) y la Ley de Protección de Datos Personales en Chile.
         </p>
       </div>
 
-      {/* Intro Alert Box */}
-      <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-xs text-blue-900 space-y-2">
-        <div className="font-bold text-blue-950 flex items-center gap-2 text-sm font-['Outfit']">
-          <Scale className="w-4 h-4 text-blue-800" /> Marco Legal en Chile: Ley N° 21.719 sobre Protección de Datos Personales
+      {/* Direct Legal Explanation Box */}
+      <div className="bg-slate-900 text-slate-100 p-5 rounded-2xl space-y-3 shadow-md border border-slate-800">
+        <div className="font-bold text-amber-400 flex items-center gap-2 text-sm font-['Outfit']">
+          <BookOpen className="w-5 h-5 text-amber-400" /> ¿Cómo se ajusta la ley de asociaciones gremiales con la protección de datos?
         </div>
-        <p className="leading-relaxed text-blue-800">
-          La Asociación Gremial de Profesionales Unidos por los Animales en Emergencias y Desastres (PRUANED A.G.), regida por el Decreto Ley N° 2.757 de 1979, adopta de manera anticipada e integral todas las exigencias de la nueva <strong>Ley N° 21.719 de Protección de Datos Personales en Chile</strong> (vigente a partir de diciembre de 2026), garantizando los principios de licitud, finalidad, proporcionalidad, confidencialidad y seguridad.
+        <p className="text-slate-300 leading-relaxed">
+          Existe una perfecta armonía legal entre el <strong>Decreto Ley N° 2.757 de 1979</strong> (que regula la constitución y funcionamiento de las Asociaciones Gremiales en Chile) y la nueva <strong>Ley N° 21.719 sobre Protección de Datos Personales</strong> (vigente desde diciembre de 2026).
         </p>
       </div>
 
-      {/* Section 1: Derechos ARCO+ */}
-      <div className="space-y-3">
-        <h3 className="text-base font-bold text-slate-900 font-['Outfit'] flex items-center gap-2 border-b border-slate-100 pb-2">
-          <Lock className="w-5 h-5 text-blue-900" />
-          1. Derechos ARCO+ de los Titulares (Socios y Voluntarios)
-        </h3>
-        <p className="text-xs text-slate-600 leading-relaxed">
-          Todo socio o voluntario inscrito en las plataformas de PRUANED A.G. podrá ejercer en cualquier momento sus derechos normados por la Agencia de Protección de Datos Personales:
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <div className="font-bold text-blue-900 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Derecho de Acceso
-            </div>
-            <p className="text-[11px] text-slate-600">Conocer qué datos personales están almacenados, el origen de los mismos y la finalidad de su tratamiento.</p>
-          </div>
-
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <div className="font-bold text-blue-900 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Derecho de Rectificación
-            </div>
-            <p className="text-[11px] text-slate-600">Solicitar la modificación o actualización de datos inexactos, desactualizados o incompletos.</p>
-          </div>
-
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <div className="font-bold text-blue-900 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Derecho de Cancelación / Supresión
-            </div>
-            <p className="text-[11px] text-slate-600">Solicitar la eliminación de sus datos personales cuando hayan dejado de ser necesarios para los fines institucionales.</p>
-          </div>
-
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <div className="font-bold text-blue-900 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Derecho de Oposición y Portabilidad
-            </div>
-            <p className="text-[11px] text-slate-600">Oponerse al tratamiento para fines no esenciales y solicitar una copia estructurada de sus datos en formato estándar.</p>
-          </div>
+      {/* 2 Column Comparison: DL 2757 vs Ley 21.719 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Col 1: Decreto Ley 2.757 */}
+        <div className="p-5 bg-blue-50 rounded-2xl border border-blue-200 space-y-3">
+          <h3 className="font-bold text-blue-950 text-sm font-['Outfit'] flex items-center gap-2">
+            <Building className="w-4 h-4 text-blue-800" /> Exigencia DL N° 2.757 (Asociaciones Gremiales)
+          </h3>
+          <ul className="space-y-2 text-blue-900">
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-blue-950">•</span>
+              <span><strong>Obligación de Padrón Histórico:</strong> El Art. 10 del DL 2.757 exige llevar un registro oficial de <i>Socios Activos</i> y <i>Socios Pasados/Desvinculados</i>.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-blue-950">•</span>
+              <span><strong>Fiscalización del Ministerio de Economía:</strong> El Directorio debe mantener la trazabilidad de fechas de ingreso, renuncia, cuotas y asistencia a Asambleas para validar quorum legal y memorias anuales.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-blue-950">•</span>
+              <span><strong>Obligación Tributaria (SII):</strong> Los aportes de cuotas ordinarias e incorporación deben auditarse sin alteraciones en los libros de Tesorería.</span>
+            </li>
+          </ul>
         </div>
+
+        {/* Col 2: Ley 21.719 Excepciones Legal */}
+        <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-3">
+          <h3 className="font-bold text-emerald-950 text-sm font-['Outfit'] flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-700" /> Excepción Legal Ley N° 21.719 (Art. 13 y 16)
+          </h3>
+          <ul className="space-y-2 text-emerald-900">
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-emerald-950">•</span>
+              <span><strong>Prevalencia de la Obligación Legal:</strong> La Ley 21.719 establece expresamente que el <i>Derecho de Supresión / Olvido</i> NO aplica cuando exista una obligación legal imperativa de conservación de datos impuesta por otra ley de la República.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-emerald-950">•</span>
+              <span><strong>Bloqueo y Anonimización:</strong> Los datos personales privados (teléfono, correo personal, domicilio) son bloqueados/eliminados, mientras que la constancia gremial histórica queda archivada con acceso restringido.</span>
+            </li>
+          </ul>
+        </div>
+
       </div>
 
-      {/* Section 2: Desvinculación / Renuncia Voluntaria & Trazabilidad Inalterable */}
-      <div className="space-y-4 bg-amber-50/70 border border-amber-200 p-5 rounded-2xl">
-        <h3 className="text-base font-bold text-amber-950 font-['Outfit'] flex items-center gap-2">
-          <UserX className="w-5 h-5 text-amber-700" />
-          2. Procedimiento de Desvinculación y Retención Legal de Trazabilidad
-        </h3>
-
-        <div className="text-xs text-amber-900 space-y-3 leading-relaxed">
-          <p>
-            <strong>¿Qué sucede si un socio o voluntario decide desvincularse o renunciar a la asociación?</strong>
-          </p>
-
-          <div className="space-y-2 pl-2 border-l-2 border-amber-400">
-            <div>
-              <strong className="text-amber-950 font-semibold">a) Supresión de Datos de Contacto e Identificación Directa:</strong>
-              <p className="text-[11px] text-amber-800">
-                A solicitud formal del titular (escrito a <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">ag.pruaned@gmail.com</code>), su nombre completo, RUT, correo personal, domicilio, teléfono y redes sociales serán eliminados de la base activa y anonimizados en los registros generales.
-              </p>
-            </div>
-
-            <div>
-              <strong className="text-amber-950 font-semibold">b) Preservación Inalterable de la Trazabilidad Financiera:</strong>
-              <p className="text-[11px] text-amber-800">
-                Por exigencia del <strong>Decreto Ley N° 2.757 de 1979 (Ley de Asociaciones Gremiales)</strong> y normativas tributarias y de auditoría contable, los libros de Tesorería, balances, historial de cuotas pagadas, comprobantes y boletas mantendrán el registro del aporte económico realizado, reemplazando la identidad directa por una etiqueta anonimizada (ejemplo: <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">[Socio Desvinculado #SOC-103]</code>). Esto evita descuadres en los balances contables de la organización.
-              </p>
-            </div>
-
-            <div>
-              <strong className="text-amber-950 font-semibold">c) Preservación Inalterable de la Trazabilidad Operativa en Catástrofes:</strong>
-              <p className="text-[11px] text-amber-800">
-                Los registros de despliegue en emergencias (horas de atención veterinaria en incendios o inundaciones, certificados QR emitidos y bitácoras técnicas) permanecerán archivados para efectos de validación ante el SENAPRED, SAG y municipalidades.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Section 3: Medidas de Seguridad */}
-      <div className="space-y-3">
-        <h3 className="text-base font-bold text-slate-900 font-['Outfit'] flex items-center gap-2 border-b border-slate-100 pb-2">
+      {/* Section 3: Protocolo Técnico en la Plataforma PRUANED A.G. */}
+      <div className="space-y-4 bg-slate-50 border border-slate-200 p-6 rounded-2xl">
+        <h3 className="text-base font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
           <Database className="w-5 h-5 text-blue-900" />
-          3. Medidas de Seguridad y Cifrado
+          Implementación Técnica del Registro Doble (Socios Activos vs Pasados)
         </h3>
-        <ul className="space-y-2 text-xs text-slate-600">
-          <li className="flex items-start gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-            <span><strong>Cifrado y Autenticación Fuerte:</strong> Acceso a Intranets resguardado por autenticación de doble factor (2FA) y registro de auditoría en tiempo real.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-            <span><strong>Prohibición de Comercialización:</strong> PRUANED A.G. jamás venderá, cederá o transferirá datos personales a terceros comerciales.</span>
-          </li>
-        </ul>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+            <div className="font-bold text-slate-900 font-['Outfit'] flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Registro de Socios Activos (Vigentes)
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Mantiene la totalidad de antecedentes (*Nombre, RUT, Correo, Teléfono, Comuna, Profesión, Estado de Cuotas y Certificados QR*) para el ejercicio de derechos sociales, voto en Asambleas y despliegues en desastres.
+            </p>
+          </div>
+
+          <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+            <div className="font-bold text-amber-900 font-['Outfit'] flex items-center gap-1.5">
+              <UserX className="w-4 h-4 text-amber-600" /> Registro de Socios Pasados (Desvinculados)
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              <strong>Padrón Histórico Reservado (DL 2.757):</strong> Conserva únicamente en archivo privado del Directorio la constancia institucional de pertenencia (*Nombre, RUT, Fecha Ingreso, Fecha Retiro y Motivo de Baja*).<br/>
+              <strong>Bloqueo de Contacto (Ley 21.719):</strong> Teléfono, correo personal y domicilio son borrados. Los registros de cuotas en Tesorería y bitácoras de desastres se preservan anonimizados (`[SOC-103]`).
+            </p>
+          </div>
+        </div>
       </div>
 
       {onClose && (
@@ -151,7 +127,7 @@ export const PrivacyDataPolicy = ({ onClose }) => {
             onClick={onClose}
             className="px-6 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl text-xs shadow"
           >
-            Entendido / Cerrar Política
+            Cerrar Explicación Legal
           </button>
         </div>
       )}

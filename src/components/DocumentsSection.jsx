@@ -207,12 +207,24 @@ export const DocumentsSection = () => {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
-                    <button
-                      onClick={() => handleSimulateDownload(doc)}
+                    {doc.htmlUrl && (
+                      <a
+                        href={doc.htmlUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5 transition-transform hover:scale-105"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-emerald-400" /> Ver HTML
+                      </a>
+                    )}
+                    <a
+                      href={doc.url !== '#' ? doc.url : `javascript:void(0)`}
+                      onClick={doc.url === '#' ? () => handleSimulateDownload(doc) : undefined}
+                      download={doc.url !== '#' ? `Estatutos_PRUANED_AG_Redisenados.pdf` : undefined}
                       className="px-3.5 py-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5 transition-transform hover:scale-105"
                     >
                       <Download className="w-3.5 h-3.5" /> Descargar PDF
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>

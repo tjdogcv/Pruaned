@@ -155,9 +155,10 @@ export const INITIAL_DOCUMENTS = [
     category: "Estatutos & Reglamentos",
     date: "2025-01-15",
     size: "2.4 MB",
-    version: "v1.0 Oficial",
-    description: "Documento rector con la estructura orgánica, estatutos, régimen de cuotas y reglamento del voluntariado (19 páginas).",
-    url: "#"
+    version: "v1.0 Oficial Rediseñado",
+    description: "Documento rector con la estructura orgánica, estatutos, régimen de cuotas y reglamento del voluntariado rediseñado profesionalmente.",
+    url: "/Estatutos_PRUANED_AG_Redisenados.pdf",
+    htmlUrl: "/estatutos_redisenados.html"
   },
   {
     id: "doc-2",
