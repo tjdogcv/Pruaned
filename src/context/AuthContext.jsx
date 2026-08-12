@@ -49,7 +49,8 @@ export const AuthProvider = ({ children }) => {
         tipoApoyoUtil: "No aplica",
         cartaIntencionNombre: "Carta_Intencion_MariaMorales.pdf",
         declaracionVeracidad: "Sí",
-        autorizacionDatos: "Sí"
+        autorizacionDatos: "Sí",
+        aceptaLeyDatos: "Sí, acepto"
       }
     ];
   });
@@ -136,7 +137,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('pruaned_security_logs', JSON.stringify(securityLogs));
   }, [securityLogs]);
 
-  // Handlers
+  // Auth Handlers
   const login = (userData) => {
     setCurrentUser(userData);
     setIs2FAVerified(true);
@@ -163,7 +164,6 @@ export const AuthProvider = ({ children }) => {
     setPostulacionesList(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
 
     if (nuevoEstado === 'Aceptada / Incorporado' && post) {
-      // Create official Socio
       const newSocio = {
         id: `soc-${Date.now()}`,
         rut: post.rut,
@@ -174,7 +174,7 @@ export const AuthProvider = ({ children }) => {
         email: post.email,
         region: post.comuna || 'Región Metropolitana',
         fechaIngreso: new Date().toISOString().split('T')[0],
-        estadoCuota: 'En Mora', // Pendiente primera cuotas e incorporación
+        estadoCuota: 'En Mora',
         montoCuotaMensual: financialSettings.cuotaMensualActual,
         cuotaIncorporacionPagada: false,
         montoCuotaIncorporacion: financialSettings.cuotaIncorporacionActual,
@@ -185,6 +185,41 @@ export const AuthProvider = ({ children }) => {
       setSociosList(prev => [newSocio, ...prev]);
       setSecurityLogs(prev => logSecurityEvent(prev, `SOCIO_APPLICATION_APPROVED_${post.rut}`, currentUser?.email, "INFO"));
     }
+  };
+
+  // RENUNCIA Y DESVINCULACIÓN (APROBACIÓN OBLIGATORIA DEL DIRECTORIO NACIONAL)
+  const solicitarRenunciaSocio = (socioId, motivoRenuncia) => {
+    setSociosList(prev => prev.map(socio => {
+      if (socio.id === socioId) {
+        return {
+          ...socio,
+          estadoCuota: 'Solicitud Renuncia Pendiente Directorio',
+          motivoRenuncia: motivoRenuncia,
+          fechaSolicitudRenuncia: new Date().toISOString().split('T')[0]
+        };
+      }
+      return socio;
+    }));
+    setSecurityLogs(prev => logSecurityEvent(prev, `SOCIO_WITHDRAWAL_REQUESTED_${socioId}`, currentUser?.email, "WARN"));
+  };
+
+  const aprobarRenunciaDirectorio = (socioId, numeroActaDirectorio) => {
+    setSociosList(prev => prev.map(socio => {
+      if (socio.id === socioId) {
+        return {
+          ...socio,
+          estadoCuota: 'Desvinculado / Retiro Aprobado DL 2757',
+          fechaRetiroOficial: new Date().toISOString().split('T')[0],
+          actaDirectorioAprobacion: numeroActaDirectorio || 'Acta Directorio N° 2025-08',
+          // Ley N° 21.719 Personal Data Anonymization
+          email: 'contacto.anonimizado@pruaned.cl',
+          telefono: 'Desvinculado ARCO',
+          domicilio: 'Anonimizado por Ley 21.719'
+        };
+      }
+      return socio;
+    }));
+    setSecurityLogs(prev => logSecurityEvent(prev, `SOCIO_WITHDRAWAL_APPROVED_BY_DIRECTORIO_${socioId}`, currentUser?.email, "INFO"));
   };
 
   const updateFinancialSettings = (newCuotaMensual, newCuotaIncorporacion) => {
@@ -300,6 +335,8 @@ export const AuthProvider = ({ children }) => {
       postulacionesList,
       addPostulacion,
       updatePostulacionEstado,
+      solicitarRenunciaSocio,
+      aprobarRenunciaDirectorio,
       financialSettings,
       updateFinancialSettings,
       expensesList,

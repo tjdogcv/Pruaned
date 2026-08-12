@@ -121,7 +121,7 @@ html_content = """<!DOCTYPE html>
 
     .cover-logo-container {
       margin: 4mm 0;
-      padding: 16px;
+      padding: 12px;
       background: #FFFFFF;
       border-radius: 24px;
       box-shadow: 0 10px 30px -5px rgba(12, 35, 64, 0.08);
@@ -130,7 +130,7 @@ html_content = """<!DOCTYPE html>
     }
 
     .cover-logo-container img {
-      width: 220px;
+      width: 230px;
       height: auto;
       display: block;
     }
@@ -327,57 +327,6 @@ html_content = """<!DOCTYPE html>
       font-weight: 700;
       color: #0066B2;
     }
-
-    /* SIGNATURE SECTION */
-    .signatures-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 14pt;
-      font-weight: 800;
-      color: #0C2340;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      border-bottom: 2.5px solid #0C2340;
-      padding-bottom: 4px;
-      margin-top: 20px;
-      margin-bottom: 16px;
-    }
-
-    .signatures-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px 24px;
-      margin-top: 18px;
-      margin-bottom: 22px;
-    }
-
-    .signature-card {
-      background: #F8FAFC;
-      border: 1px solid #E2E8F0;
-      border-radius: 10px;
-      padding: 16px;
-      text-align: center;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
-    }
-
-    .signature-line {
-      width: 80%;
-      height: 1px;
-      background: #64748B;
-      margin: 45px auto 10px auto;
-    }
-
-    .signature-role {
-      font-family: 'Outfit', sans-serif;
-      font-weight: 700;
-      font-size: 10pt;
-      color: #0C2340;
-      margin-bottom: 2px;
-    }
-
-    .signature-name {
-      font-size: 9pt;
-      color: #475569;
-    }
   </style>
 </head>
 <body>
@@ -393,7 +342,7 @@ html_content = """<!DOCTYPE html>
     </div>
 
     <div class="cover-logo-container">
-      <img src="logo-shield-highres.svg" alt="PRUANED Logo Shield">
+      <img src="pruaned-logo-official.png" alt="PRUANED Logo Oficial">
     </div>
 
     <div>
@@ -937,55 +886,6 @@ html_content = """<!DOCTYPE html>
     <p>Estas acciones deberán ser coordinadas con el Directorio y registradas administrativamente para fines de control interno y transparencia institucional.</p>
   </div>
 
-  <!-- FIRMAS SECTION -->
-  <div class="avoid-break" style="margin-top: 25px;">
-    <div class="signatures-title">FIRMAS</div>
-    <p>En constancia, firman los integrantes del Directorio Fundador de la Asociación Gremial Profesionales Unidos por los Animales en Emergencias y Desastres.</p>
-
-    <div class="signatures-grid">
-      <div class="signature-card">
-        <div class="signature-line"></div>
-        <div class="signature-role">Presidente</div>
-        <div class="signature-name">nombre</div>
-      </div>
-      <div class="signature-card">
-        <div class="signature-line"></div>
-        <div class="signature-role">Vicepresidente</div>
-        <div class="signature-name">Nombre</div>
-      </div>
-      <div class="signature-card">
-        <div class="signature-line"></div>
-        <div class="signature-role">Secretario</div>
-        <div class="signature-name">Nombre</div>
-      </div>
-      <div class="signature-card">
-        <div class="signature-line"></div>
-        <div class="signature-role">Tesorero</div>
-        <div class="signature-name">Nombre</div>
-      </div>
-    </div>
-
-    <p style="font-weight: 700; font-family: 'Outfit', sans-serif; color: #0C2340; margin-top: 15px;">Testigos:</p>
-    <div class="signatures-grid" style="margin-top: 10px;">
-      <div class="signature-card">
-        <div class="signature-line"></div>
-        <div class="signature-role">Testigo 1</div>
-      </div>
-      <div class="signature-card">
-        <div class="signature-line"></div>
-        <div class="signature-role">Testigo 2</div>
-      </div>
-    </div>
-
-    <p style="font-weight: 700; font-family: 'Outfit', sans-serif; color: #0C2340; margin-top: 15px;">Ministro de Fe:</p>
-    <div style="max-width: 320px; margin: 10px auto;">
-      <div class="signature-card">
-        <div class="signature-line"></div>
-        <div class="signature-role">Firma y Timbre</div>
-      </div>
-    </div>
-  </div>
-
 </body>
 </html>
 """
@@ -994,4 +894,4 @@ os.makedirs("c:/PRUANED/public", exist_ok=True)
 with open("c:/PRUANED/public/estatutos_redisenados.html", "w", encoding="utf-8") as f:
     f.write(html_content)
 
-print("Upgraded HTML written successfully to c:/PRUANED/public/estatutos_redisenados.html")
+print("Updated HTML written with official PRUANED logo and without signatures page.")
