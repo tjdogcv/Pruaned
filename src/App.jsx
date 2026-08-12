@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
+import { IntranetNavbar } from './components/IntranetNavbar';
 import { Footer } from './components/Footer';
 import { Hero } from './components/Hero';
 import { Institutional } from './components/Institutional';
@@ -30,18 +31,17 @@ function PublicLayout({ children, onOpenAuth }) {
 }
 
 function IntranetLayout({ children }) {
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
-      <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
+      <IntranetNavbar />
       <main className="flex-1">
         {children}
       </main>
-      <Footer />
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
+      <footer className="bg-slate-900 border-t border-slate-800 py-4 px-6 text-center">
+        <p className="text-xs text-slate-500">
+          PRUANED A.G. &mdash; Área Privada &mdash; Acceso Restringido a Miembros Autorizados
+        </p>
+      </footer>
     </div>
   );
 }
