@@ -145,38 +145,7 @@ export const INITIAL_TECHNICAL_DIRECTIONS = [
   }
 ];
 
-export const INITIAL_NEWS = [
-  {
-    id: "n1",
-    title: "PRUANED A.G. formaliza sus Estatutos y Reglamento General Oficial",
-    summary: "Se aprueba el cuerpo reglamentario marco oficial (Estatutos v3) para fortalecer la inclusión de los animales en el Sistema Nacional RRD.",
-    category: "Institucional",
-    date: "2025-03-10",
-    author: "Directorio Nacional",
-    image: "https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80",
-    content: "La Asociación Gremial Profesionales Unidos por los Animales en Emergencias y Desastres (PRUANED A.G.) ha publicado sus Estatutos y Reglamento General de Funcionamiento."
-  },
-  {
-    id: "n2",
-    title: "Simulacro de Evacuación Zoosanitaria en Ñuble y Biobío",
-    summary: "Equipos operativos de PRUANED desplegaron protocolos de albergue temporal para animales de producción y compañía.",
-    category: "Operativos",
-    date: "2025-05-22",
-    author: "Dirección RRD-GRD",
-    image: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80",
-    content: "En conjunto con autoridades locales y brigadas de respuesta, la Dirección RRD-GRD de PRUANED lideró un simulacro de evacuación veterinaria."
-  },
-  {
-    id: "n3",
-    title: "Lanzamiento de la Academia de Capacitación Digital para Voluntarios",
-    summary: "Nuevo portal interactivo permite a voluntarios permanentes y espontáneos cursar módulos en línea y certificar competencias.",
-    category: "Capacitaciones",
-    date: "2025-07-15",
-    author: "Dirección de Voluntariado",
-    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80",
-    content: "La Dirección de Voluntariado pone a disposición de todos sus inscritos la plataforma LMS con cursos interactivos."
-  }
-];
+export const INITIAL_NEWS = [];
 
 export const INITIAL_DOC_CATEGORIES = [
   "Estatutos & Reglamentos",
@@ -186,48 +155,7 @@ export const INITIAL_DOC_CATEGORIES = [
   "Informes Financieros & Memoria"
 ];
 
-export const INITIAL_DOCUMENTS = [
-  {
-    id: "doc-1",
-    title: "Estatutos y Reglamento General de Funcionamiento PRUANED A.G. (Documento Oficial)",
-    category: "Estatutos & Reglamentos",
-    date: "2025-01-15",
-    size: "1.2 MB",
-    version: "v3.0 Oficial",
-    description: "Documento rector oficial de los estatutos gremiales de PRUANED A.G. Decreto Ley N° 2.757.",
-    url: "/Estatutos-v-3.pdf"
-  },
-  {
-    id: "doc-2",
-    title: "Protocolo Operativo de Evacuación de Animales de Compañía en Incendios",
-    category: "Protocolos RRD - GRD",
-    date: "2025-02-20",
-    size: "1.8 MB",
-    version: "v2.1",
-    description: "Estándar de actuación para brigadas veterinarias en zonas de catástrofe y albergues temporales.",
-    url: "#"
-  },
-  {
-    id: "doc-3",
-    title: "Guía de Primeros Auxilios y Bioseguridad Zoonótica en Terreno",
-    category: "Guías Técnicas Veterinarias",
-    date: "2025-04-12",
-    size: "3.1 MB",
-    version: "v1.2",
-    description: "Manual de atención primaria para caninos, felinos, equinos y fauna silvestre bajo catástrofe.",
-    url: "#"
-  },
-  {
-    id: "doc-4",
-    title: "Convenio Marco PRUANED A.G. - Red de Municipalidades y SENAPRED",
-    category: "Convenios & Alianzas",
-    date: "2025-06-05",
-    size: "1.2 MB",
-    version: "Firmado 2025",
-    description: "Acuerdo de coordinación interinstitucional para despliegues de emergencia y capacitación conjunta.",
-    url: "#"
-  }
-];
+export const INITIAL_DOCUMENTS = [];
 
 export const INITIAL_SOCIOS = [
   {
