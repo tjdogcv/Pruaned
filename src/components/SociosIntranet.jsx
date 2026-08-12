@@ -365,18 +365,20 @@ export const SociosIntranet = () => {
     securityLogs
   } = useAuth();
 
-  const [activeTabLocal, setActiveTabLocal] = useState('mi-cuenta');
+  const [activeTabLocal, setActiveTabLocal] = useState(isMasterUser ? 'padron' : 'mi-cuenta');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('TODOS');
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
 
-  const currentSocio = sociosList.find(s => s.email === currentUser?.email) || sociosList[0] || {};
+  const currentSocio = isMasterUser 
+    ? { nombre: 'Administrador Maestro', email: 'ag.pruaned@gmail.com', rut: 'ADMIN-0', categoria: 'Sistema', profesion: 'Soporte Gremial', fotoPerfil: '' } 
+    : (sociosList.find(s => s.email === currentUser?.email) || {});
 
   const [editEmail, setEditEmail] = useState(currentSocio?.email || currentUser?.email || '');
-  const [editTelefono, setEditTelefono] = useState(currentSocio?.telefono || '+56 9 9876 5432');
-  const [editDomicilio, setEditDomicilio] = useState(currentSocio?.domicilio || 'Av. Bernardo O\'Higgins 1204');
-  const [editComuna, setEditComuna] = useState(currentSocio?.comuna || 'San Fabián');
-  const [editFotoPerfil, setEditFotoPerfil] = useState(currentSocio?.fotoPerfil || 'https://images.unsplash.com/photo-1594824813566-7885a3964670?auto=format&fit=crop&w=400&q=80');
+  const [editTelefono, setEditTelefono] = useState(currentSocio?.telefono || '');
+  const [editDomicilio, setEditDomicilio] = useState(currentSocio?.domicilio || '');
+  const [editComuna, setEditComuna] = useState(currentSocio?.comuna || '');
+  const [editFotoPerfil, setEditFotoPerfil] = useState(currentSocio?.fotoPerfil || '');
 
   const [activePaymentModal, setActivePaymentModal] = useState(null);
   const [activePostulacionModal, setActivePostulacionModal] = useState(null);
