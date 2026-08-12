@@ -17,7 +17,9 @@ import {
   TrendingUp, 
   TrendingDown, 
   Wallet,
-  ShieldCheck
+  UserPlus,
+  Eye,
+  Check
 } from 'lucide-react';
 
 export const SociosIntranet = () => {
@@ -29,10 +31,12 @@ export const SociosIntranet = () => {
     expensesList, 
     addExpense, 
     deleteExpense, 
+    postulacionesList,
+    updatePostulacionEstado,
     currentUser 
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('padron'); // padron, egresos, balance, configuracion
+  const [activeTab, setActiveTab] = useState('padron'); // padron, postulaciones, egresos, balance, configuracion
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('TODOS');
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
@@ -40,11 +44,12 @@ export const SociosIntranet = () => {
   // Modales
   const [activePaymentModal, setActivePaymentModal] = useState(null);
   const [activeSuspensionModal, setActiveSuspensionModal] = useState(null);
+  const [activePostulacionModal, setActivePostulacionModal] = useState(null);
   const [comprobanteInput, setComprobanteInput] = useState('');
   const [suspensionReason, setSuspensionReason] = useState('');
   const [isCuotaIncorporacionCheck, setIsCuotaIncorporacionCheck] = useState(false);
 
-  // Formulario Egresos (Tesorería)
+  // Formulario Egresos
   const [newExpense, setNewExpense] = useState({
     tipoDocumento: 'Factura',
     numeroDocumento: '',
@@ -61,15 +66,13 @@ export const SociosIntranet = () => {
   // Cálculos Financieros
   const totalSocios = sociosList.length;
   const sociosAlDia = sociosList.filter(s => s.estadoCuota === 'Al Día').length;
-  const sociosEnMora = sociosList.filter(s => s.estadoCuota === 'En Mora').length;
+  const postulacionesPendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisión Directorio').length;
   
-  // Total Ingresos Recaudados (Sumatoria de todos los historialPagos)
   const totalIngresos = sociosList.reduce((acc, socio) => {
     const pagosSocio = socio.historialPagos.reduce((pAcc, p) => pAcc + (p.monto || 0), 0);
     return acc + pagosSocio;
   }, 0);
 
-  // Total Deuda Pendiente en el Padrón
   const totalDeudaPendiente = sociosList.reduce((acc, socio) => {
     if (socio.estadoCuota === 'Exento') return acc;
     const cuotaMensual = socio.montoCuotaMensual || financialSettings.cuotaMensualActual;
@@ -78,10 +81,7 @@ export const SociosIntranet = () => {
     return acc + deudaMensual + cuotaIncorp;
   }, 0);
 
-  // Total Egresos Realizados
   const totalEgresos = expensesList.reduce((acc, exp) => acc + Number(exp.monto || 0), 0);
-
-  // Saldo Disponible en Caja
   const saldoCaja = totalIngresos - totalEgresos;
 
   const filteredSocios = sociosList.filter(s => {
@@ -118,6 +118,12 @@ export const SociosIntranet = () => {
     }
   };
 
+  const handleApproveApplicant = (postId, categoriaAsignada) => {
+    updatePostulacionEstado(postId, 'Aceptada / Incorporado', categoriaAsignada);
+    setActivePostulacionModal(null);
+    alert('¡Postulante incorporado exitosamente al Padrón Oficial de Socios!');
+  };
+
   const handleAddExpenseSubmit = (e) => {
     e.preventDefault();
     if (newExpense.numeroDocumento && newExpense.monto) {
@@ -134,7 +140,6 @@ export const SociosIntranet = () => {
         categoria: 'Insumos Médicos Veterinarios',
         glosa: ''
       });
-      alert('¡Gasto registrado exitosamente en el libro de Tesorería!');
     }
   };
 
@@ -171,42 +176,59 @@ export const SociosIntranet = () => {
               <Users className="w-3.5 h-3.5" /> Intranet de Tesorería & Directorio
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-['Outfit']">
-              Gestión de Cuotas, Egresos & Balance General
+              Padrón, Postulaciones, Cuotas & Balance
             </h2>
             <p className="text-slate-600 text-xs mt-1">
-              Control de morosidad, incorporación, registro de gastos y balance en tiempo real.
+              Revisión de postulantes, control de deudas, registro de egresos y rendición de cuentas del Directorio.
             </p>
           </div>
 
           {/* Subtabs Navigation */}
-          <div className="flex bg-slate-200 p-1 rounded-xl border border-slate-300 gap-1">
+          <div className="flex flex-wrap bg-slate-200 p-1 rounded-xl border border-slate-300 gap-1">
             <button
               onClick={() => setActiveTab('padron')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'padron' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
               }`}
             >
               Padrón & Cuotas
             </button>
+
+            <button
+              onClick={() => setActiveTab('postulaciones')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
+                activeTab === 'postulaciones' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+              }`}
+            >
+              Postulaciones Nuevos Socios
+              {postulacionesPendientes > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] rounded-full font-bold">
+                  {postulacionesPendientes}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={() => setActiveTab('egresos')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'egresos' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
               }`}
             >
               Registro Egresos
             </button>
+
             <button
               onClick={() => setActiveTab('balance')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'balance' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
               }`}
             >
               Balance General
             </button>
+
             <button
               onClick={() => setActiveTab('configuracion')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'configuracion' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
               }`}
             >
@@ -252,13 +274,13 @@ export const SociosIntranet = () => {
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-500 font-bold uppercase">
-              <span>Deuda Total Pendiente</span>
-              <AlertCircle className="w-4 h-4 text-amber-600" />
+              <span>Postulaciones Pendientes</span>
+              <UserPlus className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="text-2xl font-extrabold text-amber-600 font-['Outfit']">
-              ${totalDeudaPendiente.toLocaleString('es-CL')} CLP
+            <div className="text-2xl font-extrabold text-slate-900 font-['Outfit']">
+              {postulacionesPendientes} solicitudes
             </div>
-            <p className="text-[11px] text-slate-500">Cuotas sociales por cobrar</p>
+            <p className="text-[11px] text-slate-500">Pendientes de revisión Directorio</p>
           </div>
         </div>
 
@@ -290,7 +312,7 @@ export const SociosIntranet = () => {
               </div>
             </div>
 
-            {/* Socio Table with Dues Calculation */}
+            {/* Socio Table */}
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -384,7 +406,70 @@ export const SociosIntranet = () => {
           </div>
         )}
 
-        {/* TAB 2: REGISTRO DE EGRESOS (TESORERÍA) */}
+        {/* TAB 2: POSTULACIONES PENDIENTES DE NUEVOS SOCIOS */}
+        {activeTab === 'postulaciones' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-blue-900" />
+                Postulaciones de Nuevos Socios ({postulacionesList.length})
+              </h3>
+              <p className="text-xs text-slate-500">
+                Revisión de solicitudes ingresadas mediante el formulario web. El Directorio Nacional puede evaluar antecedentes y aprobar la incorporación formal.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {postulacionesList.map((post) => (
+                  <div key={post.id} className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 font-bold text-[10px] rounded-full">
+                          {post.id}
+                        </span>
+                        <h4 className="font-bold text-slate-900 text-base font-['Outfit'] mt-1">
+                          {post.nombreCompleto}
+                        </h4>
+                        <p className="text-xs text-slate-500 font-mono">{post.rut} • {post.email}</p>
+                      </div>
+                      <span className={`badge-inst ${
+                        post.estado === 'Aceptada / Incorporado' ? 'badge-green' : 'badge-amber'
+                      }`}>
+                        {post.estado}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-slate-600 space-y-1">
+                      <div>• <strong>Profesión:</strong> {post.profesion}</div>
+                      <div>• <strong>Comuna:</strong> {post.comuna}</div>
+                      <div>• <strong>Carta Intención:</strong> {post.cartaIntencionNombre || 'Adjunta en PDF'}</div>
+                      <div>• <strong>Experiencia Previa:</strong> {post.experienciaPrevia}</div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                      <button
+                        onClick={() => setActivePostulacionModal(post)}
+                        className="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-lg flex items-center gap-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Revisar Formulario Completo
+                      </button>
+
+                      {post.estado === 'Pendiente Revisión Directorio' && (
+                        <button
+                          onClick={() => handleApproveApplicant(post.id, 'Socio Activo')}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Aprobar e Incorporar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: REGISTRO DE EGRESOS */}
         {activeTab === 'egresos' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in">
             {/* Left: Add Expense Form */}
@@ -400,7 +485,7 @@ export const SociosIntranet = () => {
                   <select
                     value={newExpense.tipoDocumento}
                     onChange={(e) => setNewExpense({...newExpense, tipoDocumento: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 focus:border-blue-900"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
                   >
                     <option value="Factura">Factura de Compra</option>
                     <option value="Boleta">Boleta de Venta / Servicio</option>
@@ -418,7 +503,7 @@ export const SociosIntranet = () => {
                       placeholder="Ej: FAC-1092"
                       value={newExpense.numeroDocumento}
                       onChange={(e) => setNewExpense({...newExpense, numeroDocumento: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 focus:border-blue-900"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
                     />
                   </div>
 
@@ -430,7 +515,7 @@ export const SociosIntranet = () => {
                       placeholder="Ej: 45000"
                       value={newExpense.monto}
                       onChange={(e) => setNewExpense({...newExpense, monto: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 focus:border-blue-900"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
                     />
                   </div>
                 </div>
@@ -443,7 +528,7 @@ export const SociosIntranet = () => {
                     placeholder="Ej: Copec / Droguería Veterinaria"
                     value={newExpense.proveedor}
                     onChange={(e) => setNewExpense({...newExpense, proveedor: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 focus:border-blue-900"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
                   />
                 </div>
 
@@ -452,7 +537,7 @@ export const SociosIntranet = () => {
                   <select
                     value={newExpense.categoria}
                     onChange={(e) => setNewExpense({...newExpense, categoria: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 focus:border-blue-900"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
                   >
                     <option value="Insumos Médicos Veterinarios">Insumos Médicos Veterinarios</option>
                     <option value="Logística Terreno & Combustible">Logística Terreno & Combustible</option>
@@ -466,10 +551,10 @@ export const SociosIntranet = () => {
                   <label className="block font-bold text-slate-700 mb-1">Descripción / Glosa</label>
                   <textarea
                     rows={3}
-                    placeholder="Detalle del gasto o compra realizada..."
+                    placeholder="Detalle del gasto o compra..."
                     value={newExpense.glosa}
                     onChange={(e) => setNewExpense({...newExpense, glosa: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 focus:border-blue-900"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
                   />
                 </div>
 
@@ -482,7 +567,7 @@ export const SociosIntranet = () => {
               </form>
             </div>
 
-            {/* Right: Expenses Table */}
+            {/* Right: Expenses List */}
             <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-base font-bold text-slate-900 font-['Outfit']">
                 Libro de Egresos Registrados ({expensesList.length})
@@ -530,7 +615,7 @@ export const SociosIntranet = () => {
           </div>
         )}
 
-        {/* TAB 3: BALANCE GENERAL PARA DIRECTORIO */}
+        {/* TAB 4: BALANCE GENERAL PARA DIRECTORIO */}
         {activeTab === 'balance' && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
@@ -553,12 +638,9 @@ export const SociosIntranet = () => {
                 </div>
               </div>
 
-              {/* Financial Breakdown Table */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                
-                {/* Ingresos Breakdown */}
-                <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200 space-y-3 text-xs">
-                  <h4 className="font-bold text-emerald-900 text-sm uppercase tracking-wider flex items-center justify-between">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
+                <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200 space-y-3">
+                  <h4 className="font-bold text-emerald-900 text-sm uppercase flex items-center justify-between">
                     <span>Ingresos Recaudados</span>
                     <TrendingUp className="w-4 h-4 text-emerald-700" />
                   </h4>
@@ -574,15 +656,14 @@ export const SociosIntranet = () => {
                   </div>
                 </div>
 
-                {/* Egresos Breakdown */}
-                <div className="bg-rose-50 p-5 rounded-xl border border-rose-200 space-y-3 text-xs">
-                  <h4 className="font-bold text-rose-900 text-sm uppercase tracking-wider flex items-center justify-between">
+                <div className="bg-rose-50 p-5 rounded-xl border border-rose-200 space-y-3">
+                  <h4 className="font-bold text-rose-900 text-sm uppercase flex items-center justify-between">
                     <span>Egresos Realizados</span>
                     <TrendingDown className="w-4 h-4 text-rose-700" />
                   </h4>
                   <div className="space-y-2 text-slate-700">
                     <div className="flex justify-between border-b border-rose-200 pb-1">
-                      <span>Gastos Operativos & Insumos:</span>
+                      <span>Gastos Rendidos:</span>
                       <strong className="font-mono text-rose-800">${totalEgresos.toLocaleString('es-CL')} CLP</strong>
                     </div>
                     <div className="flex justify-between font-bold text-slate-900 pt-1">
@@ -591,13 +672,12 @@ export const SociosIntranet = () => {
                     </div>
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 4: CONFIGURACIÓN DE CUOTAS */}
+        {/* TAB 5: CONFIGURACIÓN DE CUOTAS */}
         {activeTab === 'configuracion' && (
           <div className="max-w-2xl mx-auto animate-fade-in">
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
@@ -621,7 +701,7 @@ export const SociosIntranet = () => {
                     required
                     value={editCuotaMensual}
                     onChange={(e) => setEditCuotaMensual(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:border-blue-900 font-bold"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm text-slate-900 font-bold"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">Valor actual en sistema: ${financialSettings.cuotaMensualActual.toLocaleString('es-CL')} CLP</p>
                 </div>
@@ -635,7 +715,7 @@ export const SociosIntranet = () => {
                     required
                     value={editCuotaIncorporacion}
                     onChange={(e) => setEditCuotaIncorporacion(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm text-slate-900 focus:border-blue-900 font-bold"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm text-slate-900 font-bold"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">Valor actual incorporación: ${financialSettings.cuotaIncorporacionActual.toLocaleString('es-CL')} CLP</p>
                 </div>
@@ -685,7 +765,7 @@ export const SociosIntranet = () => {
                   <label className="block font-semibold text-slate-700 mb-1">N° Comprobante / Transferencia (Opcional)</label>
                   <input
                     type="text"
-                    placeholder="Ej: TRF-99182 (dejar en blanco para validación directa por Tesorería)"
+                    placeholder="Ej: TRF-99182 (dejar en blanco para validación por Tesorería)"
                     value={comprobanteInput}
                     onChange={(e) => setComprobanteInput(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
@@ -708,6 +788,150 @@ export const SociosIntranet = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Suspensión Art. 42 */}
+        {activeSuspensionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 relative border border-slate-200">
+              <button
+                onClick={() => setActiveSuspensionModal(null)}
+                className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
+              >
+                ✕
+              </button>
+
+              <div>
+                <h3 className="text-lg font-bold font-['Outfit'] flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                  Solicitar Suspensión Temporaria (Art. 42)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Socio: <strong className="text-slate-900">{activeSuspensionModal.nombre}</strong></p>
+              </div>
+
+              <form onSubmit={handleRequestSuspension} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Motivo / Justificación</label>
+                  <textarea
+                    rows={4}
+                    required
+                    placeholder="Escriba la justificación por fuerza mayor..."
+                    value={suspensionReason}
+                    onChange={(e) => setSuspensionReason(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSuspensionModal(null)}
+                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow"
+                  >
+                    Enviar al Directorio
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Detalle Formulario Postulación */}
+        {activePostulacionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-4 relative border border-slate-200 max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => setActivePostulacionModal(null)}
+                className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
+              >
+                ✕
+              </button>
+
+              <div className="border-b border-slate-100 pb-3">
+                <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 font-bold text-[10px] rounded-full">
+                  {activePostulacionModal.id}
+                </span>
+                <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1">
+                  Formulario de Postulación - {activePostulacionModal.nombreCompleto}
+                </h3>
+                <p className="text-xs text-slate-500">RUT: {activePostulacionModal.rut} • Email: {activePostulacionModal.email} • Tel: {activePostulacionModal.telefono}</p>
+              </div>
+
+              <div className="space-y-3 text-xs text-slate-700">
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl">
+                  <div><strong>Fecha de Nacimiento:</strong> {activePostulacionModal.fechaNacimiento}</div>
+                  <div><strong>Domicilio / Comuna:</strong> {activePostulacionModal.domicilio}, {activePostulacionModal.comuna}</div>
+                  <div><strong>Profesión / Nivel:</strong> {activePostulacionModal.profesion} ({activePostulacionModal.nivelEstudios})</div>
+                  <div><strong>Tiempo Mensual Disponible:</strong> {activePostulacionModal.tiempoDisponible}</div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-xl space-y-1">
+                  <strong className="block text-slate-900">Formación Certificada:</strong>
+                  <div className="flex flex-wrap gap-1">
+                    {activePostulacionModal.formacionCertificada?.map((f, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-blue-900 text-white rounded text-[10px] font-bold">{f}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-xl space-y-1">
+                  <strong className="block text-slate-900">Áreas de Interés en PRUANED:</strong>
+                  <div className="flex flex-wrap gap-1">
+                    {activePostulacionModal.areasParticipacion?.map((a, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-emerald-700 text-white rounded text-[10px] font-bold">{a}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <strong className="block text-slate-900">Razones para Integrarse:</strong>
+                  <p className="p-2.5 bg-slate-50 rounded-xl border text-slate-600">{activePostulacionModal.razonesIntegracion}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <strong className="block text-slate-900">Aporte Esperado:</strong>
+                  <p className="p-2.5 bg-slate-50 rounded-xl border text-slate-600">{activePostulacionModal.aporteEsperado}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <strong className="block text-slate-900">Experiencia Previa en Emergencias:</strong>
+                  <p className="p-2.5 bg-slate-50 rounded-xl border text-slate-600">{activePostulacionModal.experienciaPrevia}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl">
+                  <div><strong>Acepta Estatutos & Código Ético:</strong> {activePostulacionModal.aceptaEstatutos}</div>
+                  <div><strong>Declaración Veracidad:</strong> {activePostulacionModal.declaracionVeracidad}</div>
+                  <div><strong>Experiencias Complejas:</strong> {activePostulacionModal.experienciasComplejas}</div>
+                  <div><strong>Necesita Apoyo Bienestar:</strong> {activePostulacionModal.necesitaApoyoBienestar}</div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActivePostulacionModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
+                >
+                  Cerrar
+                </button>
+                {activePostulacionModal.estado === 'Pendiente Revisión Directorio' && (
+                  <button
+                    type="button"
+                    onClick={() => handleApproveApplicant(activePostulacionModal.id, 'Socio Activo')}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow flex items-center gap-1"
+                  >
+                    <Check className="w-4 h-4" /> Aprobar Incorporación como Socio Activo
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

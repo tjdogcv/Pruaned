@@ -12,13 +12,14 @@ import { SociosIntranet } from './components/SociosIntranet';
 import { VoluntariosIntranet } from './components/VoluntariosIntranet';
 import { AdminCMS } from './components/AdminCMS';
 import { CertificateVerify } from './components/CertificateVerify';
+import { PostulacionSocio } from './components/PostulacionSocio';
 
 function MainLayout() {
   const { activeTab, setActiveTab } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 font-['Plus_Jakarta_Sans'] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
       
       {/* Navigation Header */}
       <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
@@ -38,6 +39,7 @@ function MainLayout() {
         )}
 
         {activeTab === 'institutional' && <Institutional />}
+        {activeTab === 'postulacion' && <PostulacionSocio onNavigate={(tab) => setActiveTab(tab)} />}
         {activeTab === 'news' && <NewsSection onOpenPublishModal={() => setActiveTab('admin')} />}
         {activeTab === 'docs' && <DocumentsSection />}
         {activeTab === 'socios' && <SociosIntranet />}

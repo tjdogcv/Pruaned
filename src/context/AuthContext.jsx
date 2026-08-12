@@ -19,13 +19,46 @@ export const AuthProvider = ({ children }) => {
   const [is2FAVerified, setIs2FAVerified] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
 
-  // Financial Settings State
+  // Postulaciones Nuevos Socios State
+  const [postulacionesList, setPostulacionesList] = useState(() => {
+    const saved = localStorage.getItem('pruaned_postulaciones');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: "POST-982101",
+        fechaEnvio: "2026-08-10",
+        estado: "Pendiente Revisión Directorio",
+        nombreCompleto: "Dra. María Paz Morales",
+        rut: "17.102.394-5",
+        fechaNacimiento: "1992-05-14",
+        email: "maria.morales@gmail.com",
+        telefono: "+56 9 9123 4567",
+        domicilio: "Av. Las Condes 4020",
+        comuna: "Santiago",
+        profesion: "Médico Veterinaria Cirujana",
+        nivelEstudios: "Educación Superior Completa",
+        experienciaPrevia: "5 años de respuesta operativa en albergues veterinarios post-incendios.",
+        formacionCertificada: ["Rescate técnico animal", "Primeros auxilios veterinarios"],
+        razonesIntegracion: "Deseo aportar desde la coordinación científica y veterinaria en terreno.",
+        aporteEsperado: "Redes institucionales y protocolos de triage rápido.",
+        haParticipadoOrgs: "Sí",
+        tiempoDisponible: "8–12 horas",
+        areasParticipacion: ["Activación en emergencias", "Capacitaciones"],
+        experienciasComplejas: "Sí",
+        descripcionExperiencias: "Atención de felinos con quemaduras de 3er grado en incendio Valparaíso.",
+        necesitaApoyoBienestar: "No",
+        tipoApoyoUtil: "No aplica",
+        cartaIntencionNombre: "Carta_Intencion_MariaMorales.pdf",
+        declaracionVeracidad: "Sí",
+        autorizacionDatos: "Sí"
+      }
+    ];
+  });
+
   const [financialSettings, setFinancialSettings] = useState(() => {
     const saved = localStorage.getItem('pruaned_financial_settings');
     return saved ? JSON.parse(saved) : INITIAL_FINANCIAL_SETTINGS;
   });
 
-  // Expenses State
   const [expensesList, setExpensesList] = useState(() => {
     const saved = localStorage.getItem('pruaned_expenses');
     return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
@@ -66,7 +99,11 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : INITIAL_SECURITY_LOGS;
   });
 
-  // Sync state to local storage
+  // Sync localStorage
+  useEffect(() => {
+    localStorage.setItem('pruaned_postulaciones', JSON.stringify(postulacionesList));
+  }, [postulacionesList]);
+
   useEffect(() => {
     localStorage.setItem('pruaned_financial_settings', JSON.stringify(financialSettings));
   }, [financialSettings]);
@@ -99,7 +136,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('pruaned_security_logs', JSON.stringify(securityLogs));
   }, [securityLogs]);
 
-  // Auth Handlers
+  // Handlers
   const login = (userData) => {
     setCurrentUser(userData);
     setIs2FAVerified(true);
@@ -115,37 +152,64 @@ export const AuthProvider = ({ children }) => {
     setActiveTab('home');
   };
 
-  // Financial Settings & Expenses Handlers
+  // Postulaciones Handler
+  const addPostulacion = (postulacionData) => {
+    setPostulacionesList(prev => [postulacionData, ...prev]);
+    setSecurityLogs(prev => logSecurityEvent(prev, `NEW_SOCIO_APPLICATION_${postulacionData.rut}`, postulacionData.email, "INFO"));
+  };
+
+  const updatePostulacionEstado = (id, nuevoEstado, categoriaAsignada = "Socio Activo") => {
+    const post = postulacionesList.find(p => p.id === id);
+    setPostulacionesList(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
+
+    if (nuevoEstado === 'Aceptada / Incorporado' && post) {
+      // Create official Socio
+      const newSocio = {
+        id: `soc-${Date.now()}`,
+        rut: post.rut,
+        nombre: post.nombreCompleto,
+        profesion: post.profesion,
+        categoria: categoriaAsignada,
+        voto: categoriaAsignada === 'Socio Activo',
+        email: post.email,
+        region: post.comuna || 'Región Metropolitana',
+        fechaIngreso: new Date().toISOString().split('T')[0],
+        estadoCuota: 'En Mora', // Pendiente primera cuotas e incorporación
+        montoCuotaMensual: financialSettings.cuotaMensualActual,
+        cuotaIncorporacionPagada: false,
+        montoCuotaIncorporacion: financialSettings.cuotaIncorporacionActual,
+        mesesAdeudados: 1,
+        ultimaCuotaPagada: 'Pendiente Pago Incorporación',
+        historialPagos: []
+      };
+      setSociosList(prev => [newSocio, ...prev]);
+      setSecurityLogs(prev => logSecurityEvent(prev, `SOCIO_APPLICATION_APPROVED_${post.rut}`, currentUser?.email, "INFO"));
+    }
+  };
+
   const updateFinancialSettings = (newCuotaMensual, newCuotaIncorporacion) => {
     const updated = {
       cuotaMensualActual: Number(newCuotaMensual),
       cuotaIncorporacionActual: Number(newCuotaIncorporacion)
     };
     setFinancialSettings(updated);
-    
-    // Update socio rate for future dues calculation
     setSociosList(prev => prev.map(s => {
       if (s.categoria !== 'Socio Honorario') {
         return { ...s, montoCuotaMensual: Number(newCuotaMensual) };
       }
       return s;
     }));
-
-    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_FINANCIAL_SETTINGS_${newCuotaMensual}_${newCuotaIncorporacion}`, currentUser?.email, "INFO"));
   };
 
   const addExpense = (expenseItem) => {
     const itemWithId = { ...expenseItem, id: `exp-${Date.now()}` };
     setExpensesList(prev => [itemWithId, ...prev]);
-    setSecurityLogs(prev => logSecurityEvent(prev, `ADD_EXPENSE_${expenseItem.numeroDocumento}_${expenseItem.monto}`, currentUser?.email, "INFO"));
   };
 
   const deleteExpense = (id) => {
     setExpensesList(prev => prev.filter(e => e.id !== id));
-    setSecurityLogs(prev => logSecurityEvent(prev, `DELETE_EXPENSE_${id}`, currentUser?.email, "WARN"));
   };
 
-  // Socio Cuotas Handlers
   const updateSocioCuota = (socioId, newEstado, newComprobante = null, isSuspensionRequest = false, isCuotaIncorporacion = false) => {
     setSociosList(prev => prev.map(socio => {
       if (socio.id === socioId) {
@@ -180,11 +244,8 @@ export const AuthProvider = ({ children }) => {
       }
       return socio;
     }));
-
-    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_CUOTA_${socioId}_${newEstado}`, currentUser?.email, "INFO"));
   };
 
-  // CMS Handlers
   const addNews = (newsItem) => {
     const itemWithId = { ...newsItem, id: `n-${Date.now()}` };
     setNewsList(prev => [itemWithId, ...prev]);
@@ -236,6 +297,9 @@ export const AuthProvider = ({ children }) => {
       setIs2FAVerified,
       activeTab,
       setActiveTab,
+      postulacionesList,
+      addPostulacion,
+      updatePostulacionEstado,
       financialSettings,
       updateFinancialSettings,
       expensesList,
