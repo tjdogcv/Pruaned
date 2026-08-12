@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { INSTITUTIONAL_INFO } from '../data/initialData';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
+import { sendPostulacionEmail } from '../lib/emailConfig';
 import { 
   ShieldCheck, 
   UserPlus, 
@@ -78,6 +79,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
     };
 
     addPostulacion(postulacionFinal);
+    sendPostulacionEmail(postulacionFinal);
     setFormSubmitted(true);
   };
 

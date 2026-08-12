@@ -178,7 +178,7 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Agosto 2026",
     permisoGestionVoluntarios: true,
-    fotoPerfil: "https://images.unsplash.com/photo-1594824813566-7885a3964670?auto=format&fit=crop&w=400&q=80",
+    fotoPerfil: "",
     historialPagos: [
       { mes: "Julio 2026", monto: 15000, fecha: "2026-07-02", comprobante: "TRF-9821" },
       { mes: "Agosto 2026", monto: 15000, fecha: "2026-08-01", comprobante: "TRF-1049" },
@@ -205,7 +205,7 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Agosto 2026",
     permisoGestionVoluntarios: false,
-    fotoPerfil: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80",
+    fotoPerfil: "",
     historialPagos: [
       { mes: "Agosto 2026", monto: 15000, fecha: "2026-08-03", comprobante: "TRF-1102" },
       { mes: "Cuota Incorporación", monto: 30000, fecha: "2025-01-12", comprobante: "TRF-002" }
@@ -231,7 +231,7 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 3,
     ultimaCuotaPagada: "Mayo 2026",
     permisoGestionVoluntarios: false,
-    fotoPerfil: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+    fotoPerfil: "",
     historialPagos: [
       { mes: "Mayo 2026", monto: 15000, fecha: "2026-05-10", comprobante: "TRF-8820" }
     ]
@@ -256,7 +256,7 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Exento Por Estatuto",
     permisoGestionVoluntarios: false,
-    fotoPerfil: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+    fotoPerfil: "",
     historialPagos: []
   }
 ];

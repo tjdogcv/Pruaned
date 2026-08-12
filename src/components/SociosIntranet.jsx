@@ -338,6 +338,7 @@ export const SociosIntranet = () => {
     sociosList, 
     updateSocioCuota, 
     updateSocioCategoria,
+    updateSocioCuotaIncorporacion,
     financialSettings, 
     updateFinancialSettings, 
     expensesList, 
@@ -369,6 +370,7 @@ export const SociosIntranet = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('TODOS');
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
+  const [showHistorico, setShowHistorico] = useState(false);
 
   const currentSocio = isMasterUser 
     ? { nombre: 'Administrador Maestro', email: 'ag.pruaned@gmail.com', rut: 'ADMIN-0', categoria: 'Sistema', profesion: 'Soporte Gremial', fotoPerfil: '' } 
@@ -995,6 +997,14 @@ export const SociosIntranet = () => {
 
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => setShowHistorico(!showHistorico)}
+                    className={`px-3.5 py-1.5 font-bold text-xs rounded-xl shadow flex items-center gap-1.5 ${
+                      showHistorico ? 'bg-blue-900 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <ClipboardList className="w-3.5 h-3.5" /> {showHistorico ? 'Ocultar Histórico' : 'Registro Histórico'}
+                  </button>
+                  <button
                     onClick={handleExportCSV}
                     className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
                   >
@@ -1006,21 +1016,57 @@ export const SociosIntranet = () => {
 
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
-                      <th className="py-3.5 px-5">Socio / RUT</th>
-                      <th className="py-3.5 px-5">Categoría Gremial</th>
-                      <th className="py-3.5 px-5">Estado Cuota</th>
-                      <th className="py-3.5 px-5">Permiso Voluntarios</th>
-                      <th className="py-3.5 px-5">Monto Adeudado</th>
-                      <th className="py-3.5 px-5 text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
+                {showHistorico ? (
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                        <th className="py-3.5 px-5">Socio / RUT</th>
+                        <th className="py-3.5 px-5">Fecha Incorporación</th>
+                        <th className="py-3.5 px-5">Fecha Desvinculación</th>
+                        <th className="py-3.5 px-5">Estado</th>
+                        <th className="py-3.5 px-5">Motivo / Acta</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {sociosList.filter(s => s.email !== 'ag.pruaned@gmail.com').map(socio => (
+                        <tr key={socio.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-3.5 px-5">
+                            <div className="font-bold text-slate-900 text-sm font-['Outfit']">{socio.nombre}</div>
+                            <div className="text-[11px] text-slate-500 font-mono">{socio.rut}</div>
+                          </td>
+                          <td className="py-3.5 px-5 font-mono">{socio.fechaIngreso || '-'}</td>
+                          <td className="py-3.5 px-5 font-mono">{socio.fechaRetiroOficial || socio.fechaSolicitudRenuncia || '-'}</td>
+                          <td className="py-3.5 px-5">
+                            <span className="px-2.5 py-0.5 bg-slate-100 rounded-full border border-slate-200 text-slate-700 font-semibold text-[11px]">
+                              {socio.estadoCuota}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 text-xs text-slate-600 max-w-xs truncate">
+                            {socio.motivoRenuncia || socio.actaDirectorioAprobacion || (socio.estadoCuota.includes('Desvinculado') ? 'Desvinculado' : '-')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                        <th className="py-3.5 px-5">Socio / RUT</th>
+                        <th className="py-3.5 px-5">Categoría Gremial</th>
+                        <th className="py-3.5 px-5">Estado Cuota</th>
+                        <th className="py-3.5 px-5">Cuota Incorp.</th>
+                        <th className="py-3.5 px-5">Permiso Voluntarios</th>
+                        <th className="py-3.5 px-5">Monto Adeudado</th>
+                        <th className="py-3.5 px-5 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
                     {filteredSocios.map((socio) => {
                       const cuotaMensual = socio.montoCuotaMensual || financialSettings.cuotaMensualActual;
-                      const cuotaIncorp = socio.cuotaIncorporacionPagada ? 0 : (socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
+                      const esAntiguo = socio.fechaIngreso && new Date(socio.fechaIngreso).getFullYear() < 2026;
+                      const cuotaIncorpPagadaReal = socio.cuotaIncorporacionPagada || esAntiguo;
+                      const cuotaIncorp = cuotaIncorpPagadaReal ? 0 : (socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
                       const deudaCalculada = (socio.estadoCuota === 'Exento' || socio.estadoCuota.includes('Desvinculado') || socio.categoria === 'Socio Honorario') ? 0 : ((socio.mesesAdeudados || 0) * cuotaMensual) + cuotaIncorp;
 
                       return (
@@ -1029,7 +1075,7 @@ export const SociosIntranet = () => {
                           <td className="py-3.5 px-5">
                             <div className="flex items-center gap-3">
                               <img
-                                src={socio.fotoPerfil || "https://images.unsplash.com/photo-1594824813566-7885a3964670?auto=format&fit=crop&w=400&q=80"}
+                                src={socio.fotoPerfil || `https://ui-avatars.com/api/?name=${encodeURIComponent(socio.nombre)}&background=0C2340&color=fff&size=128`}
                                 alt={socio.nombre}
                                 className="w-8 h-8 rounded-full object-cover border border-slate-300 flex-shrink-0"
                               />
@@ -1067,6 +1113,22 @@ export const SociosIntranet = () => {
                             }`}>
                               {socio.estadoCuota}
                             </span>
+                          </td>
+
+                          <td className="py-3.5 px-5">
+                            {canManageFinances ? (
+                              <button
+                                onClick={() => updateSocioCuotaIncorporacion(socio.id, !cuotaIncorpPagadaReal)}
+                                className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${cuotaIncorpPagadaReal ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}
+                              >
+                                {cuotaIncorpPagadaReal ? <Check className="w-3 h-3"/> : <X className="w-3 h-3"/>}
+                                {cuotaIncorpPagadaReal ? 'Pagada' : 'Pendiente'}
+                              </button>
+                            ) : (
+                              <span className={`text-[10px] font-bold ${cuotaIncorpPagadaReal ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {cuotaIncorpPagadaReal ? 'Pagada' : 'Pendiente'}
+                              </span>
+                            )}
                           </td>
 
                           <td className="py-3.5 px-5">
@@ -1136,9 +1198,10 @@ export const SociosIntranet = () => {
 
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>

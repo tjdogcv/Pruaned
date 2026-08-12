@@ -12,7 +12,7 @@ export const AdminCMS = () => {
   const [newsCategory, setNewsCategory] = useState('Institucional');
   const [newsSummary, setNewsSummary] = useState('');
   const [newsContent, setNewsContent] = useState('');
-  const [newsImage, setNewsImage] = useState('https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80');
+  const [newsImage, setNewsImage] = useState('');
 
   // Category form state
   const [catNameInput, setCatNameInput] = useState('');

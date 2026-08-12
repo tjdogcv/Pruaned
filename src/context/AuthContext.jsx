@@ -117,10 +117,7 @@ export const AuthProvider = ({ children }) => {
     };
   });
 
-  const [directorioCargos, setDirectorioCargos] = useState(() => {
-    const saved = localStorage.getItem('pruaned_directorio_cargos');
-    return saved ? JSON.parse(saved) : INITIAL_DIRECTORIO_CARGOS;
-  });
+  const [directorioCargos, setDirectorioCargos] = useState(INITIAL_DIRECTORIO_CARGOS);
 
   const [donacionesList, setDonacionesList] = useState(() => {
     const saved = localStorage.getItem('pruaned_donaciones');
@@ -207,12 +204,13 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseReady() && currentUser) {
       const fetchSupabaseData = async () => {
         try {
-          const [sociosRes, volRes, newsRes, docsRes, donRes] = await Promise.all([
+          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes] = await Promise.all([
             supabase.from('socios').select('*'),
             supabase.from('voluntarios').select('*'),
             supabase.from('noticias').select('*'),
             supabase.from('documentos').select('*'),
-            supabase.from('donaciones').select('*')
+            supabase.from('donaciones').select('*'),
+            supabase.from('directorio_cargos').select('*').eq('id', 1).single()
           ]);
 
           const snakeToCamel = (obj) => {
@@ -248,6 +246,15 @@ export const AuthProvider = ({ children }) => {
           if (donRes.data && donRes.data.length > 0) setDonacionesList(snakeToCamel(donRes.data));
           else if (donRes.data && donRes.data.length === 0) setDonacionesList([]);
 
+          if (cargosRes.data) {
+            setDirectorioCargos({
+              presidenteId: cargosRes.data.presidente_id || INITIAL_DIRECTORIO_CARGOS.presidenteId,
+              vicepresidenteId: cargosRes.data.vicepresidente_id || INITIAL_DIRECTORIO_CARGOS.vicepresidenteId,
+              secretarioId: cargosRes.data.secretario_id || INITIAL_DIRECTORIO_CARGOS.secretarioId,
+              tesoreroId: cargosRes.data.tesorero_id || INITIAL_DIRECTORIO_CARGOS.tesoreroId
+            });
+          }
+
         } catch (error) {
           console.error("Error sincronizando con Supabase:", error);
         }
@@ -271,9 +278,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('pruaned_convocatoria_activa', JSON.stringify(convocatoriaActiva));
   }, [convocatoriaActiva]);
 
-  useEffect(() => {
-    localStorage.setItem('pruaned_directorio_cargos', JSON.stringify(directorioCargos));
-  }, [directorioCargos]);
+
 
   useEffect(() => {
     localStorage.setItem('pruaned_donaciones', JSON.stringify(donacionesList));
@@ -487,6 +492,10 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_CATEGORY_${socioId}_TO_${nuevaCategoria}`, currentUser?.email, "INFO"));
   };
 
+  const updateSocioCuotaIncorporacion = (id, pagada) => {
+    setSociosList(prev => prev.map(s => s.id === id ? { ...s, cuotaIncorporacionPagada: pagada } : s));
+  };
+
   const levantarConvocatoriaEmergencia = (asunto, mensaje) => {
     const nuevaConvocatoria = {
       activa: true,
@@ -535,11 +544,21 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_PROFILE_${socioId}`, currentUser?.email, "INFO"));
   };
 
-  const updateDirectorioCargo = (cargoKey, newSocioId) => {
+  const updateDirectorioCargo = async (cargoKey, newSocioId) => {
     setDirectorioCargos(prev => ({
       ...prev,
       [cargoKey]: newSocioId
     }));
+
+    if (isSupabaseReady()) {
+      const dbColumn = cargoKey.replace(/Id$/, '_id');
+      try {
+        await supabase.from('directorio_cargos').update({ [dbColumn]: newSocioId }).eq('id', 1);
+      } catch (error) {
+        console.error("Error updating directorio_cargos in Supabase:", error);
+      }
+    }
+
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_DIRECTORIO_CARGO_${cargoKey}_TO_${newSocioId}`, currentUser?.email, "INFO"));
   };
 
@@ -566,7 +585,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const deleteDonacion = (id) => {
-    setDonacionesList(prev => prev.filter(d => d.id !== id));
+    setDonacionesList(prev => donacionesList.filter(d => d.id !== id));
     setSecurityLogs(prev => logSecurityEvent(prev, `DELETE_DONATION_${id}`, currentUser?.email, "WARN"));
   };
 
@@ -613,7 +632,7 @@ export const AuthProvider = ({ children }) => {
         mesesAdeudados: 1,
         ultimaCuotaPagada: 'Pendiente Pago Incorporación',
         permisoGestionVoluntarios: false,
-        fotoPerfil: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        fotoPerfil: '',
         historialPagos: []
       };
       setSociosList(prev => [newSocio, ...prev]);
@@ -781,6 +800,7 @@ export const AuthProvider = ({ children }) => {
       canManageFinances,
       canPublishCMS,
       updateSocioCategoria,
+      updateSocioCuotaIncorporacion,
       togglePermisoGestionVoluntariosSocio,
       // Directorio Cargos & Profile
       directorioCargos,
