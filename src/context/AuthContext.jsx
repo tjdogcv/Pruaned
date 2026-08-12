@@ -164,6 +164,32 @@ export const AuthProvider = ({ children }) => {
     setActiveTab('home');
   };
 
+  // RBAC PERMISSION HELPERS
+  // 1. Maestro (Super Admin): Acceso TOTAL
+  const isMasterUser = currentUser?.role === 'master' || currentUser?.role === 'admin';
+  
+  // 2. Directiva Nacional: Finanzas, Gestión Voluntarios, CMS
+  const isDirectiva = currentUser?.role === 'directiva' || isMasterUser;
+
+  // 3. Socio Habilitado para Voluntarios: Permiso delegado especial
+  const socioPermisoVoluntarios = sociosList.find(s => s.email === currentUser?.email)?.permisoGestionVoluntarios || currentUser?.permisoGestionVoluntarios || false;
+
+  const canManageVoluntarios = isMasterUser || isDirectiva || socioPermisoVoluntarios;
+  const canManageFinances = isMasterUser || isDirectiva;
+  const canPublishCMS = isMasterUser || isDirectiva;
+
+  // Toggle Permiso de Voluntarios para un Socio (Habilitación Delegada)
+  const togglePermisoGestionVoluntariosSocio = (socioId) => {
+    setSociosList(prev => prev.map(s => {
+      if (s.id === socioId) {
+        const nuevoPermiso = !s.permisoGestionVoluntarios;
+        return { ...s, permisoGestionVoluntarios: nuevoPermiso };
+      }
+      return s;
+    }));
+    setSecurityLogs(prev => logSecurityEvent(prev, `TOGGLE_VOLUNTEER_PERMISSION_${socioId}`, currentUser?.email, "INFO"));
+  };
+
   // Donaciones Handler
   const addDonacion = (donacionData) => {
     const itemWithId = { ...donacionData, id: `don-${Date.now()}` };
@@ -220,6 +246,7 @@ export const AuthProvider = ({ children }) => {
         montoCuotaIncorporacion: financialSettings.cuotaIncorporacionActual,
         mesesAdeudados: 1,
         ultimaCuotaPagada: 'Pendiente Pago Incorporación',
+        permisoGestionVoluntarios: false,
         historialPagos: []
       };
       setSociosList(prev => [newSocio, ...prev]);
@@ -367,6 +394,14 @@ export const AuthProvider = ({ children }) => {
       setIs2FAVerified,
       activeTab,
       setActiveTab,
+      // Roles & Permissions
+      isMasterUser,
+      isDirectiva,
+      canManageVoluntarios,
+      canManageFinances,
+      canPublishCMS,
+      togglePermisoGestionVoluntariosSocio,
+      // Data
       donacionesList,
       addDonacion,
       deleteDonacion,

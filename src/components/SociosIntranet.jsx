@@ -24,7 +24,11 @@ import {
   UserX,
   ShieldCheck,
   Scale,
-  FileCheck2
+  FileCheck2,
+  ToggleLeft,
+  ToggleRight,
+  ShieldAlert,
+  GraduationCap
 } from 'lucide-react';
 
 export const SociosIntranet = () => {
@@ -40,10 +44,17 @@ export const SociosIntranet = () => {
     updatePostulacionEstado,
     solicitarRenunciaSocio,
     aprobarRenunciaDirectorio,
-    currentUser 
+    togglePermisoGestionVoluntariosSocio,
+    isMasterUser,
+    isDirectiva,
+    canManageVoluntarios,
+    canManageFinances,
+    canPublishCMS,
+    currentUser,
+    setActiveTab
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('padron'); // padron, renuncias, postulaciones, egresos, balance, configuracion
+  const [activeTab, setActiveTabLocal] = useState('padron'); // padron, renuncias, postulaciones, egresos, balance, configuracion
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('TODOS');
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
@@ -71,10 +82,6 @@ export const SociosIntranet = () => {
     categoria: 'Insumos Médicos Veterinarios',
     glosa: ''
   });
-
-  // Formulario Configuración Cuotas
-  const [editCuotaMensual, setEditCuotaMensual] = useState(financialSettings.cuotaMensualActual);
-  const [editCuotaIncorporacion, setEditCuotaIncorporacion] = useState(financialSettings.cuotaIncorporacionActual);
 
   // Cálculos Financieros
   const totalSocios = sociosList.length;
@@ -119,15 +126,6 @@ export const SociosIntranet = () => {
       setActivePaymentModal(null);
       setComprobanteInput('');
       setIsCuotaIncorporacionCheck(false);
-    }
-  };
-
-  const handleRequestSuspension = (e) => {
-    e.preventDefault();
-    if (activeSuspensionModal && suspensionReason.trim()) {
-      updateSocioCuota(activeSuspensionModal.id, 'Suspensión Art. 42', null, true);
-      setActiveSuspensionModal(null);
-      setSuspensionReason('');
     }
   };
 
@@ -176,12 +174,6 @@ export const SociosIntranet = () => {
     }
   };
 
-  const handleSaveSettings = (e) => {
-    e.preventDefault();
-    updateFinancialSettings(editCuotaMensual, editCuotaIncorporacion);
-    alert('¡Valores de cuotas sociales actualizados en el sistema!');
-  };
-
   const handleExportCSV = () => {
     const headers = "RUT,Nombre,Categoria,EstadoCuota,MesesAdeudados,DeudaCalculadaCLP,UltimoPago\n";
     const rows = sociosList.map(s => {
@@ -206,72 +198,85 @@ export const SociosIntranet = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 pb-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-900 text-xs font-bold uppercase tracking-wider mb-2">
-              <Users className="w-3.5 h-3.5" /> Intranet de Tesorería & Directorio Nacional
+              <Users className="w-3.5 h-3.5" /> Intranet de Socios, Directiva & Maestro
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-['Outfit']">
-              Padrón, Renuncias, Postulaciones & Balance
+              Padrón de Socios, Finanzas & Permisos Delegados
             </h2>
             <p className="text-slate-600 text-xs mt-1">
-              Aprobación formal de retiros por el Directorio Nacional (DL 2.757) y supresión de datos (Ley N° 21.719).
+              Usuario Conectado: <strong className="text-slate-900">{currentUser?.name}</strong> ({currentUser?.email}) • Rol: <span className="uppercase font-bold text-blue-900">{currentUser?.role}</span>
             </p>
           </div>
 
           {/* Subtabs Navigation */}
           <div className="flex flex-wrap bg-slate-200 p-1 rounded-xl border border-slate-300 gap-1">
             <button
-              onClick={() => setActiveTab('padron')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+              onClick={() => setActiveTabLocal('padron')}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'padron' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
               }`}
             >
               Padrón & Cuotas
             </button>
 
-            <button
-              onClick={() => setActiveTab('renuncias')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
-                activeTab === 'renuncias' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              Aprobación Renuncias
-              {renunciasPendientes > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full font-bold">
-                  {renunciasPendientes}
-                </span>
-              )}
-            </button>
+            {canManageFinances && (
+              <>
+                <button
+                  onClick={() => setActiveTabLocal('renuncias')}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all relative ${
+                    activeTab === 'renuncias' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+                  }`}
+                >
+                  Aprobación Renuncias
+                  {renunciasPendientes > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full font-bold">
+                      {renunciasPendientes}
+                    </span>
+                  )}
+                </button>
 
-            <button
-              onClick={() => setActiveTab('postulaciones')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
-                activeTab === 'postulaciones' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              Postulaciones Nuevos Socios
-              {postulacionesPendientes > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] rounded-full font-bold">
-                  {postulacionesPendientes}
-                </span>
-              )}
-            </button>
+                <button
+                  onClick={() => setActiveTabLocal('postulaciones')}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all relative ${
+                    activeTab === 'postulaciones' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+                  }`}
+                >
+                  Postulaciones Socios
+                  {postulacionesPendientes > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] rounded-full font-bold">
+                      {postulacionesPendientes}
+                    </span>
+                  )}
+                </button>
 
-            <button
-              onClick={() => setActiveTab('egresos')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'egresos' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              Registro Egresos
-            </button>
+                <button
+                  onClick={() => setActiveTabLocal('egresos')}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'egresos' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+                  }`}
+                >
+                  Registro Egresos
+                </button>
 
-            <button
-              onClick={() => setActiveTab('balance')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'balance' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              Balance General
-            </button>
+                <button
+                  onClick={() => setActiveTabLocal('balance')}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'balance' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+                  }`}
+                >
+                  Balance General
+                </button>
+              </>
+            )}
+
+            {canManageVoluntarios && (
+              <button
+                onClick={() => setActiveTab('voluntarios')}
+                className="px-3 py-2 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white shadow flex items-center gap-1.5"
+              >
+                <GraduationCap className="w-3.5 h-3.5" /> Ir a Gestión Voluntarios
+              </button>
+            )}
           </div>
         </div>
 
@@ -358,10 +363,10 @@ export const SociosIntranet = () => {
                     <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
                       <th className="py-3.5 px-5">Socio / RUT</th>
                       <th className="py-3.5 px-5">Categoría</th>
-                      <th className="py-3.5 px-5">Estado Cuota / Renuncia</th>
-                      <th className="py-3.5 px-5">Cuota Incorporación</th>
+                      <th className="py-3.5 px-5">Estado Cuota</th>
+                      <th className="py-3.5 px-5">Permiso Voluntarios</th>
                       <th className="py-3.5 px-5">Monto Adeudado</th>
-                      <th className="py-3.5 px-5 text-right">Acción Directorio</th>
+                      <th className="py-3.5 px-5 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -395,14 +400,31 @@ export const SociosIntranet = () => {
                             </span>
                           </td>
 
+                          {/* Permiso de Gestión de Voluntarios (Habilitación por Maestro/Directiva) */}
                           <td className="py-3.5 px-5">
-                            {socio.cuotaIncorporacionPagada ? (
-                              <span className="text-emerald-700 font-bold flex items-center gap-1">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Pagada
-                              </span>
+                            {canManageFinances ? (
+                              <button
+                                onClick={() => togglePermisoGestionVoluntariosSocio(socio.id)}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
+                                  socio.permisoGestionVoluntarios
+                                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}
+                                title="Habilitar o revocar permiso de Gestión de Voluntarios para este socio"
+                              >
+                                {socio.permisoGestionVoluntarios ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-700" /> Habilitado
+                                  </>
+                                ) : (
+                                  <>
+                                    <ToggleLeft className="w-3 h-3 text-slate-400" /> Deshabilitado
+                                  </>
+                                )}
+                              </button>
                             ) : (
-                              <span className="text-rose-600 font-bold">
-                                Pendiente (${(socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual).toLocaleString('es-CL')})
+                              <span className="text-[11px] font-medium text-slate-500">
+                                {socio.permisoGestionVoluntarios ? 'Habilitado' : 'Sin permiso'}
                               </span>
                             )}
                           </td>
@@ -418,12 +440,14 @@ export const SociosIntranet = () => {
                           </td>
 
                           <td className="py-3.5 px-5 text-right space-x-2">
-                            <button
-                              onClick={() => setActivePaymentModal(socio)}
-                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg transition-colors"
-                            >
-                              Registrar Pago
-                            </button>
+                            {canManageFinances && (
+                              <button
+                                onClick={() => setActivePaymentModal(socio)}
+                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg transition-colors"
+                              >
+                                Registrar Pago
+                              </button>
+                            )}
 
                             {socio.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' ? (
                               <button
@@ -453,8 +477,8 @@ export const SociosIntranet = () => {
           </div>
         )}
 
-        {/* TAB 2: APROBACIÓN DE RENUNCIAS Y DESVINCULACIÓN (DIRECTORIO NACIONAL) */}
-        {activeTab === 'renuncias' && (
+        {/* TAB 2: APROBACIÓN DE RENUNCIAS Y DESVINCULACIÓN */}
+        {activeTab === 'renuncias' && canManageFinances && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
@@ -462,7 +486,7 @@ export const SociosIntranet = () => {
                 Solicitudes de Renuncia & Desvinculación Voluntaria (DL N° 2.757)
               </h3>
               <p className="text-xs text-slate-500">
-                Conforme a los Estatutos Gremiales (DL 2.757), la renuncia formal de un socio requiere el acuerdo y aprobación expresa del Directorio Nacional consignado en Acta. Posterior a la aprobación, se efectúa la supresión de datos personales de contacto bajo la Ley N° 21.719 preservando la trazabilidad de Tesorería.
+                Conforme a los Estatutos Gremiales (DL 2.757), la renuncia formal de un socio requiere el acuerdo y aprobación expresa del Directorio Nacional consignado en Acta.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -487,7 +511,7 @@ export const SociosIntranet = () => {
 
                     <div className="text-xs text-slate-600 space-y-1 bg-white p-3 rounded-lg border border-slate-200">
                       <div>• <strong>Fecha Solicitud:</strong> {soc.fechaSolicitudRenuncia || '2026-08-12'}</div>
-                      <div>• <strong>Motivo Expresado:</strong> {soc.motivoRenuncia || 'Razones personales / cambio de residencia'}</div>
+                      <div>• <strong>Motivo Expresado:</strong> {soc.motivoRenuncia || 'Razones personales'}</div>
                       {soc.actaDirectorioAprobacion && (
                         <div>• <strong>Acta Aprobación Directorio:</strong> <span className="font-bold text-emerald-800">{soc.actaDirectorioAprobacion}</span></div>
                       )}
@@ -511,7 +535,7 @@ export const SociosIntranet = () => {
         )}
 
         {/* TAB 3: POSTULACIONES PENDIENTES */}
-        {activeTab === 'postulaciones' && (
+        {activeTab === 'postulaciones' && canManageFinances && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
@@ -564,7 +588,7 @@ export const SociosIntranet = () => {
         )}
 
         {/* TAB 4: REGISTRO DE EGRESOS */}
-        {activeTab === 'egresos' && (
+        {activeTab === 'egresos' && canManageFinances && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in">
             <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-base font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
@@ -708,7 +732,7 @@ export const SociosIntranet = () => {
         )}
 
         {/* TAB 5: BALANCE GENERAL */}
-        {activeTab === 'balance' && (
+        {activeTab === 'balance' && canManageFinances && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -718,7 +742,7 @@ export const SociosIntranet = () => {
                     Balance General Financiero (Directorio Nacional)
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Vista de rendición de cuentas. Mantiene la trazabilidad inalterable de aportes incluso de socios desvinculados bajo Ley 21.719.
+                    Vista de rendición de cuentas de la Asociación Gremial PRUANED A.G.
                   </p>
                 </div>
 
@@ -799,9 +823,6 @@ export const SociosIntranet = () => {
                     onChange={(e) => setMotivoRenunciaInput(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Conforme al DL N° 2.757, la renuncia será puesta en tabla en la próxima sesión del Directorio Nacional para su acuerdo formal en Acta.
-                  </p>
                 </div>
 
                 <div className="pt-2 flex justify-end gap-2">
@@ -825,7 +846,7 @@ export const SociosIntranet = () => {
         )}
 
         {/* Modal Aprobar Renuncia por el Directorio Nacional */}
-        {activeApproveRenunciaModal && (
+        {activeApproveRenunciaModal && canManageFinances && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
             <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 relative border border-slate-200">
               <button
@@ -857,13 +878,6 @@ export const SociosIntranet = () => {
                     onChange={(e) => setActaDirectorioInput(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-mono text-slate-900"
                   />
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1 text-[11px] text-slate-600">
-                  <div className="font-bold text-slate-900">Efectos Automáticos del Acuerdo:</div>
-                  <div>• Registro permanente de pertenencia en Padrón Histórico Reservado (DL 2.757).</div>
-                  <div>• Supresión de datos personales privados de contacto conforme a Ley N° 21.719.</div>
-                  <div>• Trazabilidad inalterable de pagos pasados en Tesorería.</div>
                 </div>
 
                 <div className="pt-2 flex justify-end gap-2">

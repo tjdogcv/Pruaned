@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { evaluatePasswordStrength, generate2FACode, sanitizeInput } from '../utils/security';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
-import { Lock, KeyRound, ShieldCheck, UserCheck, AlertTriangle, Eye, EyeOff, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Lock, KeyRound, ShieldCheck, UserCheck, AlertTriangle, Eye, EyeOff, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 export const AuthModal = ({ isOpen, onClose }) => {
   const { login, setActiveTab } = useAuth();
   const [step, setStep] = useState('credentials'); // credentials, 2fa
-  const [role, setRole] = useState('socio'); // socio, voluntario, admin
-  const [email, setEmail] = useState('camila.morales@pruaned.cl');
-  const [password, setPassword] = useState('Pruaned2025#Secured!');
+  const [role, setRole] = useState('master'); // master, directiva, socio_delegado, voluntario
+  const [email, setEmail] = useState('admin.maestro@pruaned.cl');
+  const [password, setPassword] = useState('MasterPruaned2025#Super!');
   const [showPassword, setShowPassword] = useState(false);
   const [twoFACode, setTwoFACode] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
@@ -22,15 +22,18 @@ export const AuthModal = ({ isOpen, onClose }) => {
   const handleRolePreset = (selectedRole) => {
     setRole(selectedRole);
     setErrorMsg('');
-    if (selectedRole === 'socio') {
+    if (selectedRole === 'master') {
+      setEmail('admin.maestro@pruaned.cl');
+      setPassword('MasterPruaned2025#Super!');
+    } else if (selectedRole === 'directiva') {
+      setEmail('presidente.directiva@pruaned.cl');
+      setPassword('DirectivaPruaned2025!');
+    } else if (selectedRole === 'socio_delegado') {
       setEmail('camila.morales@pruaned.cl');
       setPassword('SocioPruaned2025!');
     } else if (selectedRole === 'voluntario') {
       setEmail('felipe.henriquez@gmail.com');
       setPassword('VoluntarioPruaned2025!');
-    } else if (selectedRole === 'admin') {
-      setEmail('admin@pruaned.cl');
-      setPassword('AdminPruaned2025#Super!');
     }
   };
 
@@ -48,7 +51,6 @@ export const AuthModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    // Generate 2FA code and move to OTP verification step
     const code = generate2FACode();
     setGeneratedCode(code);
     setTwoFACode(code); // Pre-fill for seamless testing
@@ -62,29 +64,51 @@ export const AuthModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    // Determine user details based on email/role
+    let mappedRole = 'socio';
+    let name = 'Dra. Camila Morales';
+    let permisoVoluntarios = false;
+
+    if (role === 'master') {
+      mappedRole = 'master';
+      name = 'Usuario Maestro / Super Admin';
+      permisoVoluntarios = true;
+    } else if (role === 'directiva') {
+      mappedRole = 'directiva';
+      name = 'Presidente Directiva Nacional';
+      permisoVoluntarios = true;
+    } else if (role === 'socio_delegado') {
+      mappedRole = 'socio';
+      name = 'Dra. Camila Morales (Delegada Voluntarios)';
+      permisoVoluntarios = true;
+    } else if (role === 'voluntario') {
+      mappedRole = 'voluntario';
+      name = 'Felipe Henríquez';
+      permisoVoluntarios = false;
+    }
+
     let userObj = {
       id: `usr-${Date.now()}`,
-      name: role === 'socio' ? 'Dra. Camila Morales' : role === 'voluntario' ? 'Felipe Henríquez' : 'Administrador General',
+      name: name,
       email: email,
-      role: role,
-      rut: role === 'socio' ? '15.482.910-K' : '18.912.440-1'
+      role: mappedRole,
+      permisoGestionVoluntarios: permisoVoluntarios,
+      rut: role === 'voluntario' ? '18.912.440-1' : '15.482.910-K'
     };
 
     login(userObj);
     onClose();
 
-    // Direct user to corresponding intranet
-    if (role === 'socio') setActiveTab('socios');
-    else if (role === 'voluntario') setActiveTab('voluntarios');
-    else setActiveTab('admin');
+    if (mappedRole === 'master' || mappedRole === 'directiva' || mappedRole === 'socio') {
+      setActiveTab('socios');
+    } else {
+      setActiveTab('voluntarios');
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-['Plus_Jakarta_Sans']">
       <div className="bg-slate-900 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 relative border border-slate-700 text-white">
         
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-800 text-slate-400 font-bold text-sm"
@@ -92,20 +116,18 @@ export const AuthModal = ({ isOpen, onClose }) => {
           ✕
         </button>
 
-        {/* Crest Logo & Security Badge */}
         <div className="text-center space-y-2">
           <div className="inline-flex justify-center p-2 bg-white/10 rounded-2xl border border-white/20">
-            <PRUANEDLogo className="h-16 w-auto" showText={false} />
+            <PRUANEDLogo className="h-14 w-auto" showText={false} />
           </div>
           <h3 className="text-2xl font-extrabold font-['Outfit']">
             Portal Seguro PRUANED
           </h3>
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-semibold border border-emerald-500/30">
-            <ShieldCheck className="w-3.5 h-3.5" /> Autenticación 2FA Cifrada AES-256
+            <ShieldCheck className="w-3.5 h-3.5" /> Autenticación 2FA & Roles RBAC
           </div>
         </div>
 
-        {/* Error Alert */}
         {errorMsg && (
           <div className="p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-300 text-xs flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -113,65 +135,76 @@ export const AuthModal = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {/* STEP 1: CREDENTIALS */}
         {step === 'credentials' && (
           <form onSubmit={handleSendCredentials} className="space-y-4">
             
-            {/* Quick Role Switcher */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Seleccione Perfil de Acceso:
+                Seleccione Perfil / Rol de Usuario:
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() => handleRolePreset('socio')}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${
-                    role === 'socio' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  onClick={() => handleRolePreset('master')}
+                  className={`p-2.5 rounded-xl font-bold text-left transition-all ${
+                    role === 'master' ? 'bg-purple-600 text-white shadow-md ring-2 ring-purple-400/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
                   }`}
                 >
-                  Socio Gremial
+                  <div className="font-extrabold">👑 Usuario Maestro</div>
+                  <div className="text-[10px] text-slate-300 font-normal">Acceso Total a todo el sistema</div>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleRolePreset('directiva')}
+                  className={`p-2.5 rounded-xl font-bold text-left transition-all ${
+                    role === 'directiva' ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
+                  }`}
+                >
+                  <div className="font-extrabold">🏛️ Directiva Nacional</div>
+                  <div className="text-[10px] text-slate-300 font-normal">Voluntarios, Finanzas & CMS</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleRolePreset('socio_delegado')}
+                  className={`p-2.5 rounded-xl font-bold text-left transition-all ${
+                    role === 'socio_delegado' ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-400/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
+                  }`}
+                >
+                  <div className="font-extrabold">👤 Socio Habilitado</div>
+                  <div className="text-[10px] text-slate-300 font-normal">Socio + Permiso Voluntarios</div>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => handleRolePreset('voluntario')}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${
-                    role === 'voluntario' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  className={`p-2.5 rounded-xl font-bold text-left transition-all ${
+                    role === 'voluntario' ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400/30' : 'bg-slate-800 text-slate-300 border border-slate-700'
                   }`}
                 >
-                  Voluntario
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRolePreset('admin')}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all ${
-                    role === 'admin' ? 'bg-purple-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}
-                >
-                  Administrador
+                  <div className="font-extrabold">👷 Voluntario</div>
+                  <div className="text-[10px] text-slate-300 font-normal">LMS & Disponibilidad</div>
                 </button>
               </div>
             </div>
 
-            {/* Email Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Correo Electrónico Institucional
+                Correo Electrónico Registrado
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="usuario@pruaned.cl"
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
               />
             </div>
 
-            {/* Password Field & Strength Indicator */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Contraseña de Alta Seguridad
+                Contraseña de Acceso
               </label>
               <div className="relative">
                 <input
@@ -190,7 +223,6 @@ export const AuthModal = ({ isOpen, onClose }) => {
                 </button>
               </div>
 
-              {/* Password Strength Meter */}
               <div className="mt-2 space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-slate-400">Robustez Contraseña:</span>
@@ -217,7 +249,6 @@ export const AuthModal = ({ isOpen, onClose }) => {
           </form>
         )}
 
-        {/* STEP 2: 2FA / OTP VERIFICATION */}
         {step === '2fa' && (
           <form onSubmit={handleVerify2FA} className="space-y-5 animate-fade-in text-center">
             <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
@@ -263,9 +294,6 @@ export const AuthModal = ({ isOpen, onClose }) => {
           </form>
         )}
 
-        <div className="text-center pt-2 border-t border-slate-800 text-[11px] text-slate-500">
-          Protección SSL/TLS • Previene Inyecciones SQL & XSS
-        </div>
       </div>
     </div>
   );
