@@ -215,19 +215,37 @@ export const AuthProvider = ({ children }) => {
             supabase.from('donaciones').select('*')
           ]);
 
-          if (sociosRes.data && sociosRes.data.length > 0) setSociosList(sociosRes.data);
-          else if (sociosRes.data && sociosRes.data.length === 0) setSociosList([]); 
+          const snakeToCamel = (obj) => {
+            if (Array.isArray(obj)) {
+              return obj.map(v => snakeToCamel(v));
+            } else if (obj !== null && obj.constructor === Object) {
+              return Object.keys(obj).reduce((result, key) => {
+                const camelKey = key.replace(/([-_][a-z])/ig, ($1) => $1.toUpperCase().replace('-', '').replace('_', ''));
+                result[camelKey] = snakeToCamel(obj[key]);
+                return result;
+              }, {});
+            }
+            return obj;
+          };
 
-          if (volRes.data && volRes.data.length > 0) setVoluntariosList(volRes.data);
+          if (sociosRes.data && sociosRes.data.length > 0) {
+            const mappedSocios = snakeToCamel(sociosRes.data).map(s => ({
+              ...s,
+              historialPagos: s.historialPagos || []
+            }));
+            setSociosList(mappedSocios);
+          } else if (sociosRes.data && sociosRes.data.length === 0) setSociosList([]); 
+
+          if (volRes.data && volRes.data.length > 0) setVoluntariosList(snakeToCamel(volRes.data));
           else if (volRes.data && volRes.data.length === 0) setVoluntariosList([]);
 
-          if (newsRes.data && newsRes.data.length > 0) setNewsList(newsRes.data);
+          if (newsRes.data && newsRes.data.length > 0) setNewsList(snakeToCamel(newsRes.data));
           else if (newsRes.data && newsRes.data.length === 0) setNewsList([]);
 
-          if (docsRes.data && docsRes.data.length > 0) setDocumentsList(docsRes.data);
+          if (docsRes.data && docsRes.data.length > 0) setDocumentsList(snakeToCamel(docsRes.data));
           else if (docsRes.data && docsRes.data.length === 0) setDocumentsList([]);
 
-          if (donRes.data && donRes.data.length > 0) setDonacionesList(donRes.data);
+          if (donRes.data && donRes.data.length > 0) setDonacionesList(snakeToCamel(donRes.data));
           else if (donRes.data && donRes.data.length === 0) setDonacionesList([]);
 
         } catch (error) {
