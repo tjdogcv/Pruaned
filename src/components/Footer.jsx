@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
 import { INSTITUTIONAL_INFO } from '../data/initialData';
 import { Mail, Globe, MapPin, Instagram, ShieldCheck, Lock } from 'lucide-react';
 
-export const Footer = ({ onNavigate }) => {
+export const Footer = () => {
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   return (
@@ -33,24 +34,24 @@ export const Footer = ({ onNavigate }) => {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <button onClick={() => onNavigate('institutional')} className="hover:text-white transition-colors">
+                <Link to="/institucional" className="hover:text-white transition-colors">
                   Estatutos y Reglamento General 2025
-                </button>
+                </Link>
               </li>
               <li>
-                <button onClick={() => onNavigate('postulacion')} className="hover:text-white transition-colors">
+                <Link to="/postulacion" className="hover:text-white transition-colors">
                   Postulación de Nuevos Socios
-                </button>
+                </Link>
               </li>
               <li>
-                <button onClick={() => onNavigate('news')} className="hover:text-white transition-colors">
+                <Link to="/noticias" className="hover:text-white transition-colors">
                   Noticias & Comunicados Oficiales
-                </button>
+                </Link>
               </li>
               <li>
-                <button onClick={() => onNavigate('docs')} className="hover:text-white transition-colors">
+                <Link to="/documentos" className="hover:text-white transition-colors">
                   Repositorio Documental Público
-                </button>
+                </Link>
               </li>
               <li>
                 <button onClick={() => setIsPrivacyModalOpen(true)} className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">

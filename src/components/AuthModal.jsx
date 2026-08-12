@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { evaluatePasswordStrength, generate2FACode, sanitizeInput } from '../utils/security';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { Lock, KeyRound, ShieldCheck, AlertTriangle, Eye, EyeOff, CheckCircle2, User } from 'lucide-react';
 
 export const AuthModal = ({ isOpen, onClose }) => {
-  const { loginWithCredentials, setActiveTab } = useAuth();
+  const { loginWithCredentials } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState('credentials'); // credentials, 2fa
   const [email, setEmail] = useState('ag.pruaned@gmail.com');
   const [password, setPassword] = useState('MasterPruaned2025#Super!');
@@ -48,7 +50,13 @@ export const AuthModal = ({ isOpen, onClose }) => {
     // Authenticate and auto-resolve role on server side
     const targetTab = loginWithCredentials(email);
     onClose();
-    setActiveTab(targetTab);
+    if (targetTab === 'socios') {
+      navigate('/intranet/socios');
+    } else if (targetTab === 'voluntarios') {
+      navigate('/intranet/voluntarios');
+    } else {
+      navigate('/intranet/socios');
+    }
   };
 
   return (

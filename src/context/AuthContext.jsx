@@ -15,6 +15,10 @@ import {
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
 
+const SESSION_KEY = 'pruaned_session';
+const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 horas
+const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
+
 const AuthContext = createContext();
 
 const USER_DATABASE = [
@@ -69,9 +73,30 @@ const USER_DATABASE = [
   }
 ];
 
+function generateSessionToken() {
+  return 'pruaned-sess-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+function loadPersistedSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    if (!session?.expiresAt || Date.now() > session.expiresAt) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return session;
+  } catch {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [is2FAVerified, setIs2FAVerified] = useState(false);
+  const persistedSession = loadPersistedSession();
+  const [currentUser, setCurrentUser] = useState(persistedSession?.user || null);
+  const [is2FAVerified, setIs2FAVerified] = useState(!!persistedSession);
   const [activeTab, setActiveTab] = useState('home');
 
   // Firmas Digitales Oficiales (Presidente y Secretario)
@@ -238,6 +263,29 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('pruaned_security_logs', JSON.stringify(securityLogs));
   }, [securityLogs]);
 
+  // INACTIVITY TIMER
+  const inactivityTimerRef = React.useRef(null);
+
+  const resetInactivityTimer = React.useCallback(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (currentUser) {
+      inactivityTimerRef.current = setTimeout(() => {
+        logout();
+      }, INACTIVITY_LIMIT_MS);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetInactivityTimer));
+    resetInactivityTimer();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetInactivityTimer));
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    };
+  }, [currentUser, resetInactivityTimer]);
+
   // AUTHENTICATION
   const loginWithCredentials = (emailInput) => {
     const cleanEmail = emailInput.trim().toLowerCase();
@@ -281,6 +329,15 @@ export const AuthProvider = ({ children }) => {
     setIs2FAVerified(true);
     setSecurityLogs(prev => logSecurityEvent(prev, `AUTH_SUCCESS_SERVER_RESOLVED_ROLE_${userObj.role.toUpperCase()}`, userObj.email, "INFO"));
 
+    // Persistir sesión en localStorage
+    const session = {
+      token: generateSessionToken(),
+      user: userObj,
+      expiresAt: Date.now() + SESSION_DURATION_MS,
+      loginAt: new Date().toISOString()
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+
     if (userObj.role === 'master' || userObj.role === 'directiva' || userObj.role === 'socio') {
       return 'socios';
     } else {
@@ -289,6 +346,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    localStorage.removeItem(SESSION_KEY);
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     if (currentUser) {
       setSecurityLogs(prev => logSecurityEvent(prev, "USER_LOGOUT", currentUser.email, "INFO"));
     }

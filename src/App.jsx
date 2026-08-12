@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -14,60 +15,137 @@ import { AdminCMS } from './components/AdminCMS';
 import { CertificateVerify } from './components/CertificateVerify';
 import { PostulacionSocio } from './components/PostulacionSocio';
 import { PortalTransparencia } from './components/PortalTransparencia';
+import { PrivateRoute } from './components/PrivateRoute';
 
-function MainLayout() {
-  const { activeTab, setActiveTab } = useAuth();
+function PublicLayout({ children, onOpenAuth }) {
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
+      <Navbar onOpenAuth={onOpenAuth} />
+      <main className="flex-1">
+        {children}
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function IntranetLayout({ children }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
+      <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
+      <main className="flex-1">
+        {children}
+      </main>
+      <Footer />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+    </div>
+  );
+}
+
+function HomePage() {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.search.includes('login=required')) {
+      setIsAuthModalOpen(true);
+    }
+  }, [location.search]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
-      
-      {/* Navigation Header */}
       <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
-
-      {/* Main View Router */}
       <main className="flex-1">
-        {activeTab === 'home' && (
-          <>
-            <Hero 
-              onOpenAuth={() => setIsAuthModalOpen(true)} 
-              onNavigate={(tab) => setActiveTab(tab)} 
-            />
-            <Institutional />
-            <NewsSection onOpenPublishModal={() => setActiveTab('admin')} />
-            <DocumentsSection />
-          </>
-        )}
-
-        {activeTab === 'institutional' && <Institutional />}
-        {activeTab === 'postulacion' && <PostulacionSocio onNavigate={(tab) => setActiveTab(tab)} />}
-        {activeTab === 'transparencia' && <PortalTransparencia />}
-        {activeTab === 'news' && <NewsSection onOpenPublishModal={() => setActiveTab('admin')} />}
-        {activeTab === 'docs' && <DocumentsSection />}
-        {activeTab === 'socios' && <SociosIntranet />}
-        {activeTab === 'voluntarios' && <VoluntariosIntranet />}
-        {activeTab === 'admin' && <AdminCMS />}
-        {activeTab === 'security' && <SecurityDashboard />}
-        {activeTab === 'verificar' && <CertificateVerify />}
+        <Hero
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onNavigate={(path) => navigate(path)}
+        />
+        <Institutional />
+        <NewsSection />
+        <DocumentsSection />
       </main>
-
-      {/* Footer */}
-      <Footer onNavigate={(tab) => setActiveTab(tab)} />
-
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
+      <Footer />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
-
     </div>
+  );
+}
+
+function PublicPageWrapper({ component: Component, componentProps }) {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.search.includes('login=required')) {
+      setIsAuthModalOpen(true);
+    }
+  }, [location.search]);
+
+  return (
+    <PublicLayout onOpenAuth={() => setIsAuthModalOpen(true)}>
+      <Component {...(componentProps || {})} />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+    </PublicLayout>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Rutas públicas */}
+      <Route path="/" element={<HomePage />} />
+      <Route path="/institucional" element={<PublicPageWrapper component={Institutional} />} />
+      <Route path="/noticias" element={<PublicPageWrapper component={NewsSection} />} />
+      <Route path="/documentos" element={<PublicPageWrapper component={DocumentsSection} />} />
+      <Route path="/transparencia" element={<PublicPageWrapper component={PortalTransparencia} />} />
+      <Route path="/postulacion" element={<PublicPageWrapper component={PostulacionSocio} />} />
+      <Route path="/verificar" element={<PublicPageWrapper component={CertificateVerify} />} />
+      <Route path="/verificar/:hash" element={<PublicPageWrapper component={CertificateVerify} />} />
+
+      {/* Rutas privadas — Intranet */}
+      <Route path="/intranet/socios" element={
+        <PrivateRoute>
+          <IntranetLayout><SociosIntranet /></IntranetLayout>
+        </PrivateRoute>
+      } />
+      <Route path="/intranet/voluntarios" element={
+        <PrivateRoute>
+          <IntranetLayout><VoluntariosIntranet /></IntranetLayout>
+        </PrivateRoute>
+      } />
+      <Route path="/intranet/admin" element={
+        <PrivateRoute>
+          <IntranetLayout><AdminCMS /></IntranetLayout>
+        </PrivateRoute>
+      } />
+      <Route path="/intranet/seguridad" element={
+        <PrivateRoute>
+          <IntranetLayout><SecurityDashboard /></IntranetLayout>
+        </PrivateRoute>
+      } />
+
+      {/* Redirigir rutas desconocidas al home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MainLayout />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

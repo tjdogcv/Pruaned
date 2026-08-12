@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { 
@@ -17,21 +18,32 @@ import {
 } from 'lucide-react';
 
 export const Navbar = ({ onOpenAuth }) => {
-  const { currentUser, logout, activeTab, setActiveTab } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const publicNavItems = [
-    { id: 'home', label: 'Inicio', icon: Shield },
-    { id: 'institutional', label: 'Estatutos & Direcciones', icon: Building },
-    { id: 'postulacion', label: 'Hazte Socio', icon: UserPlus },
-    { id: 'transparencia', label: 'Transparencia & Donaciones', icon: ShieldCheck },
-    { id: 'news', label: 'Noticias', icon: Newspaper },
-    { id: 'docs', label: 'Documentos Públicos', icon: FileText },
+    { path: '/', label: 'Inicio', icon: Shield },
+    { path: '/institucional', label: 'Estatutos & Direcciones', icon: Building },
+    { path: '/postulacion', label: 'Hazte Socio', icon: UserPlus },
+    { path: '/transparencia', label: 'Transparencia & Donaciones', icon: ShieldCheck },
+    { path: '/noticias', label: 'Noticias', icon: Newspaper },
+    { path: '/documentos', label: 'Documentos Públicos', icon: FileText },
   ];
 
-  const handleNavClick = (id) => {
-    setActiveTab(id);
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
+  const handleNavClick = () => {
     setMobileMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLogoClick = () => {
+    navigate('/');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -43,7 +55,7 @@ export const Navbar = ({ onOpenAuth }) => {
           {/* Logo Brand */}
           <div 
             className="flex items-center cursor-pointer group bg-white/95 px-3 py-1.5 rounded-xl border border-slate-700" 
-            onClick={() => handleNavClick('home')}
+            onClick={handleLogoClick}
           >
             <PRUANEDLogo className="h-9 w-auto" showText={true} />
           </div>
@@ -52,15 +64,16 @@ export const Navbar = ({ onOpenAuth }) => {
           <nav className="hidden lg:flex items-center space-x-1">
             {publicNavItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              const isHighlight = item.id === 'postulacion';
+              const active = isActive(item.path);
+              const isHighlight = item.path === '/postulacion';
 
               return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={handleNavClick}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                    isActive
+                    active
                       ? 'bg-blue-600 text-white shadow'
                       : isHighlight
                       ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900'
@@ -69,44 +82,47 @@ export const Navbar = ({ onOpenAuth }) => {
                 >
                   <Icon className="w-4 h-4" />
                   {item.label}
-                </button>
+                </Link>
               );
             })}
 
             {/* Authenticated Intranet Shortcuts */}
             {currentUser && (
               <>
-                {(currentUser.role === 'socio' || currentUser.role === 'admin') && (
-                  <button
-                    onClick={() => handleNavClick('socios')}
+                {(currentUser.role === 'socio' || currentUser.role === 'master' || currentUser.role === 'directiva') && (
+                  <Link
+                    to="/intranet/socios"
+                    onClick={handleNavClick}
                     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                      activeTab === 'socios' ? 'bg-amber-600 text-white' : 'text-amber-400 hover:bg-amber-950/40'
+                      location.pathname === '/intranet/socios' ? 'bg-amber-600 text-white' : 'text-amber-400 hover:bg-amber-950/40'
                     }`}
                   >
                     <Users className="w-4 h-4" /> Intranet Socios
-                  </button>
+                  </Link>
                 )}
 
-                {(currentUser.role === 'voluntario' || currentUser.role === 'admin') && (
-                  <button
-                    onClick={() => handleNavClick('voluntarios')}
+                {(currentUser.role === 'voluntario') && (
+                  <Link
+                    to="/intranet/voluntarios"
+                    onClick={handleNavClick}
                     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                      activeTab === 'voluntarios' ? 'bg-emerald-600 text-white' : 'text-emerald-400 hover:bg-emerald-950/40'
+                      location.pathname === '/intranet/voluntarios' ? 'bg-emerald-600 text-white' : 'text-emerald-400 hover:bg-emerald-950/40'
                     }`}
                   >
                     <GraduationCap className="w-4 h-4" /> Intranet Voluntarios
-                  </button>
+                  </Link>
                 )}
 
-                {currentUser.role === 'admin' && (
-                  <button
-                    onClick={() => handleNavClick('admin')}
+                {(currentUser.role === 'master' || currentUser.role === 'directiva') && (
+                  <Link
+                    to="/intranet/admin"
+                    onClick={handleNavClick}
                     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                      activeTab === 'admin' ? 'bg-purple-600 text-white' : 'text-purple-400 hover:bg-purple-950/40'
+                      location.pathname === '/intranet/admin' ? 'bg-purple-600 text-white' : 'text-purple-400 hover:bg-purple-950/40'
                     }`}
                   >
                     <FileText className="w-4 h-4" /> Panel CMS
-                  </button>
+                  </Link>
                 )}
               </>
             )}
@@ -159,18 +175,19 @@ export const Navbar = ({ onOpenAuth }) => {
         <div className="lg:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-6 space-y-2 animate-fade-in">
           {publicNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeTab === item.id;
+            const active = isActive(item.path);
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={handleNavClick}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold ${
-                  isActive ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                  active ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 {item.label}
-              </button>
+              </Link>
             );
           })}
 

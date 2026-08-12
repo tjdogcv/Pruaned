@@ -48,7 +48,7 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
               </button>
 
               <button
-                onClick={() => onNavigate('institutional')}
+                onClick={() => onNavigate('/institucional')}
                 className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-colors"
               >
                 Conocer Estatutos & Reglamentos 2025
