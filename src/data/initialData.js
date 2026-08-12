@@ -11,7 +11,7 @@ export const INSTITUTIONAL_INFO = {
 };
 
 export const INITIAL_FINANCIAL_SETTINGS = {
-  cuotaMensualActual: 15000,
+  cuotaMensualActual: 5000,
   cuotaIncorporacionActual: 30000
 };
 

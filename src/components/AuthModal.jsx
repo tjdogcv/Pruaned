@@ -1,28 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { evaluatePasswordStrength, generate2FACode, sanitizeInput } from '../utils/security';
+import { evaluatePasswordStrength, sanitizeInput } from '../utils/security';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
-import { Lock, KeyRound, ShieldCheck, AlertTriangle, Eye, EyeOff, CheckCircle2, User } from 'lucide-react';
+import { Lock, UserPlus, AlertTriangle, Eye, EyeOff, User } from 'lucide-react';
+import { isSupabaseReady, supabase } from '../lib/supabase';
 
 export const AuthModal = ({ isOpen, onClose }) => {
   const { loginWithCredentials } = useAuth();
   const navigate = useNavigate();
-  const [step, setStep] = useState('credentials'); // credentials, 2fa
+  const [mode, setMode] = useState('login'); // 'login' or 'register'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [twoFACode, setTwoFACode] = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
   const passwordInfo = evaluatePasswordStrength(password);
 
-  const handleSendCredentials = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    setSuccessMsg('');
     const cleanEmail = sanitizeInput(email);
 
     if (!cleanEmail.includes('@')) {
@@ -34,32 +36,35 @@ export const AuthModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    const code = generate2FACode();
-    setGeneratedCode(code);
-    setTwoFACode(code); // Pre-fill for seamless testing
-    setStep('2fa');
-  };
-
-  const handleVerify2FA = async (e) => {
-    e.preventDefault();
-    if (twoFACode !== generatedCode) {
-      setErrorMsg('El código de autenticación de dos factores es incorrecto.');
-      return;
-    }
+    setIsLoading(true);
 
     try {
-      // Authenticate and auto-resolve role on server side
-      const targetTab = await loginWithCredentials(email, password);
-      onClose();
-      if (targetTab === 'socios') {
-        navigate('/intranet/socios');
-      } else if (targetTab === 'voluntarios') {
-        navigate('/intranet/voluntarios');
+      if (mode === 'login') {
+        const targetTab = await loginWithCredentials(cleanEmail, password);
+        onClose();
+        if (targetTab === 'socios') navigate('/intranet/socios');
+        else if (targetTab === 'voluntarios') navigate('/intranet/voluntarios');
+        else navigate('/intranet/socios');
       } else {
-        navigate('/intranet/socios');
+        // Modo Registro / Activar Cuenta
+        if (isSupabaseReady()) {
+          const { data, error } = await supabase.auth.signUp({
+            email: cleanEmail,
+            password: password,
+          });
+          if (error) throw error;
+          
+          setSuccessMsg('¡Cuenta creada y activada con éxito! Ahora puedes iniciar sesión.');
+          setMode('login');
+          setPassword('');
+        } else {
+          setErrorMsg('El sistema de registro en la nube aún no está conectado.');
+        }
       }
     } catch (error) {
-      setErrorMsg(error.message || 'Error al iniciar sesión.');
+      setErrorMsg(error.message || 'Error en la autenticación.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,10 +84,22 @@ export const AuthModal = ({ isOpen, onClose }) => {
             <PRUANEDLogo className="h-14 w-auto" showText={false} />
           </div>
           <h3 className="text-2xl font-extrabold font-['Outfit']">
-            Portal Seguro PRUANED A.G.
+            Portal Seguro PRUANED
           </h3>
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-semibold border border-emerald-500/30">
-            <ShieldCheck className="w-3.5 h-3.5" /> Autenticación Única 2FA Cifrada
+          
+          <div className="flex bg-slate-800 p-1 rounded-xl w-full mx-auto mt-4">
+            <button
+              onClick={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'login' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            >
+              Iniciar Sesión
+            </button>
+            <button
+              onClick={() => { setMode('register'); setErrorMsg(''); setSuccessMsg(''); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'register' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            >
+              Activar Cuenta
+            </button>
           </div>
         </div>
 
@@ -93,47 +110,50 @@ export const AuthModal = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {step === 'credentials' && (
-          <form onSubmit={handleSendCredentials} className="space-y-4">
-            
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-emerald-400" /> Correo Electrónico Registrado
-              </label>
+        {successMsg && (
+          <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-emerald-400" /> Correo Electrónico
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="ej: correo@ejemplo.com"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-emerald-400" /> {mode === 'login' ? 'Contraseña' : 'Crear Contraseña'}
+            </label>
+            <div className="relative">
               <input
-                type="email"
+                type={showPassword ? 'text' : 'password'}
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ej: ag.pruaned@gmail.com, camila.morales@pruaned.cl o felipe.henriquez@gmail.com"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
-                El sistema identificará automáticamente su perfil y permisos asignados.
-              </p>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-emerald-400" /> Contraseña de Acceso
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-
+            {mode === 'register' && (
               <div className="mt-2 space-y-1">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-slate-400">Robustez Contraseña:</span>
@@ -148,62 +168,23 @@ export const AuthModal = ({ isOpen, onClose }) => {
                   />
                 </div>
               </div>
-            </div>
+            )}
+          </div>
 
-            <button
-              type="submit"
-              className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-bold rounded-xl text-sm shadow-lg flex items-center justify-center gap-2"
-            >
-              <Lock className="w-4 h-4" />
-              Verificar Credenciales (Paso 1)
-            </button>
-          </form>
-        )}
-
-        {step === '2fa' && (
-          <form onSubmit={handleVerify2FA} className="space-y-5 animate-fade-in text-center">
-            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <KeyRound className="w-8 h-8 text-amber-400 mx-auto" />
-              <h4 className="text-sm font-bold text-white">Autenticación de 2 Factores (2FA)</h4>
-              <p className="text-xs text-slate-400">
-                Se ha enviado un token OTP al correo <span className="text-emerald-400 font-bold font-mono">{email}</span>.
-              </p>
-              <div className="p-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-amber-300 font-mono font-bold">
-                CÓDIGO DE PRUEBA GENERADO: {generatedCode}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Ingrese Código OTP de 6 Dígitos
-              </label>
-              <input
-                type="text"
-                maxLength={6}
-                value={twoFACode}
-                onChange={(e) => setTwoFACode(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 text-center text-xl tracking-widest font-mono text-emerald-400 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep('credentials')}
-                className="w-1/3 py-3 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs"
-              >
-                Volver
-              </button>
-              <button
-                type="submit"
-                className="w-2/3 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-lg flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Ingresar a la Intranet
-              </button>
-            </div>
-          </form>
-        )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`w-full py-3.5 ${mode === 'login' ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400'} text-white font-bold rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+          >
+            {isLoading ? (
+              <span className="animate-pulse">Cargando...</span>
+            ) : mode === 'login' ? (
+              <><Lock className="w-4 h-4" /> Iniciar Sesión</>
+            ) : (
+              <><UserPlus className="w-4 h-4" /> Activar Mi Cuenta</>
+            )}
+          </button>
+        </form>
 
       </div>
     </div>
