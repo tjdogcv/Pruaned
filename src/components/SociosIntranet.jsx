@@ -927,6 +927,46 @@ export const SociosIntranet = () => {
         {/* TAB 1: PADRÓN & CONTROL DE DEUDAS */}
         {activeTabLocal === 'padron' && (
           <div className="space-y-6 animate-fade-in">
+            
+            {/* Datos Bancarios */}
+            <div className="bg-slate-900 p-6 rounded-3xl shadow-lg text-white flex flex-col md:flex-row items-center justify-between gap-6 border border-slate-700">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-emerald-400 border border-emerald-500/20">
+                  <Wallet className="w-4 h-4" /> Datos de Transferencia Oficial
+                </div>
+                <h3 className="text-2xl font-extrabold font-['Outfit'] text-white">Cuenta Gremial PRUANED</h3>
+                <p className="text-slate-300 text-sm max-w-md">
+                  Para estar al día con tus cuotas sociales ($5.000 mensuales desde sept. 2026), realiza el pago a esta cuenta y envía el comprobante a Tesorería.
+                </p>
+              </div>
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 min-w-[300px] text-xs font-mono space-y-2.5">
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">Titular:</span>
+                  <strong className="text-emerald-400 font-bold">PRUANED</strong>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">RUT:</span>
+                  <strong className="text-white">65.272.406-K</strong>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">Banco:</span>
+                  <strong className="text-white">Mercado Pago</strong>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">Tipo:</span>
+                  <strong className="text-white">Cuenta Vista</strong>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">N° Cuenta:</span>
+                  <strong className="text-amber-400 font-bold text-sm">1046032015</strong>
+                </div>
+                <div className="flex justify-between pt-1">
+                  <span className="text-slate-400">Email:</span>
+                  <strong className="text-blue-300">ag.pruaned@gmail.com</strong>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="relative w-full sm:w-80">
