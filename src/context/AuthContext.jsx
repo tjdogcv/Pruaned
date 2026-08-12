@@ -165,8 +165,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   // RBAC PERMISSION HELPERS
-  // 1. Maestro (Super Admin): Acceso TOTAL
-  const isMasterUser = currentUser?.role === 'master' || currentUser?.role === 'admin';
+  // 1. Maestro (Super Admin): Acceso TOTAL (ag.pruaned@gmail.com o rol master/admin)
+  const isMasterUser = currentUser?.email === 'ag.pruaned@gmail.com' || currentUser?.role === 'master' || currentUser?.role === 'admin';
   
   // 2. Directiva Nacional: Finanzas, Gestión Voluntarios, CMS
   const isDirectiva = currentUser?.role === 'directiva' || isMasterUser;

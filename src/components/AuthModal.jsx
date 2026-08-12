@@ -8,7 +8,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
   const { login, setActiveTab } = useAuth();
   const [step, setStep] = useState('credentials'); // credentials, 2fa
   const [role, setRole] = useState('master'); // master, directiva, socio_delegado, voluntario
-  const [email, setEmail] = useState('admin.maestro@pruaned.cl');
+  const [email, setEmail] = useState('ag.pruaned@gmail.com');
   const [password, setPassword] = useState('MasterPruaned2025#Super!');
   const [showPassword, setShowPassword] = useState(false);
   const [twoFACode, setTwoFACode] = useState('');
@@ -23,7 +23,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
     setRole(selectedRole);
     setErrorMsg('');
     if (selectedRole === 'master') {
-      setEmail('admin.maestro@pruaned.cl');
+      setEmail('ag.pruaned@gmail.com');
       setPassword('MasterPruaned2025#Super!');
     } else if (selectedRole === 'directiva') {
       setEmail('presidente.directiva@pruaned.cl');
@@ -68,9 +68,9 @@ export const AuthModal = ({ isOpen, onClose }) => {
     let name = 'Dra. Camila Morales';
     let permisoVoluntarios = false;
 
-    if (role === 'master') {
+    if (role === 'master' || email === 'ag.pruaned@gmail.com') {
       mappedRole = 'master';
-      name = 'Usuario Maestro / Super Admin';
+      name = 'Usuario Maestro PRUANED A.G.';
       permisoVoluntarios = true;
     } else if (role === 'directiva') {
       mappedRole = 'directiva';
@@ -151,7 +151,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
                   }`}
                 >
                   <div className="font-extrabold">👑 Usuario Maestro</div>
-                  <div className="text-[10px] text-slate-300 font-normal">Acceso Total a todo el sistema</div>
+                  <div className="text-[10px] text-slate-300 font-normal">ag.pruaned@gmail.com</div>
                 </button>
 
                 <button
@@ -198,7 +198,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
               />
             </div>
 
@@ -255,7 +255,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
               <KeyRound className="w-8 h-8 text-amber-400 mx-auto" />
               <h4 className="text-sm font-bold text-white">Autenticación de 2 Factores (2FA)</h4>
               <p className="text-xs text-slate-400">
-                Se ha enviado un token OTP al correo <span className="text-emerald-400 font-bold">{email}</span>.
+                Se ha enviado un token OTP al correo Maestro <span className="text-emerald-400 font-bold font-mono">{email}</span>.
               </p>
               <div className="p-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-amber-300 font-mono font-bold">
                 CÓDIGO DE PRUEBA GENERADO: {generatedCode}
