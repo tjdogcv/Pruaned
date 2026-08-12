@@ -199,9 +199,9 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : INITIAL_COURSES;
   });
 
-  // FETCH DESDE SUPABASE CUANDO ESTÁ CONECTADO
+  // FETCH DESDE SUPABASE SIEMPRE (RLS se encarga de filtrar qué puede ver un visitante vs un admin)
   useEffect(() => {
-    if (isSupabaseReady() && currentUser) {
+    if (isSupabaseReady()) {
       const fetchSupabaseData = async () => {
         try {
           const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes] = await Promise.all([
