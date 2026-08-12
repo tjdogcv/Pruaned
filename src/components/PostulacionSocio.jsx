@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { 
   UserPlus, 
   Target, 
@@ -8,11 +7,9 @@ import {
   CheckCircle2, 
   FileText, 
   Upload, 
-  ShieldCheck, 
   Send, 
   HelpCircle, 
-  HeartHandshake,
-  AlertCircle
+  ExternalLink
 } from 'lucide-react';
 
 export const PostulacionSocio = ({ onNavigate }) => {
@@ -64,6 +61,44 @@ export const PostulacionSocio = ({ onNavigate }) => {
     if (file) {
       setFormData(prev => ({ ...prev, cartaIntencionNombre: file.name }));
     }
+  };
+
+  const handleOpenEstatutosPDF = (e) => {
+    e.preventDefault();
+    const pdfWindow = window.open("", "_blank");
+    pdfWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Estatutos y Reglamento General PRUANED A.G. 2025</title>
+          <style>
+            body { font-family: sans-serif; line-height: 1.6; padding: 40px; color: #0f172a; max-width: 800px; margin: auto; }
+            h1 { color: #0c2340; border-bottom: 2px solid #0c2340; padding-bottom: 10px; }
+            h2 { color: #002855; margin-top: 24px; }
+            .badge { background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: bold; }
+            .footer { margin-top: 40px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <span class="badge">DOCUMENTO OFICIAL REGLAMENTARIO</span>
+          <h1>Estatutos y Reglamento General PRUANED A.G. 2025</h1>
+          <p><strong>Decreto Ley N° 2.757 de 1979 | República de Chile</strong></p>
+          <hr/>
+          <h2>TÍTULO I: DE LA DENOMINACIÓN, OBJETIVOS Y DOMICILIO</h2>
+          <p><strong>Artículo 1°:</strong> Constitúyase la Asociación Gremial de Profesionales Unidos por los Animales en Emergencias y Desastres, pudiendo usar el acrónimo "PRUANED A.G."...</p>
+          <p><strong>Artículo 2°:</strong> El domicilio legal de la Asociación Gremial se fija en la Comuna de San Fabián de Alico, Región de Ñuble, Chile, extendiendo su actuación a todo el territorio nacional e internacional.</p>
+          <h2>TÍTULO II: DE LOS SOCIOS, DERECHOS Y DEBERES</h2>
+          <p><strong>Artículo 8°:</strong> Existirán tres categorías de socios: Activos, Adherentes y Honorarios.</p>
+          <p><strong>Artículo 42°:</strong> El valor de la cuota social ordinaria mensual y la cuota de incorporación serán fijados por la Asamblea General a propuesta del Directorio Nacional. En casos justificados de fuerza mayor o desastre, el socio podrá solicitar la suspensión temporaria de su cuota.</p>
+          <h2>TÍTULO III: DEL VOLUNTARIADO Y CÓDIGO ÉTICO</h2>
+          <p><strong>Artículo 60°:</strong> El voluntariado de PRUANED A.G. actuará bajo estrictos estándares de bioseguridad, ética veterinaria y coordinación con SENAPRED y autoridades competentes.</p>
+          <div class="footer">
+            Sello Digital de Autenticidad PRUANED A.G. 2025 — Certificado de Documentación Pública Oficial
+          </div>
+        </body>
+      </html>
+    `);
+    pdfWindow.document.close();
   };
 
   const handleSubmit = (e) => {
@@ -164,20 +199,23 @@ export const PostulacionSocio = ({ onNavigate }) => {
         <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-900 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="space-y-0.5">
             <div className="font-bold">Estatutos y Reglamento General 2025</div>
-            <p className="text-blue-800">Puedes revisar el texto completo de nuestros estatutos antes de enviar tu postulación.</p>
+            <p className="text-blue-800">
+              Podés revisar el texto completo de nuestros <a href="#" onClick={handleOpenEstatutosPDF} className="underline font-bold hover:text-blue-600">Estatutos y Reglamento General</a> antes de postular.
+            </p>
           </div>
           <button
-            onClick={() => onNavigate('docs')}
-            className="px-4 py-2 bg-blue-900 text-white font-bold rounded-lg whitespace-nowrap"
+            onClick={handleOpenEstatutosPDF}
+            className="px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-lg whitespace-nowrap inline-flex items-center gap-1.5 shadow"
           >
-            Ver Estatutos PDF
+            <FileText className="w-4 h-4" />
+            Ver Estatutos PDF <ExternalLink className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* Process Explanation */}
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-xs text-amber-900 space-y-1">
           <div className="font-bold text-amber-950 flex items-center gap-1.5">
-            <HelpCircle className="w-4 h-4 text-amber-700" /> ¿Cómo funciona el proceso de postulación?
+            <HelpCircle className="w-4 h-4 text-amber-700" /> ¿Cómo funciona el proceso?
           </div>
           <p className="leading-relaxed text-amber-800">
             Completá el formulario de postulación con tus datos y adjuntá tu carta de intención. El Directorio Nacional revisará tu solicitud y te contactará para informarte si fue aceptada y coordinar tu incorporación formal como socio, incluyendo el pago de la cuota correspondiente.
@@ -215,7 +253,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
             <div className="space-y-4 border-b border-slate-100 pb-6">
               <h3 className="text-base font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-900" />
-                1. Estatutos y Reglamento
+                1. Estatutos
               </h3>
 
               <div>
@@ -258,7 +296,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nombre Completo *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Nombre completo *</label>
                   <input
                     type="text"
                     required
@@ -282,7 +320,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Fecha de Nacimiento *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Fecha de nacimiento *</label>
                   <input
                     type="date"
                     required
@@ -293,7 +331,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Teléfono de Contacto *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Teléfono de contacto *</label>
                   <input
                     type="tel"
                     required
@@ -329,7 +367,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Correo Electrónico *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Correo electrónico *</label>
                   <input
                     type="email"
                     required
@@ -341,7 +379,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Redes Sociales (Opcional)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Redes sociales (opcional)</label>
                   <input
                     type="text"
                     placeholder="Ej: @instagram / linkedin"
@@ -352,11 +390,11 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Profesión u Ocupación *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Profesión u ocupación *</label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej: Médico Veterinaria / Agrónoma / Prevencionista"
+                    placeholder="Ej: Médico Veterinaria / Agrónoma"
                     value={formData.profesion}
                     onChange={(e) => setFormData({...formData, profesion: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 focus:border-blue-900"
@@ -364,7 +402,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nivel de Estudios</label>
+                  <label className="block font-bold text-slate-700 mb-1">Nivel de estudios</label>
                   <select
                     value={formData.nivelEstudios}
                     onChange={(e) => setFormData({...formData, nivelEstudios: e.target.value})}
@@ -385,7 +423,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 <textarea
                   rows={3}
                   required
-                  placeholder="Describa su experiencia en emergencias, fauna o rescate..."
+                  placeholder="Describa su experiencia previa..."
                   value={formData.experienciaPrevia}
                   onChange={(e) => setFormData({...formData, experienciaPrevia: e.target.value})}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 focus:border-blue-900"
@@ -422,7 +460,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 <textarea
                   rows={3}
                   required
-                  placeholder="¿Por qué le motiva ser parte de esta asociación gremial?"
+                  placeholder="¿Por qué le motiva integrarse a PRUANED?"
                   value={formData.razonesIntegracion}
                   onChange={(e) => setFormData({...formData, razonesIntegracion: e.target.value})}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 focus:border-blue-900"
@@ -434,7 +472,7 @@ export const PostulacionSocio = ({ onNavigate }) => {
                 <textarea
                   rows={3}
                   required
-                  placeholder="Conocimientos, experiencia técnica, gestión de redes, disponibilidad..."
+                  placeholder="Aportes técnicos, operativos, de gestión..."
                   value={formData.aporteEsperado}
                   onChange={(e) => setFormData({...formData, aporteEsperado: e.target.value})}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 focus:border-blue-900"
