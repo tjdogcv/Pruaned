@@ -69,7 +69,7 @@ export const INITIAL_EXPENSES = [
     proveedor: "Impresos & Papelería Ñuble",
     monto: 25000,
     categoria: "Gastos Administrativos",
-    glosa: "Impresión de estatutos 2025 y carpetas institucionales"
+    glosa: "Impresión de estatutos v3 oficiales y carpetas institucionales"
   }
 ];
 
@@ -135,13 +135,13 @@ export const INITIAL_TECHNICAL_DIRECTIONS = [
 export const INITIAL_NEWS = [
   {
     id: "n1",
-    title: "PRUANED A.G. formaliza sus Estatutos y Reglamento General 2025",
-    summary: "Se aprueba el cuerpo reglamentario marco para fortalecer la inclusión de los animales en el Sistema Nacional de Prevención y Respuesta ante Desastres.",
+    title: "PRUANED A.G. formaliza sus Estatutos y Reglamento General Oficial",
+    summary: "Se aprueba el cuerpo reglamentario marco oficial (Estatutos v3) para fortalecer la inclusión de los animales en el Sistema Nacional RRD.",
     category: "Institucional",
     date: "2025-03-10",
     author: "Directorio Nacional",
     image: "https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80",
-    content: "La Asociación Gremial Profesionales Unidos por los Animales en Emergencias y Desastres (PRUANED A.G.) ha publicado sus Estatutos y Reglamento General de Funcionamiento 2025."
+    content: "La Asociación Gremial Profesionales Unidos por los Animales en Emergencias y Desastres (PRUANED A.G.) ha publicado sus Estatutos y Reglamento General de Funcionamiento."
   },
   {
     id: "n2",
@@ -176,14 +176,13 @@ export const INITIAL_DOC_CATEGORIES = [
 export const INITIAL_DOCUMENTS = [
   {
     id: "doc-1",
-    title: "Estatutos y Reglamento General de Funcionamiento PRUANED A.G. 2025",
+    title: "Estatutos y Reglamento General de Funcionamiento PRUANED A.G. (Documento Oficial)",
     category: "Estatutos & Reglamentos",
     date: "2025-01-15",
-    size: "2.4 MB",
-    version: "v1.0 Oficial Definitivo",
-    description: "Documento rector con la estructura orgánica, estatutos, régimen de cuotas y reglamento del voluntariado (Definitivo).",
-    url: "/Estatutos_PRUANED_AG_Redisenados.pdf",
-    htmlUrl: "/estatutos_redisenados.html"
+    size: "1.2 MB",
+    version: "v3.0 Oficial",
+    description: "Documento rector oficial de los estatutos gremiales de PRUANED A.G. Decreto Ley N° 2.757.",
+    url: "/Estatutos-v-3.pdf"
   },
   {
     id: "doc-2",
@@ -234,6 +233,7 @@ export const INITIAL_SOCIOS = [
     montoCuotaIncorporacion: 30000,
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Agosto 2026",
+    permisoGestionVoluntarios: true,
     historialPagos: [
       { mes: "Julio 2026", monto: 15000, fecha: "2026-07-02", comprobante: "TRF-9821" },
       { mes: "Agosto 2026", monto: 15000, fecha: "2026-08-01", comprobante: "TRF-1049" },
@@ -256,6 +256,7 @@ export const INITIAL_SOCIOS = [
     montoCuotaIncorporacion: 30000,
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Agosto 2026",
+    permisoGestionVoluntarios: false,
     historialPagos: [
       { mes: "Agosto 2026", monto: 15000, fecha: "2026-08-03", comprobante: "TRF-1102" },
       { mes: "Cuota Incorporación", monto: 30000, fecha: "2025-01-12", comprobante: "TRF-002" }
@@ -277,6 +278,7 @@ export const INITIAL_SOCIOS = [
     montoCuotaIncorporacion: 30000,
     mesesAdeudados: 3,
     ultimaCuotaPagada: "Mayo 2026",
+    permisoGestionVoluntarios: false,
     historialPagos: [
       { mes: "Mayo 2026", monto: 15000, fecha: "2026-05-10", comprobante: "TRF-8820" }
     ]
@@ -297,6 +299,7 @@ export const INITIAL_SOCIOS = [
     montoCuotaIncorporacion: 0,
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Exento Por Estatuto",
+    permisoGestionVoluntarios: false,
     historialPagos: []
   }
 ];
@@ -353,7 +356,7 @@ export const INITIAL_COURSES = [
     instructor: "Dr. Roberto Silva & Comité de Ética",
     duration: "4 Horas",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    description: "Curso obligatorio sobre estatutos 2025, bioseguridad y principios de actuación gremial.",
+    description: "Curso obligatorio sobre estatutos v3, bioseguridad y principios de actuación gremial.",
     modules: [
       "Módulo 1: Visión One Health y Marco de Sendai",
       "Módulo 2: Deberes, Derechos y Código de Ética (Art. 60-69)",
