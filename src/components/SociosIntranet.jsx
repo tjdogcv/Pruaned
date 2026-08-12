@@ -384,6 +384,7 @@ export const SociosIntranet = () => {
 
   const [activePaymentModal, setActivePaymentModal] = useState(null);
   const [activePostulacionModal, setActivePostulacionModal] = useState(null);
+  const [activeSocioModal, setActiveSocioModal] = useState(null);
   const [activeRequestRenunciaModal, setActiveRequestRenunciaModal] = useState(null);
   const [activeApproveRenunciaModal, setActiveApproveRenunciaModal] = useState(null);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
@@ -1025,6 +1026,7 @@ export const SociosIntranet = () => {
                         <th className="py-3.5 px-5">Fecha Desvinculación</th>
                         <th className="py-3.5 px-5">Estado</th>
                         <th className="py-3.5 px-5">Motivo / Acta</th>
+                        <th className="py-3.5 px-5 text-right">Acción</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1043,6 +1045,14 @@ export const SociosIntranet = () => {
                           </td>
                           <td className="py-3.5 px-5 text-xs text-slate-600 max-w-xs truncate">
                             {socio.motivoRenuncia || socio.actaDirectorioAprobacion || (socio.estadoCuota.includes('Desvinculado') ? 'Desvinculado' : '-')}
+                          </td>
+                          <td className="py-3.5 px-5 text-right">
+                            <button
+                              onClick={() => setActiveSocioModal(socio)}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition-colors inline-flex items-center gap-1 border border-slate-300"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> Ver Perfil
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -1177,6 +1187,13 @@ export const SociosIntranet = () => {
                                 Registrar Pago
                               </button>
                             )}
+
+                            <button
+                              onClick={() => setActiveSocioModal(socio)}
+                              className="px-2.5 py-1 bg-blue-100 hover:bg-blue-200 text-blue-900 font-bold text-[11px] rounded-lg transition-colors inline-flex items-center gap-1 border border-blue-200"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> Ver Perfil
+                            </button>
 
                             {socio.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' ? (
                               <button
@@ -1514,6 +1531,136 @@ export const SociosIntranet = () => {
         )}
 
       </div>
+
+      {/* POSTULACION MODAL */}
+      {activePostulacionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-['Outfit']">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setActivePostulacionModal(null)}
+              className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 text-slate-500"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-2xl font-bold text-slate-900 border-b border-slate-100 pb-4 flex items-center gap-2"><FileText className="w-6 h-6 text-blue-900"/> Detalle de Postulación</h3>
+            
+            <div className="space-y-4 text-sm text-slate-700">
+              <div className="grid grid-cols-2 gap-4">
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Nombre Completo</span>{activePostulacionModal.nombreCompleto}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">RUT</span>{activePostulacionModal.rut}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Email</span>{activePostulacionModal.email}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Teléfono</span>{activePostulacionModal.telefono || '-'}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Profesión</span>{activePostulacionModal.profesion}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Comuna</span>{activePostulacionModal.comuna}</div>
+              </div>
+              <div><span className="font-bold text-slate-400 text-xs uppercase block">Motivación</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.motivacion}</p></div>
+              <div><span className="font-bold text-slate-400 text-xs uppercase block">Experiencia</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.experiencia}</p></div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex gap-3 justify-end">
+              <button
+                onClick={() => setActivePostulacionModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+              >
+                Cerrar
+              </button>
+              {activePostulacionModal.estado === 'Pendiente Revisión Directorio' && (
+                <button
+                  onClick={() => {
+                    handleApproveApplicant(activePostulacionModal.id, 'Socio Activo');
+                    setActivePostulacionModal(null);
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
+                >
+                  <Check className="w-4 h-4" /> Aprobar e Incorporar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SOCIO PERFIL MODAL */}
+      {activeSocioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-['Outfit']">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setActiveSocioModal(null)}
+              className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 text-slate-500"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
+              {activeSocioModal.fotoPerfil ? (
+                <img src={activeSocioModal.fotoPerfil} alt={activeSocioModal.nombre} className="w-16 h-16 rounded-full object-cover shadow-sm border border-slate-200" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-slate-900 text-white flex items-center justify-center text-2xl font-bold shadow-sm">
+                  {activeSocioModal.nombre.charAt(0)}
+                </div>
+              )}
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900">{activeSocioModal.nombre}</h3>
+                <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold border border-slate-200">{activeSocioModal.categoria}</span>
+              </div>
+            </div>
+            
+            <div className="space-y-4 text-sm text-slate-700">
+              <div className="grid grid-cols-2 gap-4">
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">RUT</span>{activeSocioModal.rut}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Email</span>{activeSocioModal.email}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Teléfono</span>{activeSocioModal.telefono || '-'}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Profesión</span>{activeSocioModal.profesion}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Región</span>{activeSocioModal.region || '-'}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Fecha Ingreso</span>{activeSocioModal.fechaIngreso || '-'}</div>
+                <div className="col-span-2"><span className="font-bold text-slate-400 text-xs uppercase block">Domicilio</span>{activeSocioModal.domicilio || '-'} {activeSocioModal.comuna || ''}</div>
+              </div>
+              
+              <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <h4 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-2 flex items-center gap-2"><Wallet className="w-4 h-4 text-blue-800"/> Estado Financiero</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><span className="font-bold text-slate-500 text-xs block">Estado Cuota</span>
+                    <span className={`font-bold ${activeSocioModal.estadoCuota.includes('Mora') ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {activeSocioModal.estadoCuota}
+                    </span>
+                  </div>
+                  <div><span className="font-bold text-slate-500 text-xs block">Meses Adeudados</span>{activeSocioModal.mesesAdeudados || 0} meses</div>
+                  <div><span className="font-bold text-slate-500 text-xs block">Cuota Mensual Pactada</span>${(activeSocioModal.montoCuotaMensual || financialSettings.cuotaMensualActual).toLocaleString('es-CL')}</div>
+                  <div><span className="font-bold text-slate-500 text-xs block">Cuota Incorporación</span>
+                    {activeSocioModal.cuotaIncorporacionPagada || (activeSocioModal.fechaIngreso && new Date(activeSocioModal.fechaIngreso).getFullYear() < 2026) ? (
+                      <span className="text-emerald-600 font-bold"><Check className="w-3 h-3 inline"/> Pagada</span>
+                    ) : (
+                      <span className="text-rose-600 font-bold"><X className="w-3 h-3 inline"/> Pendiente (${(activeSocioModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual).toLocaleString('es-CL')})</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {(activeSocioModal.estadoCuota.includes('Desvinculado') || activeSocioModal.fechaSolicitudRenuncia) && (
+                <div className="mt-4 p-4 bg-rose-50 rounded-xl border border-rose-200">
+                  <h4 className="font-bold text-rose-900 mb-2 border-b border-rose-200 pb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4"/> Historial de Desvinculación</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><span className="font-bold text-rose-700 text-xs block">Fecha Solicitud / Retiro</span>{activeSocioModal.fechaRetiroOficial || activeSocioModal.fechaSolicitudRenuncia || '-'}</div>
+                    <div className="col-span-2"><span className="font-bold text-rose-700 text-xs block">Motivo / Acta de Directorio</span>{activeSocioModal.actaDirectorioAprobacion || activeSocioModal.motivoRenuncia || '-'}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex gap-3 justify-end">
+              <button
+                onClick={() => setActiveSocioModal(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl"
+              >
+                Cerrar Perfil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 };
+
+export default SociosIntranet;
