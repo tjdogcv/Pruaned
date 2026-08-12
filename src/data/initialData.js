@@ -22,6 +22,12 @@ export const INITIAL_DIRECTORIO_CARGOS = {
   tesoreroId: "soc-104"
 };
 
+// FIRMAS DIGITALES ESCANEADAS DEFAULT DE LA DIRECTIVA
+export const INITIAL_FIRMAS = {
+  presidenteFirma: "https://upload.wikimedia.org/wikipedia/commons/3/3a/Jon_Kirsch_Signature.png",
+  secretarioFirma: "https://upload.wikimedia.org/wikipedia/commons/f/f8/Signature_example.png"
+};
+
 export const INITIAL_DONACIONES = [
   {
     id: "don-101",

@@ -10,13 +10,13 @@ import {
   INITIAL_FINANCIAL_SETTINGS,
   INITIAL_EXPENSES,
   INITIAL_DONACIONES,
-  INITIAL_DIRECTORIO_CARGOS
+  INITIAL_DIRECTORIO_CARGOS,
+  INITIAL_FIRMAS
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
 
 const AuthContext = createContext();
 
-// DATABASE USER ROLES & CREDENTIALS REGISTRY (Servidor / Backend)
 const USER_DATABASE = [
   {
     email: "ag.pruaned@gmail.com",
@@ -74,7 +74,13 @@ export const AuthProvider = ({ children }) => {
   const [is2FAVerified, setIs2FAVerified] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
 
-  // Estado de Convocatoria Activa de Emergencia (Backend)
+  // Firmas Digitales Oficiales (Presidente y Secretario)
+  const [firmasOficiales, setFirmasOficiales] = useState(() => {
+    const saved = localStorage.getItem('pruaned_firmas_oficiales');
+    return saved ? JSON.parse(saved) : INITIAL_FIRMAS;
+  });
+
+  // Estado de Convocatoria Activa de Emergencia
   const [convocatoriaActiva, setConvocatoriaActiva] = useState(() => {
     const saved = localStorage.getItem('pruaned_convocatoria_activa');
     return saved ? JSON.parse(saved) : {
@@ -85,19 +91,16 @@ export const AuthProvider = ({ children }) => {
     };
   });
 
-  // Directorio Nacional Assignments State
   const [directorioCargos, setDirectorioCargos] = useState(() => {
     const saved = localStorage.getItem('pruaned_directorio_cargos');
     return saved ? JSON.parse(saved) : INITIAL_DIRECTORIO_CARGOS;
   });
 
-  // Donaciones Bancarias State
   const [donacionesList, setDonacionesList] = useState(() => {
     const saved = localStorage.getItem('pruaned_donaciones');
     return saved ? JSON.parse(saved) : INITIAL_DONACIONES;
   });
 
-  // Postulaciones Nuevos Socios State
   const [postulacionesList, setPostulacionesList] = useState(() => {
     const saved = localStorage.getItem('pruaned_postulaciones');
     return saved ? JSON.parse(saved) : [
@@ -180,6 +183,10 @@ export const AuthProvider = ({ children }) => {
 
   // Sync localStorage
   useEffect(() => {
+    localStorage.setItem('pruaned_firmas_oficiales', JSON.stringify(firmasOficiales));
+  }, [firmasOficiales]);
+
+  useEffect(() => {
     localStorage.setItem('pruaned_convocatoria_activa', JSON.stringify(convocatoriaActiva));
   }, [convocatoriaActiva]);
 
@@ -224,10 +231,14 @@ export const AuthProvider = ({ children }) => {
   }, [voluntariosList]);
 
   useEffect(() => {
+    localStorage.setItem('pruaned_courses', JSON.stringify(coursesList));
+  }, [coursesList]);
+
+  useEffect(() => {
     localStorage.setItem('pruaned_security_logs', JSON.stringify(securityLogs));
   }, [securityLogs]);
 
-  // AUTHENTICATION & AUTOMATIC SERVER-SIDE ROLE RESOLUTION
+  // AUTHENTICATION
   const loginWithCredentials = (emailInput) => {
     const cleanEmail = emailInput.trim().toLowerCase();
     const foundUser = USER_DATABASE.find(u => u.email.toLowerCase() === cleanEmail);
@@ -291,13 +302,47 @@ export const AuthProvider = ({ children }) => {
   const isDirectiva = currentUser?.role === 'directiva' || isMasterUser;
   const socioPermisoVoluntarios = sociosList.find(s => s.email === currentUser?.email)?.permisoGestionVoluntarios || currentUser?.permisoGestionVoluntarios || false;
 
-  // Presidente y Secretario tienen fe pública y facultad para gestionar categorías y cargos
   const canManageCategoriesAndCargos = isMasterUser || isDirectiva;
   const canManageVoluntarios = isMasterUser || isDirectiva || socioPermisoVoluntarios;
   const canManageFinances = isMasterUser || isDirectiva;
   const canPublishCMS = isMasterUser || isDirectiva;
 
-  // GESTIÓN DE CATEGORÍAS DE SOCIOS (PRESIDENTE, SECRETARIO & MAESTRO)
+  // DIGITALIZACIÓN DE FIRMAS OFICIALES
+  const updateFirmaOficial = (cargoKey, firmaDataUrl) => {
+    setFirmasOficiales(prev => ({
+      ...prev,
+      [cargoKey]: firmaDataUrl
+    }));
+    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_OFFICIAL_SIGNATURE_${cargoKey}`, currentUser?.email, "INFO"));
+  };
+
+  // GESTIÓN DEL MÓDULO LMS (CREAR Y ELIMINAR CURSOS)
+  const addCourse = (courseData) => {
+    const newId = `c${Date.now()}`;
+    const newCourse = { ...courseData, id: newId };
+    setCoursesList(prev => [newCourse, ...prev]);
+    setSecurityLogs(prev => logSecurityEvent(prev, `CREATE_LMS_COURSE_${courseData.code}`, currentUser?.email, "INFO"));
+  };
+
+  const deleteCourse = (courseId) => {
+    setCoursesList(prev => prev.filter(c => c.id !== courseId));
+    setSecurityLogs(prev => logSecurityEvent(prev, `DELETE_LMS_COURSE_${courseId}`, currentUser?.email, "WARN"));
+  };
+
+  // ACREDITACIÓN Y ESCALAFÓN DE VOLUNTARIOS
+  const updateVoluntarioAcreditacion = (volId, nuevoNivel) => {
+    setVoluntariosList(prev => prev.map(vol => {
+      if (vol.id === volId) {
+        return {
+          ...vol,
+          nivelAcreditacion: nuevoNivel
+        };
+      }
+      return vol;
+    }));
+    setSecurityLogs(prev => logSecurityEvent(prev, `PROMOTED_VOLUNTEER_RANK_${volId}_TO_${nuevoNivel}`, currentUser?.email, "INFO"));
+  };
+
   const updateSocioCategoria = (socioId, nuevaCategoria) => {
     setSociosList(prev => prev.map(s => {
       if (s.id === socioId) {
@@ -314,7 +359,6 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_CATEGORY_${socioId}_TO_${nuevaCategoria}`, currentUser?.email, "INFO"));
   };
 
-  // LEVANTAR / APAGAR CONVOCATORIA MASIVA DE EMERGENCIA
   const levantarConvocatoriaEmergencia = (asunto, mensaje) => {
     const nuevaConvocatoria = {
       activa: true,
@@ -336,7 +380,6 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `EMERGENCY_CONVOCATORIA_CLOSED`, currentUser?.email, "INFO"));
   };
 
-  // MI CUENTA & PERFIL DE SOCIO HANDLERS
   const updateSocioPerfil = (socioId, perfilData) => {
     setSociosList(prev => prev.map(s => {
       if (s.id === socioId || s.email === perfilData.email) {
@@ -364,7 +407,6 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_PROFILE_${socioId}`, currentUser?.email, "INFO"));
   };
 
-  // REASIGNACIÓN DE CARGOS DEL DIRECTORIO NACIONAL (PRESIDENTE, SECRETARIO & MAESTRO)
   const updateDirectorioCargo = (cargoKey, newSocioId) => {
     setDirectorioCargos(prev => ({
       ...prev,
@@ -591,6 +633,14 @@ export const AuthProvider = ({ children }) => {
       setIs2FAVerified,
       activeTab,
       setActiveTab,
+      // Firmas Digitales
+      firmasOficiales,
+      updateFirmaOficial,
+      // LMS Management
+      addCourse,
+      deleteCourse,
+      // Escalafón Acreditación
+      updateVoluntarioAcreditacion,
       // Convocatoria State
       convocatoriaActiva,
       levantarConvocatoriaEmergencia,

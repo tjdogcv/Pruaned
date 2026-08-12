@@ -1,8 +1,11 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { Award, ShieldCheck, QrCode, Printer } from 'lucide-react';
 
 export const CertificateModal = ({ isOpen, onClose, certificateData }) => {
+  const { firmasOficiales, presidente, secretario } = useAuth();
+  
   if (!isOpen || !certificateData) return null;
 
   const { 
@@ -72,8 +75,12 @@ export const CertificateModal = ({ isOpen, onClose, certificateData }) => {
           
           {/* President Signature Block */}
           <div className="space-y-1">
-            <div className="h-12 flex items-center justify-center font-['Outfit'] italic text-blue-900 text-lg font-bold border-b border-slate-300 pb-1">
-              Firma Digitalizada Presidente
+            <div className="h-16 flex items-center justify-center border-b border-slate-300 pb-1">
+              <img
+                src={firmasOficiales?.presidenteFirma || "https://upload.wikimedia.org/wikipedia/commons/3/3a/Jon_Kirsch_Signature.png"}
+                alt="Firma Presidente"
+                className="max-h-14 object-contain"
+              />
             </div>
             <div className="text-xs font-bold text-slate-900">{presidentName}</div>
             <div className="text-[10px] text-slate-500 font-medium">Presidente Nacional • {directivaPeriod}</div>
@@ -81,11 +88,15 @@ export const CertificateModal = ({ isOpen, onClose, certificateData }) => {
 
           {/* Secretary Signature Block */}
           <div className="space-y-1">
-            <div className="h-12 flex items-center justify-center font-['Outfit'] italic text-slate-700 text-lg font-bold border-b border-slate-300 pb-1">
-              Firma Digitalizada Secretario
+            <div className="h-16 flex items-center justify-center border-b border-slate-300 pb-1">
+              <img
+                src={firmasOficiales?.secretarioFirma || "https://upload.wikimedia.org/wikipedia/commons/f/f8/Signature_example.png"}
+                alt="Firma Secretario"
+                className="max-h-14 object-contain"
+              />
             </div>
             <div className="text-xs font-bold text-slate-900">Secretaría General PRUANED</div>
-            <div className="text-[10px] text-slate-500 font-medium">Timbre y Registro de Acreditación</div>
+            <div className="text-[10px] text-slate-500 font-medium">Timbre y Fe Pública DL 2757</div>
           </div>
 
         </div>
