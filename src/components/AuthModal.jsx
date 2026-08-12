@@ -9,8 +9,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
   const { loginWithCredentials } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState('credentials'); // credentials, 2fa
-  const [email, setEmail] = useState('ag.pruaned@gmail.com');
-  const [password, setPassword] = useState('MasterPruaned2025#Super!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [twoFACode, setTwoFACode] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
