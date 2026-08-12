@@ -14,6 +14,7 @@ import {
   INITIAL_FIRMAS
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
+import { supabase, isSupabaseReady } from '../lib/supabase';
 
 const SESSION_KEY = 'pruaned_session';
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 horas
@@ -287,8 +288,18 @@ export const AuthProvider = ({ children }) => {
   }, [currentUser, resetInactivityTimer]);
 
   // AUTHENTICATION
-  const loginWithCredentials = (emailInput) => {
+  const loginWithCredentials = async (emailInput, passwordInput) => {
     const cleanEmail = emailInput.trim().toLowerCase();
+
+    if (isSupabaseReady()) {
+      // Modo Nube Real (Supabase)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: passwordInput,
+      });
+      if (error) throw new Error(error.message);
+    }
+
     const foundUser = USER_DATABASE.find(u => u.email.toLowerCase() === cleanEmail);
 
     let userObj;
@@ -345,7 +356,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (isSupabaseReady()) {
+      await supabase.auth.signOut();
+    }
     localStorage.removeItem(SESSION_KEY);
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     if (currentUser) {

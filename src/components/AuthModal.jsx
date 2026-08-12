@@ -40,22 +40,26 @@ export const AuthModal = ({ isOpen, onClose }) => {
     setStep('2fa');
   };
 
-  const handleVerify2FA = (e) => {
+  const handleVerify2FA = async (e) => {
     e.preventDefault();
     if (twoFACode !== generatedCode) {
       setErrorMsg('El código de autenticación de dos factores es incorrecto.');
       return;
     }
 
-    // Authenticate and auto-resolve role on server side
-    const targetTab = loginWithCredentials(email);
-    onClose();
-    if (targetTab === 'socios') {
-      navigate('/intranet/socios');
-    } else if (targetTab === 'voluntarios') {
-      navigate('/intranet/voluntarios');
-    } else {
-      navigate('/intranet/socios');
+    try {
+      // Authenticate and auto-resolve role on server side
+      const targetTab = await loginWithCredentials(email, password);
+      onClose();
+      if (targetTab === 'socios') {
+        navigate('/intranet/socios');
+      } else if (targetTab === 'voluntarios') {
+        navigate('/intranet/voluntarios');
+      } else {
+        navigate('/intranet/socios');
+      }
+    } catch (error) {
+      setErrorMsg(error.message || 'Error al iniciar sesión.');
     }
   };
 
