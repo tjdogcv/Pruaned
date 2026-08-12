@@ -35,13 +35,16 @@ import {
   Save,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  Award,
+  Crown
 } from 'lucide-react';
 
 export const SociosIntranet = () => {
   const { 
     sociosList, 
     updateSocioCuota, 
+    updateSocioCategoria,
     financialSettings, 
     updateFinancialSettings, 
     expensesList, 
@@ -53,6 +56,10 @@ export const SociosIntranet = () => {
     aprobarRenunciaDirectorio,
     togglePermisoGestionVoluntariosSocio,
     updateSocioPerfil,
+    directorioCargos,
+    updateDirectorioCargo,
+    getDirectorioMember,
+    canManageCategoriesAndCargos,
     isMasterUser,
     isDirectiva,
     canManageVoluntarios,
@@ -62,7 +69,7 @@ export const SociosIntranet = () => {
     setActiveTab
   } = useAuth();
 
-  const [activeTabLocal, setActiveTabLocal] = useState('mi-cuenta'); // mi-cuenta, padron, renuncias, postulaciones, egresos, balance
+  const [activeTabLocal, setActiveTabLocal] = useState('mi-cuenta'); // mi-cuenta, padron, directorio-gestion, renuncias, postulaciones, egresos, balance
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('TODOS');
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
@@ -88,6 +95,12 @@ export const SociosIntranet = () => {
   const [motivoRenunciaInput, setMotivoRenunciaInput] = useState('');
   const [actaDirectorioInput, setActaDirectorioInput] = useState('');
   const [isCuotaIncorporacionCheck, setIsCuotaIncorporacionCheck] = useState(false);
+
+  // Directivos Actuales
+  const presidente = getDirectorioMember('presidenteId');
+  const vicepresidente = getDirectorioMember('vicepresidenteId');
+  const secretario = getDirectorioMember('secretarioId');
+  const tesorero = getDirectorioMember('tesoreroId');
 
   // Formulario Egresos
   const [newExpense, setNewExpense] = useState({
@@ -259,6 +272,17 @@ export const SociosIntranet = () => {
               Padrón & Cuotas
             </button>
 
+            {canManageCategoriesAndCargos && (
+              <button
+                onClick={() => setActiveTabLocal('directorio-gestion')}
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                  activeTabLocal === 'directorio-gestion' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+                }`}
+              >
+                🏛️ Gestión Cargos Directorio
+              </button>
+            )}
+
             {canManageFinances && (
               <>
                 <button
@@ -320,7 +344,7 @@ export const SociosIntranet = () => {
           </div>
         </div>
 
-        {/* SUBTAB: MI CUENTA (PERFIL DEL SOCIO & EDICIÓN DE FOTO) */}
+        {/* SUBTAB: MI CUENTA */}
         {activeTabLocal === 'mi-cuenta' && (
           <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
@@ -340,7 +364,6 @@ export const SociosIntranet = () => {
 
               <form onSubmit={handleSaveMiCuentaSubmit} className="space-y-6 text-xs">
                 
-                {/* Header Foto Perfil & Preview */}
                 <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-slate-50 rounded-2xl border border-slate-200">
                   <div className="relative group flex-shrink-0">
                     <img
@@ -375,7 +398,6 @@ export const SociosIntranet = () => {
                   </div>
                 </div>
 
-                {/* Form Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   
                   <div>
@@ -434,7 +456,7 @@ export const SociosIntranet = () => {
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    URL Directa de Foto de Perfil (Opcional si usó subir archivo)
+                    URL Directa de Foto de Perfil
                   </label>
                   <input
                     type="url"
@@ -457,6 +479,130 @@ export const SociosIntranet = () => {
                 </div>
 
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* SUBTAB: GESTIÓN DE CARGOS DEL DIRECTORIO (PRESIDENTE & SECRETARIO) */}
+        {activeTabLocal === 'directorio-gestion' && canManageCategoriesAndCargos && (
+          <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+              <div className="border-b border-slate-100 pb-4">
+                <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 font-bold text-[10px] rounded-full uppercase">
+                  Atribución Presidente / Secretario (Fe Pública)
+                </span>
+                <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-amber-600" />
+                  Asignación Oficial de Cargos del Directorio Nacional
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Reasigne quién ocupa cada uno de los 4 cargos directivos. Al realizar un cambio, las fotos, nombres y firmas de la web pública se actualizan automáticamente de forma inmediata.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
+                
+                {/* 1. PRESIDENTE */}
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-900 uppercase">Presidente / a</span>
+                    <Crown className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <img src={presidente?.fotoPerfil} alt={presidente?.nombre} className="w-12 h-12 rounded-full object-cover border-2 border-blue-900" />
+                    <div>
+                      <div className="font-bold text-slate-900">{presidente?.nombre}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">{presidente?.email}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Reasignar Cargo a Socio:</label>
+                    <select
+                      value={presidente?.id}
+                      onChange={(e) => updateDirectorioCargo('presidenteId', e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
+                    >
+                      {sociosList.map(s => <option key={s.id} value={s.id}>{s.nombre} ({s.rut})</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 2. VICEPRESIDENTE */}
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-900 uppercase">Vicepresidente / a</span>
+                    <Award className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <img src={vicepresidente?.fotoPerfil} alt={vicepresidente?.nombre} className="w-12 h-12 rounded-full object-cover border-2 border-blue-900" />
+                    <div>
+                      <div className="font-bold text-slate-900">{vicepresidente?.nombre}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">{vicepresidente?.email}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Reasignar Cargo a Socio:</label>
+                    <select
+                      value={vicepresidente?.id}
+                      onChange={(e) => updateDirectorioCargo('vicepresidenteId', e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
+                    >
+                      {sociosList.map(s => <option key={s.id} value={s.id}>{s.nombre} ({s.rut})</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 3. SECRETARIO */}
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-900 uppercase">Secretario / a</span>
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <img src={secretario?.fotoPerfil} alt={secretario?.nombre} className="w-12 h-12 rounded-full object-cover border-2 border-blue-900" />
+                    <div>
+                      <div className="font-bold text-slate-900">{secretario?.nombre}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">{secretario?.email}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Reasignar Cargo a Socio:</label>
+                    <select
+                      value={secretario?.id}
+                      onChange={(e) => updateDirectorioCargo('secretarioId', e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
+                    >
+                      {sociosList.map(s => <option key={s.id} value={s.id}>{s.nombre} ({s.rut})</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 4. TESORERO */}
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-900 uppercase">Tesorero / a</span>
+                    <DollarSign className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <img src={tesorero?.fotoPerfil} alt={tesorero?.nombre} className="w-12 h-12 rounded-full object-cover border-2 border-blue-900" />
+                    <div>
+                      <div className="font-bold text-slate-900">{tesorero?.nombre}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">{tesorero?.email}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Reasignar Cargo a Socio:</label>
+                    <select
+                      value={tesorero?.id}
+                      onChange={(e) => updateDirectorioCargo('tesoreroId', e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-slate-900"
+                    >
+                      {sociosList.map(s => <option key={s.id} value={s.id}>{s.nombre} ({s.rut})</option>)}
+                    </select>
+                  </div>
+                </div>
+
+              </div>
             </div>
           </div>
         )}
@@ -494,7 +640,7 @@ export const SociosIntranet = () => {
                   <thead>
                     <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
                       <th className="py-3.5 px-5">Socio / RUT</th>
-                      <th className="py-3.5 px-5">Categoría</th>
+                      <th className="py-3.5 px-5">Categoría Gremial</th>
                       <th className="py-3.5 px-5">Estado Cuota</th>
                       <th className="py-3.5 px-5">Permiso Voluntarios</th>
                       <th className="py-3.5 px-5">Monto Adeudado</th>
@@ -505,7 +651,7 @@ export const SociosIntranet = () => {
                     {filteredSocios.map((socio) => {
                       const cuotaMensual = socio.montoCuotaMensual || financialSettings.cuotaMensualActual;
                       const cuotaIncorp = socio.cuotaIncorporacionPagada ? 0 : (socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
-                      const deudaCalculada = (socio.estadoCuota === 'Exento' || socio.estadoCuota.includes('Desvinculado')) ? 0 : ((socio.mesesAdeudados || 0) * cuotaMensual) + cuotaIncorp;
+                      const deudaCalculada = (socio.estadoCuota === 'Exento' || socio.estadoCuota.includes('Desvinculado') || socio.categoria === 'Socio Honorario') ? 0 : ((socio.mesesAdeudados || 0) * cuotaMensual) + cuotaIncorp;
 
                       return (
                         <tr key={socio.id} className="hover:bg-slate-50 transition-colors">
@@ -524,10 +670,23 @@ export const SociosIntranet = () => {
                             </div>
                           </td>
 
+                          {/* Selector Interactivo de Categoría (Presidente, Secretario & Maestro) */}
                           <td className="py-3.5 px-5">
-                            <span className="px-2.5 py-0.5 bg-slate-100 rounded-full border border-slate-200 text-slate-700 font-semibold text-[11px]">
-                              {socio.categoria}
-                            </span>
+                            {canManageCategoriesAndCargos ? (
+                              <select
+                                value={socio.categoria}
+                                onChange={(e) => updateSocioCategoria(socio.id, e.target.value)}
+                                className="bg-slate-50 border border-slate-300 rounded-lg text-[11px] font-bold text-slate-800 p-1.5 focus:border-blue-900"
+                              >
+                                <option value="Socio Activo">Socio Activo (Voz y Voto)</option>
+                                <option value="Socio Adherente">Socio Adherente (Voz sin Voto)</option>
+                                <option value="Socio Honorario">Socio Honorario (Exento Cuota)</option>
+                              </select>
+                            ) : (
+                              <span className="px-2.5 py-0.5 bg-slate-100 rounded-full border border-slate-200 text-slate-700 font-semibold text-[11px]">
+                                {socio.categoria}
+                              </span>
+                            )}
                           </td>
 
                           <td className="py-3.5 px-5">
@@ -929,6 +1088,72 @@ export const SociosIntranet = () => {
           </div>
         )}
 
+        {/* Modal Registrar Pago Cuota */}
+        {activePaymentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 relative border border-slate-200">
+              <button
+                onClick={() => setActivePaymentModal(null)}
+                className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
+              >
+                ✕
+              </button>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold font-['Outfit'] text-slate-900 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" />
+                  Registrar Pago de Cuota Social
+                </h3>
+                <p className="text-xs text-slate-500">Socio: <strong className="text-slate-900">{activePaymentModal.nombre}</strong> ({activePaymentModal.rut})</p>
+              </div>
+
+              <form onSubmit={handleRegisterPayment} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">N° Comprobante de Transferencia / Depósito</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: TRF-982104"
+                    value={comprobanteInput}
+                    onChange={(e) => setComprobanteInput(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+
+                {!activePaymentModal.cuotaIncorporacionPagada && (
+                  <label className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isCuotaIncorporacionCheck}
+                      onChange={(e) => setIsCuotaIncorporacionCheck(e.target.checked)}
+                      className="accent-amber-600"
+                    />
+                    <span className="text-[11px] font-bold text-amber-900">
+                      Marcar también pago de Cuota de Incorporación (${financialSettings.cuotaIncorporacionActual.toLocaleString('es-CL')} CLP)
+                    </span>
+                  </label>
+                )}
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActivePaymentModal(null)}
+                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow"
+                  >
+                    Confirmar y Actualizar Estado Al Día
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Modal Solicitar Renuncia */}
         {activeRequestRenunciaModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
@@ -977,6 +1202,95 @@ export const SociosIntranet = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Aprobar Renuncia */}
+        {activeApproveRenunciaModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 relative border border-slate-200">
+              <button
+                onClick={() => setActiveApproveRenunciaModal(null)}
+                className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
+              >
+                ✕
+              </button>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold font-['Outfit'] text-slate-900 flex items-center gap-2">
+                  <FileCheck2 className="w-5 h-5 text-emerald-600" />
+                  Acuerdo de Aprobación de Renuncia (Directorio)
+                </h3>
+                <p className="text-xs text-slate-500">Socio a Desvincular: <strong className="text-slate-900">{activeApproveRenunciaModal.nombre}</strong></p>
+              </div>
+
+              <form onSubmit={handleAprobarRenunciaSubmit} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">N° de Acta de Sesión de Directorio *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Acta N° 2025-08 de fecha 12/08/2026"
+                    value={actaDirectorioInput}
+                    onChange={(e) => setActaDirectorioInput(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-mono text-slate-900"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveApproveRenunciaModal(null)}
+                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow"
+                  >
+                    Aprobar Renuncia & Anonimizar en Ley 21.719
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Postulación */}
+        {activePostulacionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 relative border border-slate-200">
+              <button
+                onClick={() => setActivePostulacionModal(null)}
+                className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
+              >
+                ✕
+              </button>
+
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold font-['Outfit'] text-slate-900">
+                  Ficha de Postulación N° {activePostulacionModal.id}
+                </h3>
+                <p className="text-xs text-slate-500">Postulante: <strong className="text-slate-900">{activePostulacionModal.nombreCompleto}</strong> ({activePostulacionModal.rut})</p>
+              </div>
+
+              <div className="space-y-2 text-xs text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>• <strong>Profesión:</strong> {activePostulacionModal.profesion}</div>
+                <div>• <strong>Email:</strong> {activePostulacionModal.email} • <strong>Teléfono:</strong> {activePostulacionModal.telefono}</div>
+                <div>• <strong>Experiencia Previa:</strong> {activePostulacionModal.experienciaPrevia}</div>
+                <div>• <strong>Razones Integración:</strong> {activePostulacionModal.razonesIntegracion}</div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => handleApproveApplicant(activePostulacionModal.id, 'Socio Activo')}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" /> Aprobar e Incorporar como Socio Activo
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -33,9 +33,16 @@ const USER_DATABASE = [
     permisoGestionVoluntarios: true
   },
   {
+    email: "secretario.directiva@pruaned.cl",
+    name: "Lic. Javiera Araya (Secretaria Directiva Nacional)",
+    role: "directiva",
+    rut: "16.789.201-3",
+    permisoGestionVoluntarios: true
+  },
+  {
     email: "camila.morales@pruaned.cl",
     name: "Dra. Camila Morales Valenzuela",
-    role: "socio",
+    role: "directiva",
     rut: "15.482.910-K",
     permisoGestionVoluntarios: true
   },
@@ -223,15 +230,12 @@ export const AuthProvider = ({ children }) => {
   // AUTHENTICATION & AUTOMATIC SERVER-SIDE ROLE RESOLUTION
   const loginWithCredentials = (emailInput) => {
     const cleanEmail = emailInput.trim().toLowerCase();
-    
-    // Server resolution against USER_DATABASE
     const foundUser = USER_DATABASE.find(u => u.email.toLowerCase() === cleanEmail);
 
     let userObj;
     if (foundUser) {
       userObj = { ...foundUser };
     } else {
-      // Fallback: If user is in socio list or voluntario list
       const foundSocio = sociosList.find(s => s.email.toLowerCase() === cleanEmail);
       const foundVol = voluntariosList.find(v => v.email.toLowerCase() === cleanEmail);
 
@@ -252,7 +256,6 @@ export const AuthProvider = ({ children }) => {
           permisoGestionVoluntarios: false
         };
       } else {
-        // Default new socio login
         userObj = {
           email: cleanEmail,
           name: cleanEmail.split('@')[0],
@@ -267,7 +270,6 @@ export const AuthProvider = ({ children }) => {
     setIs2FAVerified(true);
     setSecurityLogs(prev => logSecurityEvent(prev, `AUTH_SUCCESS_SERVER_RESOLVED_ROLE_${userObj.role.toUpperCase()}`, userObj.email, "INFO"));
 
-    // Return target intranet tab
     if (userObj.role === 'master' || userObj.role === 'directiva' || userObj.role === 'socio') {
       return 'socios';
     } else {
@@ -289,9 +291,28 @@ export const AuthProvider = ({ children }) => {
   const isDirectiva = currentUser?.role === 'directiva' || isMasterUser;
   const socioPermisoVoluntarios = sociosList.find(s => s.email === currentUser?.email)?.permisoGestionVoluntarios || currentUser?.permisoGestionVoluntarios || false;
 
+  // Presidente y Secretario tienen fe pública y facultad para gestionar categorías y cargos
+  const canManageCategoriesAndCargos = isMasterUser || isDirectiva;
   const canManageVoluntarios = isMasterUser || isDirectiva || socioPermisoVoluntarios;
   const canManageFinances = isMasterUser || isDirectiva;
   const canPublishCMS = isMasterUser || isDirectiva;
+
+  // GESTIÓN DE CATEGORÍAS DE SOCIOS (PRESIDENTE, SECRETARIO & MAESTRO)
+  const updateSocioCategoria = (socioId, nuevaCategoria) => {
+    setSociosList(prev => prev.map(s => {
+      if (s.id === socioId) {
+        return {
+          ...s,
+          categoria: nuevaCategoria,
+          voto: nuevaCategoria === 'Socio Activo',
+          estadoCuota: nuevaCategoria === 'Socio Honorario' ? 'Exento' : s.estadoCuota,
+          montoCuotaMensual: nuevaCategoria === 'Socio Honorario' ? 0 : financialSettings.cuotaMensualActual
+        };
+      }
+      return s;
+    }));
+    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_CATEGORY_${socioId}_TO_${nuevaCategoria}`, currentUser?.email, "INFO"));
+  };
 
   // LEVANTAR / APAGAR CONVOCATORIA MASIVA DE EMERGENCIA
   const levantarConvocatoriaEmergencia = (asunto, mensaje) => {
@@ -343,6 +364,7 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_PROFILE_${socioId}`, currentUser?.email, "INFO"));
   };
 
+  // REASIGNACIÓN DE CARGOS DEL DIRECTORIO NACIONAL (PRESIDENTE, SECRETARIO & MAESTRO)
   const updateDirectorioCargo = (cargoKey, newSocioId) => {
     setDirectorioCargos(prev => ({
       ...prev,
@@ -576,9 +598,11 @@ export const AuthProvider = ({ children }) => {
       // Roles & Permissions
       isMasterUser,
       isDirectiva,
+      canManageCategoriesAndCargos,
       canManageVoluntarios,
       canManageFinances,
       canPublishCMS,
+      updateSocioCategoria,
       togglePermisoGestionVoluntariosSocio,
       // Directorio Cargos & Profile
       directorioCargos,
