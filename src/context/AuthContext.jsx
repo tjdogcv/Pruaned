@@ -8,7 +8,8 @@ import {
   INITIAL_COURSES,
   INITIAL_SECURITY_LOGS,
   INITIAL_FINANCIAL_SETTINGS,
-  INITIAL_EXPENSES
+  INITIAL_EXPENSES,
+  INITIAL_DONACIONES
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
 
@@ -18,6 +19,12 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [is2FAVerified, setIs2FAVerified] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
+
+  // Donaciones Bancarias State
+  const [donacionesList, setDonacionesList] = useState(() => {
+    const saved = localStorage.getItem('pruaned_donaciones');
+    return saved ? JSON.parse(saved) : INITIAL_DONACIONES;
+  });
 
   // Postulaciones Nuevos Socios State
   const [postulacionesList, setPostulacionesList] = useState(() => {
@@ -102,6 +109,10 @@ export const AuthProvider = ({ children }) => {
 
   // Sync localStorage
   useEffect(() => {
+    localStorage.setItem('pruaned_donaciones', JSON.stringify(donacionesList));
+  }, [donacionesList]);
+
+  useEffect(() => {
     localStorage.setItem('pruaned_postulaciones', JSON.stringify(postulacionesList));
   }, [postulacionesList]);
 
@@ -153,6 +164,35 @@ export const AuthProvider = ({ children }) => {
     setActiveTab('home');
   };
 
+  // Donaciones Handler
+  const addDonacion = (donacionData) => {
+    const itemWithId = { ...donacionData, id: `don-${Date.now()}` };
+    setDonacionesList(prev => [itemWithId, ...prev]);
+    setSecurityLogs(prev => logSecurityEvent(prev, `ADD_BANK_DONATION_${donacionData.monto}`, currentUser?.email, "INFO"));
+  };
+
+  const deleteDonacion = (id) => {
+    setDonacionesList(prev => prev.filter(d => d.id !== id));
+    setSecurityLogs(prev => logSecurityEvent(prev, `DELETE_DONATION_${id}`, currentUser?.email, "WARN"));
+  };
+
+  // Voluntarios Disponibilidad & Recursos Handler
+  const updateVoluntarioDisponibilidad = (volId, disponibilidadData) => {
+    setVoluntariosList(prev => prev.map(vol => {
+      if (vol.id === volId) {
+        return {
+          ...vol,
+          disponibilidadRespuesta: disponibilidadData.disponibilidadRespuesta,
+          recursosPropios: disponibilidadData.recursosPropios,
+          laboresQuePuedeRealizar: disponibilidadData.laboresQuePuedeRealizar,
+          ultimaActualizacionDisponibilidad: new Date().toISOString()
+        };
+      }
+      return vol;
+    }));
+    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_VOLUNTEER_AVAILABILITY_${volId}`, currentUser?.email, "INFO"));
+  };
+
   // Postulaciones Handler
   const addPostulacion = (postulacionData) => {
     setPostulacionesList(prev => [postulacionData, ...prev]);
@@ -183,11 +223,9 @@ export const AuthProvider = ({ children }) => {
         historialPagos: []
       };
       setSociosList(prev => [newSocio, ...prev]);
-      setSecurityLogs(prev => logSecurityEvent(prev, `SOCIO_APPLICATION_APPROVED_${post.rut}`, currentUser?.email, "INFO"));
     }
   };
 
-  // RENUNCIA Y DESVINCULACIÓN (APROBACIÓN OBLIGATORIA DEL DIRECTORIO NACIONAL)
   const solicitarRenunciaSocio = (socioId, motivoRenuncia) => {
     setSociosList(prev => prev.map(socio => {
       if (socio.id === socioId) {
@@ -200,7 +238,6 @@ export const AuthProvider = ({ children }) => {
       }
       return socio;
     }));
-    setSecurityLogs(prev => logSecurityEvent(prev, `SOCIO_WITHDRAWAL_REQUESTED_${socioId}`, currentUser?.email, "WARN"));
   };
 
   const aprobarRenunciaDirectorio = (socioId, numeroActaDirectorio) => {
@@ -211,7 +248,6 @@ export const AuthProvider = ({ children }) => {
           estadoCuota: 'Desvinculado / Retiro Aprobado DL 2757',
           fechaRetiroOficial: new Date().toISOString().split('T')[0],
           actaDirectorioAprobacion: numeroActaDirectorio || 'Acta Directorio N° 2025-08',
-          // Ley N° 21.719 Personal Data Anonymization
           email: 'contacto.anonimizado@pruaned.cl',
           telefono: 'Desvinculado ARCO',
           domicilio: 'Anonimizado por Ley 21.719'
@@ -219,7 +255,6 @@ export const AuthProvider = ({ children }) => {
       }
       return socio;
     }));
-    setSecurityLogs(prev => logSecurityEvent(prev, `SOCIO_WITHDRAWAL_APPROVED_BY_DIRECTORIO_${socioId}`, currentUser?.email, "INFO"));
   };
 
   const updateFinancialSettings = (newCuotaMensual, newCuotaIncorporacion) => {
@@ -332,6 +367,9 @@ export const AuthProvider = ({ children }) => {
       setIs2FAVerified,
       activeTab,
       setActiveTab,
+      donacionesList,
+      addDonacion,
+      deleteDonacion,
       postulacionesList,
       addPostulacion,
       updatePostulacionEstado,
@@ -355,6 +393,7 @@ export const AuthProvider = ({ children }) => {
       updateSocioCuota,
       voluntariosList,
       updateVolunteerCert,
+      updateVoluntarioDisponibilidad,
       coursesList,
       securityLogs
     }}>

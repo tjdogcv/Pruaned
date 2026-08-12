@@ -12,7 +12,8 @@ import {
   Menu, 
   X, 
   Building,
-  UserPlus
+  UserPlus,
+  ShieldCheck
 } from 'lucide-react';
 
 export const Navbar = ({ onOpenAuth }) => {
@@ -23,6 +24,7 @@ export const Navbar = ({ onOpenAuth }) => {
     { id: 'home', label: 'Inicio', icon: Shield },
     { id: 'institutional', label: 'Estatutos & Direcciones', icon: Building },
     { id: 'postulacion', label: 'Hazte Socio', icon: UserPlus },
+    { id: 'transparencia', label: 'Transparencia & Donaciones', icon: ShieldCheck },
     { id: 'news', label: 'Noticias', icon: Newspaper },
     { id: 'docs', label: 'Documentos Públicos', icon: FileText },
   ];
@@ -34,7 +36,7 @@ export const Navbar = ({ onOpenAuth }) => {
   };
 
   return (
-    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white">
+    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white font-['Plus_Jakarta_Sans']">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
@@ -57,7 +59,7 @@ export const Navbar = ({ onOpenAuth }) => {
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                     isActive
                       ? 'bg-blue-600 text-white shadow'
                       : isHighlight
@@ -77,7 +79,7 @@ export const Navbar = ({ onOpenAuth }) => {
                 {(currentUser.role === 'socio' || currentUser.role === 'admin') && (
                   <button
                     onClick={() => handleNavClick('socios')}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                       activeTab === 'socios' ? 'bg-amber-600 text-white' : 'text-amber-400 hover:bg-amber-950/40'
                     }`}
                   >
@@ -88,7 +90,7 @@ export const Navbar = ({ onOpenAuth }) => {
                 {(currentUser.role === 'voluntario' || currentUser.role === 'admin') && (
                   <button
                     onClick={() => handleNavClick('voluntarios')}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                       activeTab === 'voluntarios' ? 'bg-emerald-600 text-white' : 'text-emerald-400 hover:bg-emerald-950/40'
                     }`}
                   >
@@ -99,7 +101,7 @@ export const Navbar = ({ onOpenAuth }) => {
                 {currentUser.role === 'admin' && (
                   <button
                     onClick={() => handleNavClick('admin')}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                       activeTab === 'admin' ? 'bg-purple-600 text-white' : 'text-purple-400 hover:bg-purple-950/40'
                     }`}
                   >

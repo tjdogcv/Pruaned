@@ -15,6 +15,31 @@ export const INITIAL_FINANCIAL_SETTINGS = {
   cuotaIncorporacionActual: 30000
 };
 
+export const INITIAL_DONACIONES = [
+  {
+    id: "don-101",
+    fecha: "2026-08-01",
+    donante: "Fundación Internacional Protección Animal & Bienestar",
+    rutODocumentoDonante: "65.102.940-2",
+    monto: 500000,
+    banco: "BancoEstado (Cta. Corriente PRUANED A.G.)",
+    numeroComprobante: "TRF-889102",
+    destinoAporte: "Fondo Emergencias, Botiquines Terreno & Insumos Zoosanitarios",
+    publico: true
+  },
+  {
+    id: "don-102",
+    fecha: "2026-08-06",
+    donante: "Empresa Agrícola & Ganadera del Sur S.A.",
+    rutODocumentoDonante: "77.409.110-5",
+    monto: 250000,
+    banco: "Banco de Chile (Cta. Vista Oficial)",
+    numeroComprobante: "TRF-992014",
+    destinoAporte: "Albergues Temporales & Alimentación Pecuaria",
+    publico: true
+  }
+];
+
 export const INITIAL_EXPENSES = [
   {
     id: "exp-1",
@@ -155,10 +180,9 @@ export const INITIAL_DOCUMENTS = [
     category: "Estatutos & Reglamentos",
     date: "2025-01-15",
     size: "2.4 MB",
-    version: "v1.0 Oficial Rediseñado",
-    description: "Documento rector con la estructura orgánica, estatutos, régimen de cuotas y reglamento del voluntariado rediseñado profesionalmente.",
-    url: "/Estatutos_PRUANED_AG_Redisenados.pdf",
-    htmlUrl: "/estatutos_redisenados.html"
+    version: "v1.0 Oficial",
+    description: "Documento rector con la estructura orgánica, estatutos, régimen de cuotas y reglamento del voluntariado (19 páginas).",
+    url: "#"
   },
   {
     id: "doc-2",
@@ -250,7 +274,7 @@ export const INITIAL_SOCIOS = [
     montoCuotaMensual: 15000,
     cuotaIncorporacionPagada: true,
     montoCuotaIncorporacion: 30000,
-    mesesAdeudados: 3, // Adeuda Junio, Julio, Agosto 2026
+    mesesAdeudados: 3,
     ultimaCuotaPagada: "Mayo 2026",
     historialPagos: [
       { mes: "Mayo 2026", monto: 15000, fecha: "2026-05-10", comprobante: "TRF-8820" }
@@ -273,26 +297,6 @@ export const INITIAL_SOCIOS = [
     mesesAdeudados: 0,
     ultimaCuotaPagada: "Exento Por Estatuto",
     historialPagos: []
-  },
-  {
-    id: "soc-105",
-    rut: "17.654.321-9",
-    nombre: "Dra. Valentina Lagos Parra",
-    profesion: "Médico Veterinaria Especies Silvestres",
-    categoria: "Socio Activo",
-    voto: true,
-    email: "valentina.lagos@pruaned.cl",
-    region: "Región de la Araucanía",
-    fechaIngreso: "2025-02-15",
-    estadoCuota: "Suspensión Art. 42",
-    montoCuotaMensual: 15000,
-    cuotaIncorporacionPagada: true,
-    montoCuotaIncorporacion: 30000,
-    mesesAdeudados: 0,
-    ultimaCuotaPagada: "Marzo 2026",
-    historialPagos: [
-      { mes: "Marzo 2026", monto: 15000, fecha: "2026-03-05", comprobante: "TRF-7120" }
-    ]
   }
 ];
 
@@ -307,7 +311,10 @@ export const INITIAL_VOLUNTARIOS = [
     region: "Región de Ñuble",
     email: "felipe.henriquez@gmail.com",
     telefono: "+56 9 8765 4321",
-    estadoOperativo: "Disponible / Desplegable",
+    estadoOperativo: "Disponible de inmediato",
+    disponibilidadRespuesta: "Disponible de inmediato (Respuesta en < 12h)",
+    recursosPropios: ["Camioneta 4x4", "Remolque de Ganado", "Botiquín Veterinario de Campo", "Jaulas de Transporte"],
+    laboresQuePuedeRealizar: ["Contención Pecuaria", "Transporte de Animales", "Triage Veterinario", "Logística Terreno"],
     horasAcumuladas: 142,
     cursosAprobados: ["c1", "c2", "c3"],
     despliegues: [
@@ -325,7 +332,10 @@ export const INITIAL_VOLUNTARIOS = [
     region: "Región del Biobío",
     email: "conny.ugarte@gmail.com",
     telefono: "+56 9 7654 3210",
-    estadoOperativo: "Disponible / Desplegable",
+    estadoOperativo: "Disponible en 24h",
+    disponibilidadRespuesta: "Disponible en 24 Horas",
+    recursosPropios: ["Insomios de Primeros Auxilios", "Alimento Mascotas 50kg", "Cajas de Transporte Canino"],
+    laboresQuePuedeRealizar: ["Atención Veterinaria Primaria", "Gestión de Albergues Temporales", "Apoyo Administrativo"],
     horasAcumuladas: 85,
     cursosAprobados: ["c1", "c2"],
     despliegues: [
@@ -367,7 +377,7 @@ export const INITIAL_COURSES = [
     instructor: "Dra. Camila Morales V.",
     duration: "8 Horas",
     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    description: "Capacitación práctica en estabilización básica, quemaduras e inalación de humo.",
+    description: "Capacitación práctica en estabilización básica, quemaduras e inhalación de humo.",
     modules: [
       "Módulo 1: Triage Zoosanitario",
       "Módulo 2: Tratamiento de Quemaduras",

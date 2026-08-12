@@ -13,6 +13,7 @@ import { VoluntariosIntranet } from './components/VoluntariosIntranet';
 import { AdminCMS } from './components/AdminCMS';
 import { CertificateVerify } from './components/CertificateVerify';
 import { PostulacionSocio } from './components/PostulacionSocio';
+import { PortalTransparencia } from './components/PortalTransparencia';
 
 function MainLayout() {
   const { activeTab, setActiveTab } = useAuth();
@@ -40,6 +41,7 @@ function MainLayout() {
 
         {activeTab === 'institutional' && <Institutional />}
         {activeTab === 'postulacion' && <PostulacionSocio onNavigate={(tab) => setActiveTab(tab)} />}
+        {activeTab === 'transparencia' && <PortalTransparencia />}
         {activeTab === 'news' && <NewsSection onOpenPublishModal={() => setActiveTab('admin')} />}
         {activeTab === 'docs' && <DocumentsSection />}
         {activeTab === 'socios' && <SociosIntranet />}
