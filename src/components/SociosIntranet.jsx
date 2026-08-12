@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
+import { sendPagoEmail } from '../lib/emailConfig';
 import { 
   Users, 
   DollarSign, 
@@ -406,7 +407,7 @@ export const SociosIntranet = () => {
   const renunciasPendientes = sociosList.filter(s => s.estadoCuota === 'Solicitud Renuncia Pendiente Directorio').length;
 
   const totalIngresos = sociosList.reduce((acc, socio) => {
-    const pagosSocio = socio.historialPagos.reduce((pAcc, p) => pAcc + (p.monto || 0), 0);
+    const pagosSocio = (socio.historialPagos || []).reduce((pAcc, p) => pAcc + (p.monto || 0), 0);
     return acc + pagosSocio;
   }, 0);
 
@@ -470,6 +471,13 @@ export const SociosIntranet = () => {
         false, 
         isCuotaIncorporacionCheck
       );
+      
+      const pagoData = {
+        monto: isCuotaIncorporacionCheck ? (activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual) : (activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual),
+        referencia: comprobanteInput.trim() || 'Validado por Tesorería'
+      };
+      sendPagoEmail(pagoData, activePaymentModal);
+
       setActivePaymentModal(null);
       setComprobanteInput('');
       setIsCuotaIncorporacionCheck(false);
