@@ -17,7 +17,10 @@ import {
   Clock,
   Radio,
   Send,
-  Save
+  Save,
+  AlertTriangle,
+  BellOff,
+  UserCheck
 } from 'lucide-react';
 
 export const VoluntariosIntranet = () => {
@@ -26,10 +29,14 @@ export const VoluntariosIntranet = () => {
     coursesList, 
     updateVolunteerCert, 
     updateVoluntarioDisponibilidad,
+    convocatoriaActiva,
+    levantarConvocatoriaEmergencia,
+    cerrarConvocatoriaEmergencia,
+    canManageVoluntarios,
     currentUser 
   } = useAuth();
 
-  const [subTab, setSubTab] = useState('lms'); // lms, padron, convocatoria, mi-disponibilidad
+  const [subTab, setSubTab] = useState('lms'); // lms, mi-disponibilidad, padron (solo admin), convocatoria (solo admin)
   const [selectedCourse, setSelectedCourse] = useState(coursesList[0]);
   const [examAnswers, setExamAnswers] = useState({});
   const [examResult, setExamResult] = useState(null);
@@ -38,12 +45,11 @@ export const VoluntariosIntranet = () => {
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Convocatoria State
+  // Formulario Convocatoria (Encargado Voluntarios)
   const [convocatoriaAsunto, setConvocatoriaAsunto] = useState('');
   const [convocatoriaMensaje, setConvocatoriaMensaje] = useState('');
-  const [convocatoriaSent, setConvocatoriaSent] = useState(false);
 
-  // Mi Disponibilidad State (Form para Voluntario)
+  // Formulario Mi Disponibilidad (para el Voluntario)
   const activeVol = voluntariosList.find(v => v.email === currentUser?.email) || voluntariosList[0];
 
   const [volDisponibilidad, setVolDisponibilidad] = useState(activeVol.disponibilidadRespuesta || 'Disponible de inmediato');
@@ -65,19 +71,16 @@ export const VoluntariosIntranet = () => {
       recursosPropios: volRecursos,
       laboresQuePuedeRealizar: volLabores
     });
-    alert('¡Tu disponibilidad, recursos propios y labores asignables han sido actualizados en la base de datos de PRUANED!');
+    alert('¡Tu disponibilidad de tiempo, recursos propios y labores han sido registrados para la emergencia activa!');
   };
 
   const handleSendConvocatoriaMasiva = (e) => {
     e.preventDefault();
     if (convocatoriaAsunto && convocatoriaMensaje) {
-      setConvocatoriaSent(true);
-      setTimeout(() => {
-        setConvocatoriaSent(false);
-        setConvocatoriaAsunto('');
-        setConvocatoriaMensaje('');
-        alert(`¡Convocatoria Masiva por correo electrónico despachada a ${voluntariosList.length} voluntarios en padrón!`);
-      }, 1000);
+      levantarConvocatoriaEmergencia(convocatoriaAsunto, convocatoriaMensaje);
+      setConvocatoriaAsunto('');
+      setConvocatoriaMensaje('');
+      alert(`¡Convocatoria Masiva activada! Se ha notificado por correo a los ${voluntariosList.length} voluntarios en padrón para habilitar su ficha de disponibilidad.`);
     }
   };
 
@@ -129,13 +132,13 @@ export const VoluntariosIntranet = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 pb-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold uppercase tracking-wider mb-2">
-              <GraduationCap className="w-3.5 h-3.5" /> Intranet Gremial 2
+              <GraduationCap className="w-3.5 h-3.5" /> Intranet de Voluntariado
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-['Outfit']">
-              Portal de Voluntarios, LMS & Convocatorias
+              Aula Virtual, Certificación & Emergencias
             </h2>
             <p className="text-slate-600 text-xs mt-1">
-              Capacitaciones grabadas, declaración de recursos propios, disponibilidad y llamado a emergencias.
+              Usuario Conectado: <strong className="text-slate-900">{currentUser?.name}</strong> ({currentUser?.email})
             </p>
           </div>
 
@@ -151,41 +154,51 @@ export const VoluntariosIntranet = () => {
 
             <button
               onClick={() => setSubTab('mi-disponibilidad')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
                 subTab === 'mi-disponibilidad' ? 'bg-emerald-600 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
               }`}
             >
-              Declarar Mi Disponibilidad & Recursos
+              Mi Disponibilidad & Recursos
+              {convocatoriaActiva?.activa && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-rose-600 text-white text-[9px] rounded-full font-extrabold animate-pulse">
+                  ALERTA ACTIVA
+                </span>
+              )}
             </button>
 
-            <button
-              onClick={() => setSubTab('convocatoria')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                subTab === 'convocatoria' ? 'bg-emerald-600 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              Correo Masivo / Emergencias
-            </button>
+            {/* Solo los administradores / encargados de voluntarios pueden ver el Padrón y Levantar Convocatoria */}
+            {canManageVoluntarios && (
+              <>
+                <button
+                  onClick={() => setSubTab('convocatoria')}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                    subTab === 'convocatoria' ? 'bg-emerald-600 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+                  }`}
+                >
+                  Gestión Convocatorias
+                </button>
 
-            <button
-              onClick={() => setSubTab('padron')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                subTab === 'padron' ? 'bg-emerald-600 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              Trazabilidad Voluntarios
-            </button>
+                <button
+                  onClick={() => setSubTab('padron')}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                    subTab === 'padron' ? 'bg-emerald-600 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+                  }`}
+                >
+                  Padrón General Voluntarios
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Data Protection Banner */}
+        {/* Banner Ley 21.719 */}
         <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-emerald-950 shadow-sm">
           <div className="flex items-center gap-3">
             <ShieldCheck className="w-6 h-6 text-emerald-700 flex-shrink-0" />
             <div>
-              <div className="font-bold font-['Outfit'] text-sm">Resguardo Ley N° 21.719 para Voluntarios</div>
+              <div className="font-bold font-['Outfit'] text-sm">Protección de Datos Personales (Ley N° 21.719)</div>
               <p className="text-emerald-800 text-[11px]">
-                Sus datos personales y declaración de recursos están protegidos conforme a la ley chilena.
+                Tus datos de contacto y recursos propios están resguardados y solo accesibles para la coordinación oficial de emergencias.
               </p>
             </div>
           </div>
@@ -197,150 +210,167 @@ export const VoluntariosIntranet = () => {
           </button>
         </div>
 
-        {/* SUBTAB: DECLARAR DISPONIBILIDAD & RECURSOS PROPIOS (PARA EL VOLUNTARIO) */}
+        {/* SUBTAB: MI DISPONIBILIDAD (DISPONIBLE SOLO CUANDO HAY CONVOCATORIA ACTIVA O PARA EDITAR RECURSOS) */}
         {subTab === 'mi-disponibilidad' && (
-          <div className="max-w-3xl mx-auto animate-fade-in">
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-              <div className="border-b border-slate-100 pb-4">
-                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 font-bold text-[10px] rounded-full">
-                  Ficha de Actualización Operativa
-                </span>
-                <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-emerald-600" />
-                  Declarar Disponibilidad, Recursos Propios & Labores
+          <div className="max-w-3xl mx-auto animate-fade-in space-y-6">
+            
+            {!convocatoriaActiva?.activa ? (
+              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm text-center space-y-4">
+                <BellOff className="w-12 h-12 text-slate-400 mx-auto" />
+                <h3 className="text-xl font-bold font-['Outfit'] text-slate-900">
+                  Sin Convocatorias de Emergencia Activas
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Voluntario: <strong className="text-slate-900">{activeVol.nombre}</strong> ({activeVol.rut})
+                <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                  En este momento no hay un llamado de emergencia activo por parte del Encargado de Voluntarios. Cuando la directiva requiera disponibilidad de terreno, se enviará una notificación por correo y se habilitará este formulario.
                 </p>
               </div>
-
-              <form onSubmit={handleSaveDisponibilidadSubmit} className="space-y-6 text-xs">
-                
-                {/* Disponibilidad de Respuesta */}
-                <div>
-                  <label className="block font-bold text-slate-900 text-sm mb-2 font-['Outfit']">
-                    1. Disponibilidad de Tiempo para Respuesta
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      "Disponible de inmediato (Respuesta en < 12h)",
-                      "Disponible en 24 Horas",
-                      "Disponible en 48 Horas",
-                      "No disponible por el momento"
-                    ].map((disp) => (
-                      <label key={disp} className={`p-3 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                        volDisponibilidad === disp
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}>
-                        <input
-                          type="radio"
-                          name="disponibilidadRespuesta"
-                          value={disp}
-                          checked={volDisponibilidad === disp}
-                          onChange={(e) => setVolDisponibilidad(e.target.value)}
-                          className="hidden"
-                        />
-                        <span>{disp}</span>
-                      </label>
-                    ))}
-                  </div>
+            ) : (
+              <div className="bg-white p-8 rounded-3xl border border-rose-300 shadow-lg space-y-6">
+                <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl space-y-1">
+                  <span className="px-2.5 py-0.5 bg-rose-600 text-white font-extrabold text-[10px] rounded-full uppercase">
+                    LLAMADO DE EMERGENCIA ACTIVO
+                  </span>
+                  <h4 className="text-base font-bold text-rose-950 font-['Outfit'] mt-1">
+                    {convocatoriaActiva.asunto}
+                  </h4>
+                  <p className="text-xs text-rose-900 leading-relaxed">
+                    {convocatoriaActiva.mensaje}
+                  </p>
                 </div>
 
-                {/* Recursos Propios Disponibles */}
-                <div className="pt-2 border-t border-slate-100">
-                  <label className="block font-bold text-slate-900 text-sm mb-2 font-['Outfit']">
-                    2. Recursos Propios Disponibles para Terreno
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {[
-                      "Camioneta 4x4",
-                      "Remolque de Ganado",
-                      "Botiquín Veterinario de Campo",
-                      "Jaulas de Transporte",
-                      "Alimento Mascotas 50kg",
-                      "Equipo de Contención Pecuaria",
-                      "Generador Eléctrico",
-                      "Carpa de Campaña",
-                      "Equipo Radio VHF/UHF"
-                    ].map((item) => (
-                      <label key={item} className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={volRecursos.includes(item)}
-                          onChange={() => handleCheckboxListToggle(volRecursos, setVolRecursos, item)}
-                          className="accent-emerald-600"
-                        />
-                        <span className="text-[11px] font-semibold">{item}</span>
-                      </label>
-                    ))}
+                <form onSubmit={handleSaveDisponibilidadSubmit} className="space-y-6 text-xs">
+                  <div>
+                    <label className="block font-bold text-slate-900 text-sm mb-2 font-['Outfit']">
+                      1. Confirmar Disponibilidad de Respuesta
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        "Disponible de inmediato (Respuesta en < 12h)",
+                        "Disponible en 24 Horas",
+                        "Disponible en 48 Horas",
+                        "No disponible por el momento"
+                      ].map((disp) => (
+                        <label key={disp} className={`p-3 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                          volDisponibilidad === disp
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="disponibilidadRespuesta"
+                            value={disp}
+                            checked={volDisponibilidad === disp}
+                            onChange={(e) => setVolDisponibilidad(e.target.value)}
+                            className="hidden"
+                          />
+                          <span>{disp}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Labores que Puede Realizar */}
-                <div className="pt-2 border-t border-slate-100">
-                  <label className="block font-bold text-slate-900 text-sm mb-2 font-['Outfit']">
-                    3. Labores / Tareas que Puede Realizar en Terreno
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {[
-                      "Contención Pecuaria",
-                      "Transporte de Animales",
-                      "Triage Veterinario",
-                      "Atención Primaria Mascotas",
-                      "Gestión de Albergues Temporales",
-                      "Logística Terreno & Acopio",
-                      "Apoyo Administrativo & Fichas",
-                      "Rescate Técnico Animal"
-                    ].map((labor) => (
-                      <label key={labor} className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={volLabores.includes(labor)}
-                          onChange={() => handleCheckboxListToggle(volLabores, setVolLabores, labor)}
-                          className="accent-emerald-600"
-                        />
-                        <span className="text-[11px] font-semibold">{labor}</span>
-                      </label>
-                    ))}
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="block font-bold text-slate-900 text-sm mb-2 font-['Outfit']">
+                      2. Recursos Propios Disponibles para esta Emergencia
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        "Camioneta 4x4",
+                        "Remolque de Ganado",
+                        "Botiquín Veterinario de Campo",
+                        "Jaulas de Transporte",
+                        "Alimento Mascotas 50kg",
+                        "Equipo de Contención Pecuaria",
+                        "Generador Eléctrico",
+                        "Carpa de Campaña",
+                        "Equipo Radio VHF/UHF"
+                      ].map((item) => (
+                        <label key={item} className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={volRecursos.includes(item)}
+                            onChange={() => handleCheckboxListToggle(volRecursos, setVolRecursos, item)}
+                            className="accent-emerald-600"
+                          />
+                          <span className="text-[11px] font-semibold">{item}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <button
-                  type="submit"
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs shadow flex items-center justify-center gap-2"
-                >
-                  <Save className="w-4 h-4" /> Guardar Mi Disponibilidad & Recursos
-                </button>
-              </form>
-            </div>
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="block font-bold text-slate-900 text-sm mb-2 font-['Outfit']">
+                      3. Tareas que Puedes Desempeñar en Terreno
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        "Contención Pecuaria",
+                        "Transporte de Animales",
+                        "Triage Veterinario",
+                        "Atención Primaria Mascotas",
+                        "Gestión de Albergues Temporales",
+                        "Logística Terreno & Acopio",
+                        "Apoyo Administrativo & Fichas",
+                        "Rescate Técnico Animal"
+                      ].map((labor) => (
+                        <label key={labor} className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={volLabores.includes(labor)}
+                            onChange={() => handleCheckboxListToggle(volLabores, setVolLabores, labor)}
+                            className="accent-emerald-600"
+                          />
+                          <span className="text-[11px] font-semibold">{labor}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs shadow flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" /> Registrar Disponibilidad para la Emergencia
+                  </button>
+                </form>
+              </div>
+            )}
+
           </div>
         )}
 
-        {/* SUBTAB: CORREO MASIVO DE EMERGENCIA (PARA EL ENCARGADO DE VOLUNTARIOS) */}
-        {subTab === 'convocatoria' && (
+        {/* SUBTAB: CORREO MASIVO Y CONVOCATORIAS (SOLO PARA ENCARGADOS / DIRECTIVA / MAESTRO) */}
+        {subTab === 'convocatoria' && canManageVoluntarios && (
           <div className="max-w-3xl mx-auto animate-fade-in">
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-              <div className="border-b border-slate-100 pb-4">
-                <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 font-bold text-[10px] rounded-full uppercase">
-                  Encargado Nacional de Voluntariado
-                </span>
-                <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-amber-600" />
-                  Convocatoria Masiva de Emergencia por Correo
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Envía una notificación por correo a todos los voluntarios inscritos en el padrón para que ingresen a la intranet a registrar su disponibilidad y recursos propios.
-                </p>
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                <div>
+                  <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 font-bold text-[10px] rounded-full uppercase">
+                    Gestión Encargado de Voluntariado
+                  </span>
+                  <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-amber-600" />
+                    Llamado Masivo a Voluntarios
+                  </h3>
+                </div>
+
+                {convocatoriaActiva?.activa && (
+                  <button
+                    onClick={cerrarConvocatoriaEmergencia}
+                    className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow"
+                  >
+                    Cerrar Convocatoria Activa
+                  </button>
+                )}
               </div>
 
-              {convocatoriaSent ? (
-                <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-2 text-emerald-900">
-                  <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-                  <div className="font-bold text-base">¡Convocatoria Despachada Exitosamente!</div>
-                  <p className="text-xs text-emerald-800">
-                    Se han enviado correos electrónicos individuales a los {voluntariosList.length} voluntarios en padrón.
-                  </p>
+              {convocatoriaActiva?.activa ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-950 space-y-1">
+                  <div className="font-bold flex items-center gap-2 text-emerald-900">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Convocatoria Activa en Curso:
+                  </div>
+                  <div>• <strong>Asunto:</strong> {convocatoriaActiva.asunto}</div>
+                  <div>• <strong>Despachado:</strong> {new Date(convocatoriaActiva.fechaDespacho).toLocaleString('es-CL')}</div>
                 </div>
               ) : (
                 <form onSubmit={handleSendConvocatoriaMasiva} className="space-y-4 text-xs">
@@ -351,7 +381,7 @@ export const VoluntariosIntranet = () => {
                     <input
                       type="text"
                       required
-                      placeholder="Ej: [URGENTE PRUANED] Activación de Alerta Zoosanitaria Incendio Forestal Ñuble"
+                      placeholder="Ej: [ALERTA OPERATIVA] Activación de Brigadas por Incendio Forestal Ñuble"
                       value={convocatoriaAsunto}
                       onChange={(e) => setConvocatoriaAsunto(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 font-semibold"
@@ -360,27 +390,23 @@ export const VoluntariosIntranet = () => {
 
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">
-                      Mensaje e Instrucciones para los Voluntarios *
+                      Mensaje para los Voluntarios *
                     </label>
                     <textarea
                       rows={5}
                       required
-                      placeholder="Estimados voluntarios, ante la activación de emergencia en la región, solicitamos ingresar a la Intranet para declarar su disponibilidad de tiempo, recursos de terreno y tareas que pueden realizar..."
+                      placeholder="Estimados voluntarios, se activa el protocolo de emergencia. Ingrese a su Intranet para registrar disponibilidad de tiempo, transporte 4x4 e insumos..."
                       value={convocatoriaMensaje}
                       onChange={(e) => setConvocatoriaMensaje(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900"
                     />
                   </div>
 
-                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
-                    <strong>Destinatarios:</strong> Padrón completo de voluntarios ({voluntariosList.length} voluntarios activos).
-                  </div>
-
                   <button
                     type="submit"
                     className="w-full py-3.5 bg-amber-600 hover:bg-amber-500 text-white font-extrabold rounded-xl text-xs shadow flex items-center justify-center gap-2"
                   >
-                    <Send className="w-4 h-4" /> Despachar Correo Masivo a Voluntarios
+                    <Send className="w-4 h-4" /> Despachar Correo & Habilitar Ficha
                   </button>
                 </form>
               )}
@@ -388,7 +414,7 @@ export const VoluntariosIntranet = () => {
           </div>
         )}
 
-        {/* SUBTAB 1: LMS & VIDEOTECA */}
+        {/* SUBTAB 1: LMS & VIDEOTECA (PARA TODOS LOS VOLUNTARIOS) */}
         {subTab === 'lms' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in">
             <div className="lg:col-span-4 space-y-3">
@@ -399,7 +425,7 @@ export const VoluntariosIntranet = () => {
 
               <div className="space-y-3">
                 {coursesList.map((course) => {
-                  const isCompleted = activeVol.cursosAprobados.includes(course.id);
+                  const isCompleted = activeVol.cursosAprobados?.includes(course.id);
                   const isSelected = selectedCourse.id === course.id;
                   return (
                     <div
@@ -530,8 +556,8 @@ export const VoluntariosIntranet = () => {
           </div>
         )}
 
-        {/* SUBTAB 2: TRAZABILIDAD VOLUNTARIOS */}
-        {subTab === 'padron' && (
+        {/* SUBTAB 2: PADRÓN GENERAL DE VOLUNTARIOS (RESTRIGIDO A ENCARGADOS / DIRECTIVA / MAESTRO) */}
+        {subTab === 'padron' && canManageVoluntarios && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
               <div className="relative w-full sm:w-80">
@@ -620,11 +646,11 @@ export const VoluntariosIntranet = () => {
 
                   <div className="space-y-2 pt-2 border-t border-slate-100">
                     <div className="text-xs font-bold text-slate-800">Historial de Despliegues Operativos:</div>
-                    {vol.despliegues.length === 0 ? (
+                    {vol.despliegues?.length === 0 ? (
                       <p className="text-xs text-slate-500 italic">Sin despliegues registrados aún.</p>
                     ) : (
                       <div className="space-y-1.5">
-                        {vol.despliegues.map((d, idx) => (
+                        {vol.despliegues?.map((d, idx) => (
                           <div key={idx} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs flex justify-between items-center">
                             <div>
                               <div className="font-bold text-slate-900">{d.evento}</div>
@@ -654,7 +680,7 @@ export const VoluntariosIntranet = () => {
 
         {/* Privacy Policy Modal */}
         {isPrivacyModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in font-['Plus_Jakarta_Sans']">
             <PrivacyDataPolicy onClose={() => setIsPrivacyModalOpen(false)} />
           </div>
         )}

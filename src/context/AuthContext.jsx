@@ -16,10 +16,67 @@ import { logSecurityEvent } from '../utils/security';
 
 const AuthContext = createContext();
 
+// DATABASE USER ROLES & CREDENTIALS REGISTRY (Servidor / Backend)
+const USER_DATABASE = [
+  {
+    email: "ag.pruaned@gmail.com",
+    name: "Usuario Maestro PRUANED A.G.",
+    role: "master",
+    rut: "10.102.304-5",
+    permisoGestionVoluntarios: true
+  },
+  {
+    email: "presidente.directiva@pruaned.cl",
+    name: "Dra. Camila Morales (Presidenta Directiva Nacional)",
+    role: "directiva",
+    rut: "15.482.910-K",
+    permisoGestionVoluntarios: true
+  },
+  {
+    email: "camila.morales@pruaned.cl",
+    name: "Dra. Camila Morales Valenzuela",
+    role: "socio",
+    rut: "15.482.910-K",
+    permisoGestionVoluntarios: true
+  },
+  {
+    email: "roberto.silva@pruaned.cl",
+    name: "Dr. Roberto Silva Fuentes",
+    role: "socio",
+    rut: "12.304.551-8",
+    permisoGestionVoluntarios: false
+  },
+  {
+    email: "felipe.henriquez@gmail.com",
+    name: "Felipe Henríquez Palma",
+    role: "voluntario",
+    rut: "18.912.440-1",
+    permisoGestionVoluntarios: false
+  },
+  {
+    email: "conny.ugarte@gmail.com",
+    name: "Constanza Ugarte Mella",
+    role: "voluntario",
+    rut: "20.123.876-5",
+    permisoGestionVoluntarios: false
+  }
+];
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [is2FAVerified, setIs2FAVerified] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
+
+  // Estado de Convocatoria Activa de Emergencia (Backend)
+  const [convocatoriaActiva, setConvocatoriaActiva] = useState(() => {
+    const saved = localStorage.getItem('pruaned_convocatoria_activa');
+    return saved ? JSON.parse(saved) : {
+      activa: false,
+      asunto: '',
+      mensaje: '',
+      fechaDespacho: ''
+    };
+  });
 
   // Directorio Nacional Assignments State
   const [directorioCargos, setDirectorioCargos] = useState(() => {
@@ -116,6 +173,10 @@ export const AuthProvider = ({ children }) => {
 
   // Sync localStorage
   useEffect(() => {
+    localStorage.setItem('pruaned_convocatoria_activa', JSON.stringify(convocatoriaActiva));
+  }, [convocatoriaActiva]);
+
+  useEffect(() => {
     localStorage.setItem('pruaned_directorio_cargos', JSON.stringify(directorioCargos));
   }, [directorioCargos]);
 
@@ -159,11 +220,59 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('pruaned_security_logs', JSON.stringify(securityLogs));
   }, [securityLogs]);
 
-  // Auth Handlers
-  const login = (userData) => {
-    setCurrentUser(userData);
+  // AUTHENTICATION & AUTOMATIC SERVER-SIDE ROLE RESOLUTION
+  const loginWithCredentials = (emailInput) => {
+    const cleanEmail = emailInput.trim().toLowerCase();
+    
+    // Server resolution against USER_DATABASE
+    const foundUser = USER_DATABASE.find(u => u.email.toLowerCase() === cleanEmail);
+
+    let userObj;
+    if (foundUser) {
+      userObj = { ...foundUser };
+    } else {
+      // Fallback: If user is in socio list or voluntario list
+      const foundSocio = sociosList.find(s => s.email.toLowerCase() === cleanEmail);
+      const foundVol = voluntariosList.find(v => v.email.toLowerCase() === cleanEmail);
+
+      if (foundSocio) {
+        userObj = {
+          email: foundSocio.email,
+          name: foundSocio.nombre,
+          role: "socio",
+          rut: foundSocio.rut,
+          permisoGestionVoluntarios: foundSocio.permisoGestionVoluntarios || false
+        };
+      } else if (foundVol) {
+        userObj = {
+          email: foundVol.email,
+          name: foundVol.nombre,
+          role: "voluntario",
+          rut: foundVol.rut,
+          permisoGestionVoluntarios: false
+        };
+      } else {
+        // Default new socio login
+        userObj = {
+          email: cleanEmail,
+          name: cleanEmail.split('@')[0],
+          role: "socio",
+          rut: "15.482.910-K",
+          permisoGestionVoluntarios: false
+        };
+      }
+    }
+
+    setCurrentUser(userObj);
     setIs2FAVerified(true);
-    setSecurityLogs(prev => logSecurityEvent(prev, `AUTH_SUCCESS_ROLE_${userData.role.toUpperCase()}`, userData.email, "INFO"));
+    setSecurityLogs(prev => logSecurityEvent(prev, `AUTH_SUCCESS_SERVER_RESOLVED_ROLE_${userObj.role.toUpperCase()}`, userObj.email, "INFO"));
+
+    // Return target intranet tab
+    if (userObj.role === 'master' || userObj.role === 'directiva' || userObj.role === 'socio') {
+      return 'socios';
+    } else {
+      return 'voluntarios';
+    }
   };
 
   const logout = () => {
@@ -184,6 +293,28 @@ export const AuthProvider = ({ children }) => {
   const canManageFinances = isMasterUser || isDirectiva;
   const canPublishCMS = isMasterUser || isDirectiva;
 
+  // LEVANTAR / APAGAR CONVOCATORIA MASIVA DE EMERGENCIA
+  const levantarConvocatoriaEmergencia = (asunto, mensaje) => {
+    const nuevaConvocatoria = {
+      activa: true,
+      asunto: asunto,
+      mensaje: mensaje,
+      fechaDespacho: new Date().toISOString()
+    };
+    setConvocatoriaActiva(nuevaConvocatoria);
+    setSecurityLogs(prev => logSecurityEvent(prev, `EMERGENCY_CONVOCATORIA_RAISED`, currentUser?.email, "WARN"));
+  };
+
+  const cerrarConvocatoriaEmergencia = () => {
+    setConvocatoriaActiva({
+      activa: false,
+      asunto: '',
+      mensaje: '',
+      fechaDespacho: ''
+    });
+    setSecurityLogs(prev => logSecurityEvent(prev, `EMERGENCY_CONVOCATORIA_CLOSED`, currentUser?.email, "INFO"));
+  };
+
   // MI CUENTA & PERFIL DE SOCIO HANDLERS
   const updateSocioPerfil = (socioId, perfilData) => {
     setSociosList(prev => prev.map(s => {
@@ -201,7 +332,6 @@ export const AuthProvider = ({ children }) => {
       return s;
     }));
 
-    // Update currentUser in real time if editing own profile
     if (currentUser && (currentUser.email === perfilData.email || currentUser.id === socioId)) {
       setCurrentUser(prev => ({
         ...prev,
@@ -213,7 +343,6 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_PROFILE_${socioId}`, currentUser?.email, "INFO"));
   };
 
-  // DIRECTORIO CARGOS REASSIGNMENT HANDLER
   const updateDirectorioCargo = (cargoKey, newSocioId) => {
     setDirectorioCargos(prev => ({
       ...prev,
@@ -222,13 +351,11 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_DIRECTORIO_CARGO_${cargoKey}_TO_${newSocioId}`, currentUser?.email, "INFO"));
   };
 
-  // Helper to get Directorio Member Socio Object
   const getDirectorioMember = (cargoKey) => {
     const socioId = directorioCargos[cargoKey];
     return sociosList.find(s => s.id === socioId) || sociosList[0];
   };
 
-  // Toggle Permiso de Voluntarios para un Socio
   const togglePermisoGestionVoluntariosSocio = (socioId) => {
     setSociosList(prev => prev.map(s => {
       if (s.id === socioId) {
@@ -240,7 +367,6 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `TOGGLE_VOLUNTEER_PERMISSION_${socioId}`, currentUser?.email, "INFO"));
   };
 
-  // Donaciones Handler
   const addDonacion = (donacionData) => {
     const itemWithId = { ...donacionData, id: `don-${Date.now()}` };
     setDonacionesList(prev => [itemWithId, ...prev]);
@@ -252,7 +378,6 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `DELETE_DONATION_${id}`, currentUser?.email, "WARN"));
   };
 
-  // Voluntarios Disponibilidad & Recursos Handler
   const updateVoluntarioDisponibilidad = (volId, disponibilidadData) => {
     setVoluntariosList(prev => prev.map(vol => {
       if (vol.id === volId) {
@@ -269,7 +394,6 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_VOLUNTEER_AVAILABILITY_${volId}`, currentUser?.email, "INFO"));
   };
 
-  // Postulaciones Handler
   const addPostulacion = (postulacionData) => {
     setPostulacionesList(prev => [postulacionData, ...prev]);
     setSecurityLogs(prev => logSecurityEvent(prev, `NEW_SOCIO_APPLICATION_${postulacionData.rut}`, postulacionData.email, "INFO"));
@@ -439,12 +563,16 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       currentUser,
-      login,
+      loginWithCredentials,
       logout,
       is2FAVerified,
       setIs2FAVerified,
       activeTab,
       setActiveTab,
+      // Convocatoria State
+      convocatoriaActiva,
+      levantarConvocatoriaEmergencia,
+      cerrarConvocatoriaEmergencia,
       // Roles & Permissions
       isMasterUser,
       isDirectiva,
