@@ -224,41 +224,42 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
                   <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
                     <Lock className="w-3.5 h-3.5 text-emerald-400" /> {mode === 'login' ? 'Contraseña' : 'Crear Contraseña'}
                   </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-
-                {mode === 'register' && (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-400">Robustez Contraseña:</span>
-                      <span style={{ color: passwordInfo.color }} className="font-bold">
-                        {passwordInfo.label}
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full transition-all duration-300"
-                        style={{ width: `${passwordInfo.score}%`, backgroundColor: passwordInfo.color }}
-                      />
-                    </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
-                )}
-              </div>
-              
+
+                  {mode === 'register' && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-400">Robustez Contraseña:</span>
+                        <span style={{ color: passwordInfo.color }} className="font-bold">
+                          {passwordInfo.label}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full transition-all duration-300"
+                          style={{ width: `${passwordInfo.score}%`, backgroundColor: passwordInfo.color }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {mode === 'login' && (
                 <div className="mt-2 text-right">
                   <button
