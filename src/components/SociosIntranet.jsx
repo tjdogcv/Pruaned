@@ -391,6 +391,7 @@ export const SociosIntranet = () => {
   const [activePaymentModal, setActivePaymentModal] = useState(null);
   const [activePostulacionModal, setActivePostulacionModal] = useState(null);
   const [activeSocioModal, setActiveSocioModal] = useState(null);
+  const [postFilter, setPostFilter] = useState('pendientes');
   const [activeRequestRenunciaModal, setActiveRequestRenunciaModal] = useState(null);
   const [activeApproveRenunciaModal, setActiveApproveRenunciaModal] = useState(null);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
@@ -1474,8 +1475,7 @@ export const SociosIntranet = () => {
 
         {/* TAB 3: POSTULACIONES */}
         {activeTabLocal === 'postulaciones' && canManageFinances && (() => {
-          const [postFilter, setPostFilter] = React.useState('pendientes');
-          const pendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisión Directorio');
+          const pendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisi\u00f3n Directorio');
           const aprobadas  = postulacionesList.filter(p => p.estado === 'Aceptada / Incorporado');
           const rechazadas = postulacionesList.filter(p => p.estado === 'Rechazada');
           const listaFiltrada = postFilter === 'pendientes' ? pendientes
@@ -1516,7 +1516,7 @@ export const SociosIntranet = () => {
                 </div>
 
                 {listaFiltrada.length === 0 ? (
-                  <p className="text-center text-slate-400 py-8 text-sm">No hay postulaciones en esta categoría.</p>
+                  <p className="text-center text-slate-400 py-8 text-sm">No hay postulaciones en esta categor\u00eda.</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {listaFiltrada.map((post) => {
@@ -1533,7 +1533,7 @@ export const SociosIntranet = () => {
                             <div>
                               <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 font-bold text-[10px] rounded-full">{post.id}</span>
                               <h4 className="font-bold text-slate-900 text-base font-['Outfit'] mt-1">{post.nombreCompleto}</h4>
-                              <p className="text-xs text-slate-500 font-mono">{post.rut} • {post.email}</p>
+                              <p className="text-xs text-slate-500 font-mono">{post.rut} \u2022 {post.email}</p>
                               <p className="text-[11px] text-slate-400 mt-0.5">Enviada: {post.fechaEnvio}</p>
                             </div>
                             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
@@ -1546,7 +1546,7 @@ export const SociosIntranet = () => {
                           {socioVinculado && (
                             <div className="flex items-center gap-2 text-[11px] text-emerald-700 bg-emerald-100 rounded-lg px-3 py-1.5 border border-emerald-200">
                               <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
-                              <span>Socio incorporado: <strong>{socioVinculado.nombre}</strong> — {socioVinculado.categoria}</span>
+                              <span>Socio incorporado: <strong>{socioVinculado.nombre}</strong> \u2014 {socioVinculado.categoria}</span>
                             </div>
                           )}
 
@@ -1567,7 +1567,6 @@ export const SociosIntranet = () => {
             </div>
           );
         })()}
-
 
         {/* TAB 4: REGISTRO DE EGRESOS */}
         {activeTabLocal === 'egresos' && canManageFinances && (
