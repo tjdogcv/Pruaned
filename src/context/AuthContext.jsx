@@ -1361,7 +1361,10 @@ export const AuthProvider = ({ children }) => {
 
     const { data, error } = await supabase.rpc('lms_get_assessment', { p_course_id: courseId });
     if (error) throw error;
-    return data || [];
+    return (data || []).map((question) => ({
+      ...question,
+      position: question.question_position
+    }));
   };
 
   const submitLmsAssessment = async (courseId, answers) => {

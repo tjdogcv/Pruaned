@@ -375,7 +375,7 @@ $$;
 
 -- Sólo entrega enunciados y alternativas. La respuesta correcta jamás cruza al cliente.
 create or replace function public.lms_get_assessment(p_course_id uuid)
-returns table (id uuid, prompt text, options jsonb, position integer)
+returns table (id uuid, prompt text, options jsonb, question_position integer)
 language plpgsql
 security definer
 set search_path = public
@@ -386,7 +386,7 @@ begin
   end if;
 
   return query
-  select question.id, question.prompt, question.options, question.position
+  select question.id, question.prompt, question.options, question.position as question_position
   from public.lms_evaluation_questions question
   where question.course_id = p_course_id
   order by question.position;
