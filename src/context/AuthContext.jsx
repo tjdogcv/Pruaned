@@ -532,7 +532,28 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `EMERGENCY_CONVOCATORIA_CLOSED`, currentUser?.email, "INFO"));
   };
 
-  const updateSocioPerfil = (socioId, perfilData) => {
+  const updateSocioPerfil = async (socioId, perfilData) => {
+    if (isSupabaseReady()) {
+      try {
+        const { error } = await supabase
+          .from('socios')
+          .update({
+            email: perfilData.email,
+            telefono: perfilData.telefono,
+            domicilio: perfilData.domicilio,
+            comuna: perfilData.comuna,
+            foto_perfil: perfilData.fotoPerfil
+          })
+          .eq('id', socioId);
+        
+        if (error) {
+          console.error("Error actualizando perfil en Supabase", error);
+        }
+      } catch (err) {
+        console.error("Excepción actualizando perfil", err);
+      }
+    }
+
     setSociosList(prev => prev.map(s => {
       if (s.id === socioId || s.email === perfilData.email) {
         const updated = {
