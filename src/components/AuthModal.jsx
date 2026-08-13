@@ -220,9 +220,10 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
               </div>
 
               {(mode === 'login' || mode === 'register') && (
-                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-emerald-400" /> {mode === 'login' ? 'Contraseña' : 'Crear Contraseña'}
-                </label>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-emerald-400" /> {mode === 'login' ? 'Contraseña' : 'Crear Contraseña'}
+                  </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
