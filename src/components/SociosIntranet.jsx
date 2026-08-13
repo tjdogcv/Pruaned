@@ -333,7 +333,7 @@ const SocioSearchSelect = ({ sociosList, selectedId, onSelect, label }) => {
   );
 };
 
-export const SociosIntranet = () => {
+export const SociosIntranet = ({ initialTab }) => {
   const { 
     sociosList, 
     updateSocioCuota, 

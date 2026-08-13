@@ -27,7 +27,18 @@ function initialsFor(name) {
 }
 
 function safeAvatarUrl(value) {
-  return typeof value === 'string' && /^https?:\/\//i.test(value.trim()) ? value.trim() : null;
+  if (typeof value !== 'string') return null;
+  const url = value.trim();
+  if (/^https?:\/\//i.test(url)) return url;
+
+  const dataUrl = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/]+={0,2})$/i.exec(url);
+  if (!dataUrl) return null;
+
+  try {
+    return atob(dataUrl[1]).length > 0 ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 function SidebarContent({ navItems, pathname, onNavigate, onClose, mobile, currentUser, avatarUrl, onAvatarError, onLogout }) {
