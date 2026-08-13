@@ -55,8 +55,8 @@ export default function LmsAcademy() {
 
   const learnerAudiences = lmsProfile?.audiences || (currentUser?.role === 'voluntario' ? ['voluntarios'] : ['socios']);
   const availableCourses = useMemo(
-    () => lmsCourses.filter((course) => normalizeAudience(course.audience)
-      .some((audience) => learnerAudiences.includes(audience))),
+    () => lmsCourses.filter((course) => course.status === 'published'
+      && normalizeAudience(course.audience).some((audience) => learnerAudiences.includes(audience))),
     [learnerAudiences, lmsCourses]
   );
   const ownResults = lmsResults.filter((result) => !result.userId || result.userId === lmsProfile?.userId);
@@ -202,7 +202,8 @@ function CourseMaterial({ course, completedModules, pendingModuleId, onComplete,
       {course.modules.length ? course.modules.map((module) => {
         const completed = completedModules.some((entry) => entry.moduleId === module.id);
         const pending = pendingModuleId === module.id;
-        return <div key={module.id} className="rounded-xl bg-slate-50 p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-slate-900">{module.position + 1}. {module.title}</p>{module.content && <p className="mt-1 text-xs leading-5 text-slate-600">{module.content}</p>}</div><button type="button" disabled={completed || pending} onClick={() => onComplete(module, course.id)} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg bg-emerald-700 px-2.5 text-xs font-bold text-white hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-default disabled:bg-emerald-100 disabled:text-emerald-800">{pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : completed ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" />}{completed ? 'Completado' : 'Completar'}</button></div></div>;
+        const moduleVideoUrl = getCourseVideoEmbedUrl(module.videoUrl);
+        return <div key={module.id} className="rounded-xl bg-slate-50 p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-slate-900">{module.position + 1}. {module.title}</p>{module.content && <p className="mt-1 text-xs leading-5 text-slate-600">{module.content}</p>}</div><button type="button" disabled={completed || pending} onClick={() => onComplete(module, course.id)} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg bg-emerald-700 px-2.5 text-xs font-bold text-white hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-default disabled:bg-emerald-100 disabled:text-emerald-800">{pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : completed ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" />}{completed ? 'Completado' : 'Completar'}</button></div>{moduleVideoUrl && <div className="mt-3"><CourseVideo title={module.title} embedUrl={moduleVideoUrl} sourceUrl={module.videoUrl} /></div>}</div>;
       }) : <p className="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-600">El contenido detallado se publicará próximamente.</p>}
       {course.hasEvaluation && <button type="button" disabled={progress.totalModules > 0 && progress.completedModules < progress.totalModules} onClick={() => onAssessment(course)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-sm font-bold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300"><ClipboardCheck className="h-4 w-4" aria-hidden="true" />{progress.status === 'reprobado' ? 'Reintentar evaluación' : 'Rendir evaluación'}</button>}
     </div>

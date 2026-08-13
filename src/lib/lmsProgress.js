@@ -21,6 +21,7 @@ export function attachCourseModules(courses = [], modules = []) {
         courseId: course.id,
         title: typeof module === 'string' ? module : module.title,
         content: typeof module === 'string' ? null : module.content || null,
+        videoUrl: typeof module === 'string' ? null : module.videoUrl || module.video_url || null,
         position: typeof module === 'object' && Number.isFinite(module.position) ? module.position : index
       }))
     ).sort((first, second) => first.position - second.position)

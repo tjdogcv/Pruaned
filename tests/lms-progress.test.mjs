@@ -15,10 +15,11 @@ test('normaliza audiencia sin ampliar el acceso a valores inválidos', () => {
 
 test('prefiere módulos persistidos y conserva el material de demostración offline', () => {
   const [onlineCourse] = attachCourseModules([{ id: 'course-1', modules: ['Material local'] }], [
-    { id: 'module-2', courseId: 'course-1', title: 'Segundo', position: 2 },
+    { id: 'module-2', courseId: 'course-1', title: 'Segundo', videoUrl: 'https://youtu.be/abc123', position: 2 },
     { id: 'module-1', courseId: 'course-1', title: 'Primero', position: 1 }
   ]);
   assert.deepEqual(onlineCourse.modules.map((module) => module.id), ['module-1', 'module-2']);
+  assert.equal(onlineCourse.modules[1].videoUrl, 'https://youtu.be/abc123');
 
   const [offlineCourse] = attachCourseModules([{ id: 'course-2', modules: ['Uno'] }], []);
   assert.equal(offlineCourse.modules[0].id, 'course-2-module-0');

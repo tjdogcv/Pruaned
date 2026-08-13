@@ -199,6 +199,7 @@ export const AuthProvider = ({ children }) => {
   const [lmsModuleProgress, setLmsModuleProgress] = useState([]);
   const [isLmsLoading, setIsLmsLoading] = useState(false);
   const [isLmsManager, setIsLmsManager] = useState(false);
+  const [lmsReloadKey, setLmsReloadKey] = useState(0);
 
   // FETCH DESDE SUPABASE SIEMPRE (RLS se encarga de filtrar qué puede ver un visitante vs un admin)
   useEffect(() => {
@@ -316,14 +317,16 @@ export const AuthProvider = ({ children }) => {
         const profileRes = await supabase.rpc('lms_bootstrap_profile');
         if (profileRes.error) throw profileRes.error;
 
-        const [managerRes, participantsRes, modulesRes, resultsRes, progressRes] = await Promise.all([
-          supabase.from('lms_managers').select('user_id').maybeSingle(),
+        const [managerRes, coursesRes, participantsRes, modulesRes, resultsRes, progressRes] = await Promise.all([
+          supabase.rpc('lms_is_manager'),
+          supabase.from('cursos_lms').select('id, code, title, description, hours, level, modality, audience, status, instructor, duration, difficulty, category, requirements, video_url, has_evaluation, created_at, updated_at').order('created_at', { ascending: false }),
           supabase.from('lms_participants').select('user_id, email, display_name, participant_type, audiences'),
-          supabase.from('lms_course_modules').select('id, course_id, title, content, position').order('position'),
+          supabase.from('lms_course_modules').select('id, course_id, title, content, video_url, position').order('position'),
           supabase.from('lms_course_results').select('user_id, course_id, status, score, attempts, completed_at, last_attempt_at'),
           supabase.from('lms_module_progress').select('user_id, module_id, completed_at')
         ]);
         if (managerRes.error) throw managerRes.error;
+        if (coursesRes.error) throw coursesRes.error;
         if (participantsRes.error) throw participantsRes.error;
         if (modulesRes.error) throw modulesRes.error;
         if (resultsRes.error) throw resultsRes.error;
@@ -336,6 +339,13 @@ export const AuthProvider = ({ children }) => {
           participantType: profileRes.data.participant_type
         } : null);
         setIsLmsManager(Boolean(managerRes.data));
+        setCoursesList((coursesRes.data || []).map((course) => ({
+          ...course,
+          videoUrl: course.video_url,
+          hasEvaluation: course.has_evaluation,
+          createdAt: course.created_at,
+          updatedAt: course.updated_at
+        })));
         setLmsParticipants((participantsRes.data || []).map((participant) => ({
           userId: participant.user_id,
           email: participant.email,
@@ -348,6 +358,7 @@ export const AuthProvider = ({ children }) => {
           courseId: module.course_id,
           title: module.title,
           content: module.content,
+          videoUrl: module.video_url,
           position: module.position
         })));
         setLmsResults((resultsRes.data || []).map((result) => ({
@@ -373,7 +384,7 @@ export const AuthProvider = ({ children }) => {
 
     loadLmsData();
     return () => { cancelled = true; };
-  }, [supabaseReady, currentUser?.email]);
+  }, [supabaseReady, currentUser?.email, lmsReloadKey]);
 
   const [securityLogs, setSecurityLogs] = useState(INITIAL_SECURITY_LOGS);
 
@@ -678,48 +689,54 @@ export const AuthProvider = ({ children }) => {
   };
 
   // GESTIÓN DEL MÓDULO LMS (CREAR Y ELIMINAR CURSOS)
-  const addCourse = async (courseData) => {
-    const newCourse = {
-      ...courseData,
-      audience: normalizeAudience(courseData.audience),
-      status: courseData.status || 'draft',
-      requirements: courseData.requirements || []
-    };
-    if (supabaseReady) {
-      const { data, error } = await supabase.from('cursos_lms').insert([{
-        code: newCourse.code,
-        title: newCourse.title,
-        instructor: newCourse.instructor || null,
-        description: newCourse.description || null,
-        duration: newCourse.duration || null,
-        hours: Number(newCourse.hours) || null,
-        difficulty: newCourse.difficulty || null,
-        category: newCourse.category || null,
-        status: newCourse.status,
-        audience: newCourse.audience,
-        requirements: newCourse.requirements,
-        video_url: newCourse.videoUrl || null
-      }]).select('id, code, title, instructor, description, duration, hours, difficulty, category, status, audience, requirements, video_url, has_evaluation').single();
-      if (error) throw error;
-      setCoursesList((previous) => [{
-        ...data,
-        videoUrl: data.video_url,
-        hasEvaluation: data.has_evaluation
-      }, ...previous]);
-    } else {
-      setCoursesList((previous) => [{ ...newCourse, id: `c${Date.now()}` }, ...previous]);
-    }
-    addSecurityLog(`CREATE_LMS_COURSE_${courseData.code}`, currentUser?.email, "INFO");
+  // La edicion editorial pasa por RPC: no hay DML directo desde el navegador.
+  const refreshLmsData = () => setLmsReloadKey((value) => value + 1);
+
+  const getLmsCourseEditor = async (courseId) => {
+    if (!supabaseReady) throw new Error('La administracion del aula requiere una conexion segura a Supabase.');
+    const { data, error } = await supabase.rpc('lms_get_course_editor', { p_course_id: courseId });
+    if (error) throw error;
+    return data;
   };
 
-  const deleteCourse = async (courseId) => {
-    if (supabaseReady) {
-      const { error } = await supabase.from('cursos_lms').delete().eq('id', courseId);
-      if (error) throw error;
-    }
-    setCoursesList(prev => prev.filter(c => c.id !== courseId));
-    addSecurityLog(`DELETE_LMS_COURSE_${courseId}`, currentUser?.email, "WARN");
+  const saveLmsCourseBundle = async ({ courseId = null, course, modules = [], questions = [] }) => {
+    if (!supabaseReady) throw new Error('La administracion del aula requiere una conexion segura a Supabase.');
+    const { data, error } = await supabase.rpc('lms_save_course_bundle', {
+      p_course_id: courseId,
+      p_course: { ...course, audience: normalizeAudience(course.audience) },
+      p_modules: modules,
+      p_questions: questions
+    });
+    if (error) throw error;
+    refreshLmsData();
+    addSecurityLog(`${courseId ? 'UPDATE' : 'CREATE'}_LMS_COURSE_${course.code}`, currentUser?.email, 'INFO');
+    return data;
   };
+
+  const archiveLmsCourse = async (courseId) => {
+    if (!supabaseReady) throw new Error('La administracion del aula requiere una conexion segura a Supabase.');
+    const { error } = await supabase.rpc('lms_archive_course', { p_course_id: courseId });
+    if (error) throw error;
+    refreshLmsData();
+    addSecurityLog(`ARCHIVE_LMS_COURSE_${courseId}`, currentUser?.email, 'WARN');
+  };
+
+  const restoreLmsCourse = async (courseId) => {
+    if (!supabaseReady) throw new Error('La administracion del aula requiere una conexion segura a Supabase.');
+    const { error } = await supabase.rpc('lms_restore_course', { p_course_id: courseId });
+    if (error) throw error;
+    refreshLmsData();
+    addSecurityLog(`RESTORE_LMS_COURSE_${courseId}`, currentUser?.email, 'INFO');
+  };
+
+  // Compatibilidad con consumidores antiguos: ambas rutas mantienen el
+  // contrato transaccional y el archivado, sin borrados fisicos.
+  const addCourse = (courseData) => saveLmsCourseBundle({
+    course: courseData,
+    modules: courseData.modules || [],
+    questions: courseData.questions || []
+  });
+  const deleteCourse = archiveLmsCourse;
 
   // ACREDITACIÓN Y ESCALAFÓN DE VOLUNTARIOS
   const updateVoluntarioAcreditacion = async (volId, nuevoNivel) => {
@@ -1436,6 +1453,11 @@ export const AuthProvider = ({ children }) => {
       // LMS Management
       addCourse,
       deleteCourse,
+      getLmsCourseEditor,
+      saveLmsCourseBundle,
+      archiveLmsCourse,
+      restoreLmsCourse,
+      refreshLmsData,
       lmsProfile,
       lmsParticipants,
       lmsCourses,
