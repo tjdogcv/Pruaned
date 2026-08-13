@@ -659,22 +659,22 @@ export const SociosIntranet = () => {
               </button>
             )}
 
+            <button
+              onClick={() => setActiveTabLocal('renuncias')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
+                activeTabLocal === 'renuncias' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+              }`}
+            >
+              {canManageFinances ? 'Aprobación Renuncias' : 'Solicitar Renuncia'}
+              {canManageFinances && renunciasPendientes > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full font-bold">
+                  {renunciasPendientes}
+                </span>
+              )}
+            </button>
+
             {canManageFinances && (
               <>
-                <button
-                  onClick={() => setActiveTabLocal('renuncias')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
-                    activeTabLocal === 'renuncias' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-                  }`}
-                >
-                  Aprobación Renuncias
-                  {renunciasPendientes > 0 && (
-                    <span className="ml-1.5 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full font-bold">
-                      {renunciasPendientes}
-                    </span>
-                  )}
-                </button>
-
                 <button
                   onClick={() => setActiveTabLocal('postulaciones')}
                   className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
@@ -706,17 +706,17 @@ export const SociosIntranet = () => {
                 >
                   Emisión de Cobros
                 </button>
-
-                <button
-                  onClick={() => setActiveTabLocal('balance')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                    activeTabLocal === 'balance' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-                  }`}
-                >
-                  Balance General
-                </button>
               </>
             )}
+
+            <button
+              onClick={() => setActiveTabLocal('balance')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                activeTabLocal === 'balance' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+              }`}
+            >
+              Balance General
+            </button>
 
             {canManageVoluntarios && (
               <button
@@ -1240,12 +1240,16 @@ export const SociosIntranet = () => {
                           </td>
 
                           <td className="py-3.5 px-5 font-mono font-bold">
-                            {deudaCalculada > 0 ? (
-                              <span className="text-rose-600">
-                                ${deudaCalculada.toLocaleString('es-CL')} CLP
-                              </span>
+                            {(canManageFinances || socio.email === currentUser?.email) ? (
+                              deudaCalculada > 0 ? (
+                                <span className="text-rose-600">
+                                  ${deudaCalculada.toLocaleString('es-CL')} CLP
+                                </span>
+                              ) : (
+                                <span className="text-emerald-700">$0 CLP</span>
+                              )
                             ) : (
-                              <span className="text-emerald-700">$0 CLP</span>
+                              <span className="text-slate-400 font-medium">Privado</span>
                             )}
                           </td>
 
@@ -1296,13 +1300,14 @@ export const SociosIntranet = () => {
         )}
 
         {/* TAB 2: APROBACIÓN DE RENUNCIAS Y DESVINCULACIÓN */}
-        {activeTabLocal === 'renuncias' && canManageFinances && (
+        {activeTabLocal === 'renuncias' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
-                <FileCheck2 className="w-5 h-5 text-amber-600" />
-                Solicitudes de Renuncia & Desvinculación Voluntaria (DL N° 2.757)
-              </h3>
+            {canManageFinances ? (
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
+                  <FileCheck2 className="w-5 h-5 text-amber-600" />
+                  Solicitudes de Renuncia & Desvinculación Voluntaria (DL N° 2.757)
+                </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {sociosList.filter(s => s.estadoCuota.includes('Renuncia') || s.estadoCuota.includes('Desvinculado')).map((soc) => (
@@ -1346,6 +1351,24 @@ export const SociosIntranet = () => {
                 ))}
               </div>
             </div>
+            ) : (
+              <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-lg mx-auto">
+                <h3 className="text-2xl font-bold text-slate-900 font-['Outfit'] mb-4 flex justify-center items-center gap-2">
+                  <FileCheck2 className="w-6 h-6 text-rose-600" />
+                  Solicitar Mi Renuncia
+                </h3>
+                <p className="text-slate-600 mb-6">
+                  Si deseas desvincularte de PRUANED A.G. conforme a los estatutos, puedes enviar una solicitud formal de renuncia.
+                  Esta será revisada y ratificada por el Directorio Nacional.
+                </p>
+                <button
+                  onClick={() => setActiveRequestRenunciaModal(currentSocio)}
+                  className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm transition-colors"
+                >
+                  Solicitar Renuncia Gremial
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1547,7 +1570,7 @@ export const SociosIntranet = () => {
         )}
 
         {/* TAB 5: BALANCE GENERAL */}
-        {activeTabLocal === 'balance' && canManageFinances && (
+        {activeTabLocal === 'balance' && (
           <div className="space-y-6 animate-fade-in">
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -1838,7 +1861,7 @@ export const SociosIntranet = () => {
                 </div>
               )}
 
-              {cobrosList.filter(c => c.socioId === activeSocioModal.id && !c.pagado).length > 0 && (
+              {(canManageFinances || activeSocioModal.email === currentUser?.email) && cobrosList.filter(c => c.socioId === activeSocioModal.id && !c.pagado).length > 0 && (
                 <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
                   <h4 className="font-bold text-amber-900 mb-2 border-b border-amber-200 pb-2 flex items-center gap-2"><DollarSign className="w-4 h-4"/> Deudas Pendientes (Cuotas y Especiales)</h4>
                   <ul className="space-y-2">
