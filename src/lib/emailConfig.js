@@ -10,8 +10,8 @@ import emailjs from '@emailjs/browser';
 // 4. Ir a Account -> API Keys y copiar tu PUBLIC_KEY.
 // ==========================================
 
-const EMAILJS_PUBLIC_KEY = "TU_PUBLIC_KEY"; // <-- REEMPLAZAR AQUÍ
-const EMAILJS_SERVICE_ID = "default_service"; // <-- REEMPLAZAR AQUÍ
+const EMAILJS_PUBLIC_KEY = "CLJN75H6twZHwZaMT"; // Actualizado desde tu cuenta
+const EMAILJS_SERVICE_ID = "service_sdm9onf"; // Actualizado desde tu captura
 
 // Template para notificar al directorio de una nueva postulación
 const TEMPLATE_ID_POSTULACION = "template_postulacion"; // <-- REEMPLAZAR AQUÍ
@@ -82,8 +82,8 @@ export const sendPagoEmail = async (pagoData, socioData) => {
 // ==========================================
 // NUEVOS CORREOS: APROBACIÓN Y RECHAZO
 // ==========================================
-const TEMPLATE_ID_APPROVAL = "template_aprobacion"; // <-- REEMPLAZAR AQUÍ
-const TEMPLATE_ID_REJECTION = "template_rechazo"; // <-- REEMPLAZAR AQUÍ
+const TEMPLATE_ID_APPROVAL = "template_mxedl3t"; // Actualizado desde tu captura
+const TEMPLATE_ID_REJECTION = "template_qwammao"; // Actualizado desde tu captura
 
 export const sendApprovalEmail = async (postulanteData) => {
   if (EMAILJS_PUBLIC_KEY === "TU_PUBLIC_KEY") {
