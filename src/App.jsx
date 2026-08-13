@@ -52,7 +52,7 @@ function HomePage() {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.search.includes('login=required')) {
+    if (location.search.includes('login=required') || location.search.includes('login=true')) {
       setIsAuthModalOpen(true);
     }
   }, [location.search]);
@@ -83,7 +83,7 @@ function PublicPageWrapper({ component: Component, componentProps }) {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.search.includes('login=required')) {
+    if (location.search.includes('login=required') || location.search.includes('login=true')) {
       setIsAuthModalOpen(true);
     }
   }, [location.search]);
