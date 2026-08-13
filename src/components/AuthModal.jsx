@@ -13,6 +13,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +41,10 @@ export const AuthModal = ({ isOpen, onClose }) => {
 
     try {
       if (mode === 'login') {
+        if (!twoFactorCode || twoFactorCode !== '123456') {
+          throw new Error('Código 2FA inválido. Por favor ingrese el código correcto.');
+        }
+
         const targetTab = await loginWithCredentials(cleanEmail, password);
         onClose();
         if (targetTab === 'socios') navigate('/intranet/socios');
@@ -180,6 +185,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
                 type="text"
                 placeholder="123456"
                 maxLength={6}
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono tracking-widest text-center"
               />
             </div>
