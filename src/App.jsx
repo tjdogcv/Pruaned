@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
-import { IntranetNavbar } from './components/IntranetNavbar';
 import { Footer } from './components/Footer';
 import { Hero } from './components/Hero';
 import { Institutional } from './components/Institutional';
@@ -10,13 +9,18 @@ import { NewsSection } from './components/NewsSection';
 import { DocumentsSection } from './components/DocumentsSection';
 import { AuthModal } from './components/AuthModal';
 import { SecurityDashboard } from './components/SecurityDashboard';
-import { SociosIntranet } from './components/SociosIntranet';
-import { VoluntariosIntranet } from './components/VoluntariosIntranet';
-import { AdminCMS } from './components/AdminCMS';
 import { CertificateVerify } from './components/CertificateVerify';
 import { PostulacionSocio } from './components/PostulacionSocio';
 import { PortalTransparencia } from './components/PortalTransparencia';
 import { PrivateRoute } from './components/PrivateRoute';
+import { IntranetLayout } from './layouts/IntranetLayout';
+import DashboardHome from './pages/intranet/DashboardHome';
+import SociosDirectory from './pages/intranet/SociosDirectory';
+import DirectorioNacional from './pages/intranet/DirectorioNacional';
+import FinanzasPanel from './pages/intranet/FinanzasPanel';
+import VoluntariadoLMS from './pages/intranet/VoluntariadoLMS';
+import DocumentosCMS from './pages/intranet/DocumentosCMS';
+import AuditoriaLogs from './pages/intranet/AuditoriaLogs';
 
 function PublicLayout({ children, onOpenAuth }) {
   return (
@@ -26,22 +30,6 @@ function PublicLayout({ children, onOpenAuth }) {
         {children}
       </main>
       <Footer />
-    </div>
-  );
-}
-
-function IntranetLayout({ children }) {
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
-      <IntranetNavbar />
-      <main className="flex-1">
-        {children}
-      </main>
-      <footer className="bg-slate-900 border-t border-slate-800 py-4 px-6 text-center">
-        <p className="text-xs text-slate-500">
-          PRUANED A.G. &mdash; Área Privada &mdash; Acceso Restringido a Miembros Autorizados
-        </p>
-      </footer>
     </div>
   );
 }
@@ -125,26 +113,22 @@ function AppRoutes() {
       <Route path="/verificar/:hash" element={<PublicPageWrapper component={CertificateVerify} />} />
 
       {/* Rutas privadas — Intranet */}
-      <Route path="/intranet/socios" element={
+      <Route path="/intranet" element={
         <PrivateRoute>
-          <IntranetLayout><SociosIntranet /></IntranetLayout>
+          <IntranetLayout />
         </PrivateRoute>
-      } />
-      <Route path="/intranet/voluntarios" element={
-        <PrivateRoute>
-          <IntranetLayout><VoluntariosIntranet /></IntranetLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/intranet/admin" element={
-        <PrivateRoute>
-          <IntranetLayout><AdminCMS /></IntranetLayout>
-        </PrivateRoute>
-      } />
-      <Route path="/intranet/seguridad" element={
-        <PrivateRoute>
-          <IntranetLayout><SecurityDashboard /></IntranetLayout>
-        </PrivateRoute>
-      } />
+      }>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardHome />} />
+        <Route path="socios" element={<SociosDirectory />} />
+        <Route path="directorio" element={<DirectorioNacional />} />
+        <Route path="finanzas" element={<FinanzasPanel />} />
+        <Route path="voluntarios" element={<VoluntariadoLMS />} />
+        <Route path="admin" element={<DocumentosCMS />} />
+        <Route path="auditoria" element={<AuditoriaLogs />} />
+        <Route path="seguridad" element={<SecurityDashboard />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
+      </Route>
 
       {/* Redirigir rutas desconocidas al home */}
       <Route path="*" element={<Navigate to="/" replace />} />

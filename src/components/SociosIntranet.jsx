@@ -368,7 +368,11 @@ export const SociosIntranet = () => {
     addCobrosBatch = () => {}
   } = useAuth();
 
-  const [activeTabLocal, setActiveTabLocal] = useState(isMasterUser ? 'padron' : 'mi-cuenta');
+  const [activeTabLocal, setActiveTabLocal] = useState(initialTab ?? (isMasterUser ? 'padron' : 'mi-cuenta'));
+
+  useEffect(() => {
+    if (initialTab != null) setActiveTabLocal(initialTab);
+  }, [initialTab]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstado, setSelectedEstado] = useState('TODOS');
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
