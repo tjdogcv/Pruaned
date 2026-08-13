@@ -15,6 +15,7 @@ import {
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
 import { supabase, isSupabaseReady } from '../lib/supabase';
+import { attachCourseModules, normalizeAudience } from '../lib/lmsProgress';
 import {
   LEGACY_SESSION_DURATION_MS,
   clearLegacySession,
@@ -189,6 +190,13 @@ export const AuthProvider = ({ children }) => {
   }, [voluntariosList]);
 
   const [coursesList, setCoursesList] = useState(INITIAL_COURSES);
+  const [lmsProfile, setLmsProfile] = useState(null);
+  const [lmsParticipants, setLmsParticipants] = useState([]);
+  const [lmsModules, setLmsModules] = useState([]);
+  const [lmsResults, setLmsResults] = useState([]);
+  const [lmsModuleProgress, setLmsModuleProgress] = useState([]);
+  const [isLmsLoading, setIsLmsLoading] = useState(false);
+  const [isLmsManager, setIsLmsManager] = useState(false);
 
   // FETCH DESDE SUPABASE SIEMPRE (RLS se encarga de filtrar qué puede ver un visitante vs un admin)
   useEffect(() => {
@@ -207,7 +215,7 @@ export const AuthProvider = ({ children }) => {
             supabase.from('balances_anuales').select('*'),
             supabase.from('postulaciones').select('*').order('created_at', { ascending: false }),
             supabase.from('parametros_sistema').select('*'),
-            supabase.from('cursos_lms').select('*').order('created_at', { ascending: false }),
+            supabase.from('cursos_lms').select('id, code, title, description, hours, level, modality, audience, status, instructor, duration, difficulty, category, requirements, video_url, has_evaluation, created_at, updated_at').order('created_at', { ascending: false }),
             supabase.from('auditoria_logs').select('*').order('fecha', { ascending: false }).limit(200)
           ]);
 
@@ -284,6 +292,86 @@ export const AuthProvider = ({ children }) => {
       fetchSupabaseData();
     }
   }, [currentUser]);
+
+  // El progreso académico tiene su propio contrato y RLS. Nunca se deduce de la
+  // ficha de voluntario de otra persona ni se guarda en localStorage.
+  useEffect(() => {
+    if (!supabaseReady || !currentUser) {
+      setLmsProfile(null);
+      setLmsParticipants([]);
+      setLmsModules([]);
+      setLmsResults([]);
+      setLmsModuleProgress([]);
+      setIsLmsLoading(false);
+      setIsLmsManager(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const loadLmsData = async () => {
+      setIsLmsLoading(true);
+      try {
+        const profileRes = await supabase.rpc('lms_bootstrap_profile');
+        if (profileRes.error) throw profileRes.error;
+
+        const [managerRes, participantsRes, modulesRes, resultsRes, progressRes] = await Promise.all([
+          supabase.from('lms_managers').select('user_id').maybeSingle(),
+          supabase.from('lms_participants').select('user_id, email, display_name, participant_type, audiences'),
+          supabase.from('lms_course_modules').select('id, course_id, title, content, position').order('position'),
+          supabase.from('lms_course_results').select('user_id, course_id, status, score, attempts, completed_at, last_attempt_at'),
+          supabase.from('lms_module_progress').select('user_id, module_id, completed_at')
+        ]);
+        if (managerRes.error) throw managerRes.error;
+        if (participantsRes.error) throw participantsRes.error;
+        if (modulesRes.error) throw modulesRes.error;
+        if (resultsRes.error) throw resultsRes.error;
+        if (progressRes.error) throw progressRes.error;
+        if (cancelled) return;
+
+        setLmsProfile(profileRes.data ? {
+          ...profileRes.data,
+          userId: profileRes.data.user_id,
+          participantType: profileRes.data.participant_type
+        } : null);
+        setIsLmsManager(Boolean(managerRes.data));
+        setLmsParticipants((participantsRes.data || []).map((participant) => ({
+          userId: participant.user_id,
+          email: participant.email,
+          displayName: participant.display_name,
+          participantType: participant.participant_type,
+          audiences: participant.audiences || []
+        })));
+        setLmsModules((modulesRes.data || []).map((module) => ({
+          id: module.id,
+          courseId: module.course_id,
+          title: module.title,
+          content: module.content,
+          position: module.position
+        })));
+        setLmsResults((resultsRes.data || []).map((result) => ({
+          userId: result.user_id,
+          courseId: result.course_id,
+          status: result.status,
+          score: result.score,
+          attempts: result.attempts,
+          completedAt: result.completed_at,
+          lastAttemptAt: result.last_attempt_at
+        })));
+        setLmsModuleProgress((progressRes.data || []).map((progress) => ({
+          userId: progress.user_id,
+          moduleId: progress.module_id,
+          completedAt: progress.completed_at
+        })));
+      } catch (error) {
+        console.error('Error sincronizando el registro académico:', error);
+      } finally {
+        if (!cancelled) setIsLmsLoading(false);
+      }
+    };
+
+    loadLmsData();
+    return () => { cancelled = true; };
+  }, [supabaseReady, currentUser?.email]);
 
   const [securityLogs, setSecurityLogs] = useState(INITIAL_SECURITY_LOGS);
 
@@ -568,7 +656,7 @@ export const AuthProvider = ({ children }) => {
   const socioPermisoVoluntarios = sociosList.find(s => s.email === currentUser?.email)?.permisoGestionVoluntarios || currentUser?.permisoGestionVoluntarios || false;
 
   const canManageCategoriesAndCargos = isMasterUser || isDirectiva;
-  const canManageVoluntarios = isMasterUser || isDirectiva || socioPermisoVoluntarios;
+  const canManageVoluntarios = isMasterUser || isDirectiva || socioPermisoVoluntarios || isLmsManager;
   const canManageFinances = isMasterUser || isDirectiva;
   const canPublishCMS = isMasterUser || isDirectiva;
 
@@ -589,36 +677,45 @@ export const AuthProvider = ({ children }) => {
 
   // GESTIÓN DEL MÓDULO LMS (CREAR Y ELIMINAR CURSOS)
   const addCourse = async (courseData) => {
-    const newId = `c${Date.now()}`;
-    const newCourse = { ...courseData, id: newId };
-    setCoursesList(prev => [newCourse, ...prev]);
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('cursos_lms').insert([{
-          id: newCourse.id,
-          code: newCourse.code,
-          title: newCourse.title,
-          instructor: newCourse.instructor,
-          description: newCourse.description,
-          duration: newCourse.duration,
-          difficulty: newCourse.difficulty,
-          category: newCourse.category,
-          status: newCourse.status,
-          requirements: newCourse.requirements || [],
-          modules: newCourse.modules || []
-        }]);
-      } catch (err) { console.error('Error saving new course:', err); }
+    const newCourse = {
+      ...courseData,
+      audience: normalizeAudience(courseData.audience),
+      status: courseData.status || 'draft',
+      requirements: courseData.requirements || []
+    };
+    if (supabaseReady) {
+      const { data, error } = await supabase.from('cursos_lms').insert([{
+        code: newCourse.code,
+        title: newCourse.title,
+        instructor: newCourse.instructor || null,
+        description: newCourse.description || null,
+        duration: newCourse.duration || null,
+        hours: Number(newCourse.hours) || null,
+        difficulty: newCourse.difficulty || null,
+        category: newCourse.category || null,
+        status: newCourse.status,
+        audience: newCourse.audience,
+        requirements: newCourse.requirements,
+        video_url: newCourse.videoUrl || null
+      }]).select('id, code, title, instructor, description, duration, hours, difficulty, category, status, audience, requirements, video_url, has_evaluation').single();
+      if (error) throw error;
+      setCoursesList((previous) => [{
+        ...data,
+        videoUrl: data.video_url,
+        hasEvaluation: data.has_evaluation
+      }, ...previous]);
+    } else {
+      setCoursesList((previous) => [{ ...newCourse, id: `c${Date.now()}` }, ...previous]);
     }
     addSecurityLog(`CREATE_LMS_COURSE_${courseData.code}`, currentUser?.email, "INFO");
   };
 
   const deleteCourse = async (courseId) => {
-    setCoursesList(prev => prev.filter(c => c.id !== courseId));
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('cursos_lms').delete().eq('id', courseId);
-      } catch (err) { console.error('Error deleting course:', err); }
+    if (supabaseReady) {
+      const { error } = await supabase.from('cursos_lms').delete().eq('id', courseId);
+      if (error) throw error;
     }
+    setCoursesList(prev => prev.filter(c => c.id !== courseId));
     addSecurityLog(`DELETE_LMS_COURSE_${courseId}`, currentUser?.email, "WARN");
   };
 
@@ -1217,6 +1314,104 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const completeLmsModule = async (moduleId, courseId) => {
+    if (!moduleId || !courseId) throw new Error('Módulo inválido');
+
+    if (!supabaseReady) {
+      const completedAt = new Date().toISOString();
+      setLmsModuleProgress((previous) => previous.some((progress) => progress.moduleId === moduleId && progress.userId === lmsProfile?.userId)
+        ? previous
+        : [...previous, { userId: lmsProfile?.userId || null, moduleId, completedAt }]);
+      return { courseId, moduleId, courseStatus: 'en_progreso' };
+    }
+
+    const { data, error } = await supabase.rpc('lms_complete_module', { p_module_id: moduleId });
+    if (error) throw error;
+    const update = Array.isArray(data) ? data[0] : data;
+    const completedAt = new Date().toISOString();
+    setLmsModuleProgress((previous) => previous.some((progress) => progress.moduleId === moduleId && progress.userId === lmsProfile?.userId)
+      ? previous
+      : [...previous, { userId: lmsProfile?.userId || null, moduleId, completedAt }]);
+    if (update?.course_status) {
+      setLmsResults((previous) => {
+        const nextResult = {
+          userId: lmsProfile?.userId || null,
+          courseId,
+          status: update.course_status,
+          score: previous.find((result) => result.courseId === courseId && result.userId === lmsProfile?.userId)?.score ?? null,
+          attempts: previous.find((result) => result.courseId === courseId && result.userId === lmsProfile?.userId)?.attempts || 0,
+          completedAt: update.course_status === 'aprobado' ? completedAt : null
+        };
+        return [...previous.filter((result) => result.courseId !== courseId || result.userId !== lmsProfile?.userId), nextResult];
+      });
+    }
+    return update;
+  };
+
+  const getLmsAssessment = async (courseId) => {
+    if (!supabaseReady) {
+      const course = coursesList.find((item) => item.id === courseId);
+      return (course?.examQuestions || []).map((question, index) => ({
+        id: `${courseId}-question-${index}`,
+        prompt: question.q,
+        options: question.options,
+        position: index
+      }));
+    }
+
+    const { data, error } = await supabase.rpc('lms_get_assessment', { p_course_id: courseId });
+    if (error) throw error;
+    return data || [];
+  };
+
+  const submitLmsAssessment = async (courseId, answers) => {
+    if (!supabaseReady) {
+      const course = coursesList.find((item) => item.id === courseId);
+      const questions = course?.examQuestions || [];
+      if (!questions.length) throw new Error('Este curso no tiene evaluación publicada');
+      const correct = questions.filter((question, index) => Number(answers[`${courseId}-question-${index}`]) === question.correct).length;
+      const score = Math.round((correct / questions.length) * 10000) / 100;
+      const status = score >= 70 ? 'aprobado' : 'reprobado';
+      const completedAt = status === 'aprobado' ? new Date().toISOString() : null;
+      setLmsResults((previous) => {
+        const oldResult = previous.find((result) => result.courseId === courseId && result.userId === lmsProfile?.userId);
+        const nextResult = {
+          userId: lmsProfile?.userId || null,
+          courseId,
+          status,
+          score,
+          attempts: (oldResult?.attempts || 0) + 1,
+          completedAt,
+          lastAttemptAt: new Date().toISOString()
+        };
+        return [...previous.filter((result) => result.courseId !== courseId || result.userId !== lmsProfile?.userId), nextResult];
+      });
+      return { status, score, attempts: 1, completed_at: completedAt };
+    }
+
+    const { data, error } = await supabase.rpc('lms_submit_assessment', {
+      p_course_id: courseId,
+      p_answers: answers
+    });
+    if (error) throw error;
+    const result = Array.isArray(data) ? data[0] : data;
+    setLmsResults((previous) => {
+      const nextResult = {
+        userId: lmsProfile?.userId || null,
+        courseId,
+        status: result.status,
+        score: result.score,
+        attempts: result.attempts,
+        completedAt: result.completed_at,
+        lastAttemptAt: new Date().toISOString()
+      };
+      return [...previous.filter((item) => item.courseId !== courseId || item.userId !== lmsProfile?.userId), nextResult];
+    });
+    return result;
+  };
+
+  const lmsCourses = attachCourseModules(coursesList, lmsModules);
+
   return (
     <AuthContext.Provider value={{
       currentUser,
@@ -1236,6 +1431,17 @@ export const AuthProvider = ({ children }) => {
       // LMS Management
       addCourse,
       deleteCourse,
+      lmsProfile,
+      lmsParticipants,
+      lmsCourses,
+      lmsModules,
+      lmsResults,
+      lmsModuleProgress,
+      isLmsLoading,
+      isLmsManager,
+      completeLmsModule,
+      getLmsAssessment,
+      submitLmsAssessment,
       // Escalafón Acreditación
       updateVoluntarioAcreditacion,
       // Convocatoria State
