@@ -84,8 +84,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
         localStorage.removeItem('pruaned_auth_attempts');
       } else if (mode === 'login_otp') {
         // Paso 2: Validar OTP y entrar
-        if (!twoFactorCode || twoFactorCode.length !== 6) {
-          throw new Error('Código OTP inválido. Debe tener 6 dígitos.');
+        if (!twoFactorCode || twoFactorCode.length < 6) {
+          throw new Error('Código OTP inválido.');
         }
 
         const targetTab = await loginStep2_VerifyOTP(cleanEmail, twoFactorCode);
@@ -243,8 +243,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
               </label>
               <input
                 type="text"
-                placeholder="123456"
-                maxLength={6}
+                placeholder="12345678"
+                maxLength={8}
                 value={twoFactorCode}
                 onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-2xl text-white focus:outline-none focus:border-blue-500 font-mono tracking-[0.5em] text-center"
