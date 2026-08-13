@@ -441,7 +441,13 @@ export const AuthProvider = ({ children }) => {
 
   // RBAC PERMISSION HELPERS
   const isMasterUser = currentUser?.email === 'ag.pruaned@gmail.com' || currentUser?.role === 'master' || currentUser?.role === 'admin';
-  const isDirectiva = currentUser?.role === 'directiva' || isMasterUser;
+  const currentUserSocio = sociosList.find(s => s.email === currentUser?.email);
+  const isDirectiva = currentUser?.role === 'directiva' || isMasterUser || (currentUserSocio && [
+    directorioCargos.presidenteId, 
+    directorioCargos.vicepresidenteId, 
+    directorioCargos.secretarioId, 
+    directorioCargos.tesoreroId
+  ].includes(currentUserSocio.id));
   const socioPermisoVoluntarios = sociosList.find(s => s.email === currentUser?.email)?.permisoGestionVoluntarios || currentUser?.permisoGestionVoluntarios || false;
 
   const canManageCategoriesAndCargos = isMasterUser || isDirectiva;
