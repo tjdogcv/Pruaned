@@ -704,14 +704,43 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_VOLUNTEER_AVAILABILITY_${volId}`, currentUser?.email, "INFO"));
   };
 
-  const addPostulacion = (postulacionData) => {
+  const addPostulacion = async (postulacionData) => {
     setPostulacionesList(prev => [postulacionData, ...prev]);
     setSecurityLogs(prev => logSecurityEvent(prev, `NEW_SOCIO_APPLICATION_${postulacionData.rut}`, postulacionData.email, "INFO"));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('postulaciones').insert([{
+          id: postulacionData.id,
+          nombre_completo: postulacionData.nombreCompleto,
+          rut: postulacionData.rut,
+          email: postulacionData.email,
+          telefono: postulacionData.telefono,
+          domicilio: postulacionData.domicilio,
+          comuna: postulacionData.comuna,
+          profesion: postulacionData.profesion,
+          razones_integracion: postulacionData.razonesIntegracion,
+          aporte_esperado: postulacionData.aporteEsperado,
+          fecha_envio: postulacionData.fechaEnvio,
+          estado: postulacionData.estado
+        }]);
+      } catch (err) {
+        console.error('Error guardando postulación en Supabase:', err);
+      }
+    }
   };
 
-  const updatePostulacionEstado = (id, nuevoEstado, categoriaAsignada = "Socio Activo") => {
+  const updatePostulacionEstado = async (id, nuevoEstado, categoriaAsignada = "Socio Activo") => {
     const post = postulacionesList.find(p => p.id === id);
     setPostulacionesList(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
+
+    // Persistir en Supabase
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('postulaciones').update({ estado: nuevoEstado }).eq('id', id);
+      } catch (err) {
+        console.error('Error actualizando estado postulación en Supabase:', err);
+      }
+    }
 
     if (nuevoEstado === 'Aceptada / Incorporado' && post) {
       const newSocio = {
@@ -735,6 +764,32 @@ export const AuthProvider = ({ children }) => {
         historialPagos: []
       };
       setSociosList(prev => [newSocio, ...prev]);
+
+      // Insertar nuevo socio en Supabase
+      if (isSupabaseReady()) {
+        try {
+          await supabase.from('socios').insert([{
+            rut: newSocio.rut,
+            nombre: newSocio.nombre,
+            profesion: newSocio.profesion,
+            categoria: newSocio.categoria,
+            voto: newSocio.voto,
+            email: newSocio.email,
+            region: newSocio.region,
+            fecha_ingreso: newSocio.fechaIngreso,
+            estado_cuota: newSocio.estadoCuota,
+            monto_cuota_mensual: newSocio.montoCuotaMensual,
+            cuota_incorporacion_pagada: newSocio.cuotaIncorporacionPagada,
+            monto_cuota_incorporacion: newSocio.montoCuotaIncorporacion,
+            meses_adeudados: newSocio.mesesAdeudados,
+            ultima_cuota_pagada: newSocio.ultimaCuotaPagada,
+            permiso_gestion_voluntarios: newSocio.permisoGestionVoluntarios,
+            foto_perfil: ''
+          }]);
+        } catch (err) {
+          console.error('Error insertando nuevo socio en Supabase:', err);
+        }
+      }
     }
   };
 

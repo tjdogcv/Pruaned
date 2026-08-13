@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
-import { sendPagoEmail } from '../lib/emailConfig';
+import { sendPagoEmail, sendApprovalEmail, sendRejectionEmail } from '../lib/emailConfig';
 import { 
   Users, 
   DollarSign, 
