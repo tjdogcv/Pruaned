@@ -189,7 +189,9 @@ export const AuthProvider = ({ children }) => {
     voluntariosListRef.current = voluntariosList;
   }, [voluntariosList]);
 
-  const [coursesList, setCoursesList] = useState(INITIAL_COURSES);
+  // Los datos de demostración sólo existen para la experiencia offline. Una
+  // instancia Supabase configurada parte sin cursos hasta que se publiquen.
+  const [coursesList, setCoursesList] = useState(() => supabaseReady ? [] : INITIAL_COURSES);
   const [lmsProfile, setLmsProfile] = useState(null);
   const [lmsParticipants, setLmsParticipants] = useState([]);
   const [lmsModules, setLmsModules] = useState([]);
@@ -281,7 +283,7 @@ export const AuthProvider = ({ children }) => {
               if (param.id === 'firmas_oficiales') setFirmasOficiales(param.valor);
             });
           }
-          if (cursosRes && cursosRes.data && cursosRes.data.length > 0) setCoursesList(snakeToCamel(cursosRes.data));
+          if (cursosRes && cursosRes.data) setCoursesList(snakeToCamel(cursosRes.data));
           if (logsRes && logsRes.data && logsRes.data.length > 0) setSecurityLogs(snakeToCamel(logsRes.data));
 
         } catch (error) {

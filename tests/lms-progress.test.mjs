@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   attachCourseModules,
   courseProgress,
+  getCourseVideoEmbedUrl,
   normalizeAudience,
   resultForCourse
 } from '../src/lib/lmsProgress.js';
@@ -36,4 +37,11 @@ test('calcula el avance sólo desde módulos completados y el resultado del curs
   assert.equal(progress.status, 'reprobado');
   assert.equal(progress.score, 60);
   assert.equal(resultForCourse([{ courseId: 'course-1', status: 'aprobado' }], 'course-1').status, 'aprobado');
+});
+
+test('sólo crea embeds para fuentes de video aprobadas', () => {
+  assert.equal(getCourseVideoEmbedUrl('https://youtu.be/abc123'), 'https://www.youtube-nocookie.com/embed/abc123');
+  assert.equal(getCourseVideoEmbedUrl('https://www.youtube.com/watch?v=abc123'), 'https://www.youtube-nocookie.com/embed/abc123');
+  assert.equal(getCourseVideoEmbedUrl('https://drive.google.com/file/d/abc123/view'), 'https://drive.google.com/file/d/abc123/preview');
+  assert.equal(getCourseVideoEmbedUrl('https://example.org/video'), null);
 });

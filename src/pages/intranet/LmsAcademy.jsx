@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   assessmentLabel,
   courseProgress,
+  getCourseVideoEmbedUrl,
   normalizeAudience,
   resultForCourse
 } from '../../lib/lmsProgress';
@@ -194,8 +195,10 @@ function Fact({ label, value }) {
 }
 
 function CourseMaterial({ course, completedModules, pendingModuleId, onComplete, onAssessment, progress }) {
+  const videoUrl = getCourseVideoEmbedUrl(course.videoUrl);
   return (
     <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+      <CourseVideo title={course.title} embedUrl={videoUrl} sourceUrl={course.videoUrl} />
       {course.modules.length ? course.modules.map((module) => {
         const completed = completedModules.some((entry) => entry.moduleId === module.id);
         const pending = pendingModuleId === module.id;
@@ -204,6 +207,18 @@ function CourseMaterial({ course, completedModules, pendingModuleId, onComplete,
       {course.hasEvaluation && <button type="button" disabled={progress.totalModules > 0 && progress.completedModules < progress.totalModules} onClick={() => onAssessment(course)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-sm font-bold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300"><ClipboardCheck className="h-4 w-4" aria-hidden="true" />{progress.status === 'reprobado' ? 'Reintentar evaluación' : 'Rendir evaluación'}</button>}
     </div>
   );
+}
+
+function CourseVideo({ title, embedUrl, sourceUrl }) {
+  if (embedUrl) {
+    return <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950"><div className="aspect-video"><iframe title={`Clase: ${title}`} src={embedUrl} className="h-full w-full" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div></div>;
+  }
+
+  if (sourceUrl) {
+    return <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">El enlace de clase no corresponde a una URL compatible de YouTube o Google Drive. Publícalo nuevamente desde la gestión editorial.</p>;
+  }
+
+  return <p className="rounded-xl border border-dashed border-slate-300 p-3 text-xs leading-5 text-slate-600">Esta clase aún no tiene video publicado.</p>;
 }
 
 function EmptyCourses() {

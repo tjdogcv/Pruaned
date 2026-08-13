@@ -52,3 +52,34 @@ export function resultForCourse(results = [], courseId) {
 export function assessmentLabel(course) {
   return course.hasEvaluation ? 'Incluida' : 'Sin evaluación';
 }
+
+export function getCourseVideoEmbedUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  try {
+    const url = new URL(value.trim());
+    const host = url.hostname.toLowerCase().replace(/^www\./, '');
+
+    if (host === 'youtu.be') {
+      const id = url.pathname.split('/').filter(Boolean)[0];
+      return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : null;
+    }
+
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      const id = url.pathname.startsWith('/embed/')
+        ? url.pathname.split('/')[2]
+        : url.searchParams.get('v');
+      return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : null;
+    }
+
+    if (host === 'drive.google.com') {
+      const fileMatch = url.pathname.match(/\/file\/d\/([^/]+)/);
+      const id = fileMatch?.[1] || url.searchParams.get('id');
+      return id ? `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview` : null;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
