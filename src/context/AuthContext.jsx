@@ -15,9 +15,14 @@ import {
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
 import { supabase, isSupabaseReady } from '../lib/supabase';
+import {
+  LEGACY_SESSION_DURATION_MS,
+  clearLegacySession,
+  getSignedOutAuthState,
+  loadLegacySession,
+  validateSupabaseSession
+} from './authSession';
 
-const SESSION_KEY = 'pruaned_session';
-const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 horas
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
 
 const AuthContext = createContext();
@@ -78,26 +83,49 @@ function generateSessionToken() {
   return 'pruaned-sess-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
 
-function loadPersistedSession() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const session = JSON.parse(raw);
-    if (!session?.expiresAt || Date.now() > session.expiresAt) {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-    return session;
-  } catch {
-    localStorage.removeItem(SESSION_KEY);
-    return null;
+function resolveUserForEmail(email, socios, voluntarios) {
+  const cleanEmail = email.trim().toLowerCase();
+  const foundUser = USER_DATABASE.find(user => user.email.toLowerCase() === cleanEmail);
+
+  if (foundUser) return { ...foundUser };
+
+  const foundSocio = socios.find(socio => socio.email?.toLowerCase() === cleanEmail);
+  if (foundSocio) {
+    return {
+      email: foundSocio.email,
+      name: foundSocio.nombre,
+      role: 'socio',
+      rut: foundSocio.rut,
+      permisoGestionVoluntarios: foundSocio.permisoGestionVoluntarios || false
+    };
   }
+
+  const foundVoluntario = voluntarios.find(voluntario => voluntario.email?.toLowerCase() === cleanEmail);
+  if (foundVoluntario) {
+    return {
+      email: foundVoluntario.email,
+      name: foundVoluntario.nombre,
+      role: 'voluntario',
+      rut: foundVoluntario.rut,
+      permisoGestionVoluntarios: false
+    };
+  }
+
+  return {
+    email: cleanEmail,
+    name: cleanEmail.split('@')[0],
+    role: 'socio',
+    rut: '15.482.910-K',
+    permisoGestionVoluntarios: false
+  };
 }
 
 export const AuthProvider = ({ children }) => {
-  const persistedSession = loadPersistedSession();
+  const supabaseReady = isSupabaseReady();
+  const persistedSession = supabaseReady ? null : loadLegacySession(localStorage);
   const [currentUser, setCurrentUser] = useState(persistedSession?.user || null);
   const [is2FAVerified, setIs2FAVerified] = useState(!!persistedSession);
+  const [isAuthRestoring, setIsAuthRestoring] = useState(supabaseReady);
   const [activeTab, setActiveTab] = useState('home');
 
   // Firmas Digitales Oficiales (Presidente y Secretario)
@@ -147,6 +175,17 @@ export const AuthProvider = ({ children }) => {
     const saved = localStorage.getItem('pruaned_voluntarios');
     return saved ? JSON.parse(saved) : INITIAL_VOLUNTARIOS;
   });
+
+  const sociosListRef = React.useRef(sociosList);
+  const voluntariosListRef = React.useRef(voluntariosList);
+
+  useEffect(() => {
+    sociosListRef.current = sociosList;
+  }, [sociosList]);
+
+  useEffect(() => {
+    voluntariosListRef.current = voluntariosList;
+  }, [voluntariosList]);
 
   const [coursesList, setCoursesList] = useState(INITIAL_COURSES);
 
@@ -281,20 +320,101 @@ export const AuthProvider = ({ children }) => {
     keysToRemove.forEach(k => localStorage.removeItem(k));
   }, []);
 
-  // INACTIVITY TIMER
+  // Sesión de demo: se conserva el TTL y cierre por inactividad sólo fuera de Supabase.
   const inactivityTimerRef = React.useRef(null);
+  const restorationInFlightRef = React.useRef(false);
+  const restorationCompletedRef = React.useRef(false);
+
+  const clearCurrentAuthentication = React.useCallback(() => {
+    const signedOutState = getSignedOutAuthState();
+    clearLegacySession(localStorage);
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    setCurrentUser(signedOutState.currentUser);
+    setIs2FAVerified(signedOutState.is2FAVerified);
+    setIsAuthRestoring(signedOutState.isAuthRestoring);
+    setActiveTab('home');
+  }, []);
+
+  useEffect(() => {
+    if (!supabaseReady) {
+      setIsAuthRestoring(false);
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const restoreSupabaseSession = async (forceValidation = false) => {
+      if (!isMounted || restorationInFlightRef.current || (restorationCompletedRef.current && !forceValidation)) return;
+
+      restorationInFlightRef.current = true;
+      setIsAuthRestoring(true);
+
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const session = sessionData?.session;
+        let user = null;
+        let userError = null;
+
+        if (!sessionError && session) {
+          const userResponse = await supabase.auth.getUser();
+          user = userResponse.data?.user || null;
+          userError = userResponse.error;
+        }
+
+        const validation = validateSupabaseSession({ session, user, sessionError, userError });
+        if (!validation.isValid) {
+          if (isMounted) clearCurrentAuthentication();
+          return;
+        }
+
+        if (isMounted) {
+          clearLegacySession(localStorage);
+          setCurrentUser(resolveUserForEmail(user.email, sociosListRef.current, voluntariosListRef.current));
+          setIs2FAVerified(true);
+        }
+      } catch {
+        if (isMounted) clearCurrentAuthentication();
+      } finally {
+        restorationInFlightRef.current = false;
+        restorationCompletedRef.current = true;
+        if (isMounted) setIsAuthRestoring(false);
+      }
+    };
+
+    const queueValidation = (forceValidation = false) => {
+      window.setTimeout(() => {
+        void restoreSupabaseSession(forceValidation);
+      }, 0);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'INITIAL_SESSION') queueValidation();
+      if (event === 'TOKEN_REFRESHED') queueValidation(true);
+      if (event === 'SIGNED_OUT') {
+        restorationCompletedRef.current = true;
+        clearCurrentAuthentication();
+      }
+    });
+
+    void restoreSupabaseSession();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [clearCurrentAuthentication, supabaseReady]);
 
   const resetInactivityTimer = React.useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-    if (currentUser) {
+    if (!supabaseReady && currentUser) {
       inactivityTimerRef.current = setTimeout(() => {
         logout();
       }, INACTIVITY_LIMIT_MS);
     }
-  }, [currentUser]);
+  }, [currentUser, supabaseReady]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || supabaseReady) return undefined;
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
     events.forEach(e => window.addEventListener(e, resetInactivityTimer));
     resetInactivityTimer();
@@ -302,7 +422,7 @@ export const AuthProvider = ({ children }) => {
       events.forEach(e => window.removeEventListener(e, resetInactivityTimer));
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     };
-  }, [currentUser, resetInactivityTimer]);
+  }, [currentUser, resetInactivityTimer, supabaseReady]);
 
   // AUTHENTICATION
   const loginStep1_RequestOTP = async (emailInput, passwordInput) => {
@@ -349,54 +469,25 @@ export const AuthProvider = ({ children }) => {
       if (otpCode !== '123456') throw new Error("Código inválido (usa 123456 en modo demo).");
     }
 
-    const foundUser = USER_DATABASE.find(u => u.email.toLowerCase() === cleanEmail);
-
-    let userObj;
-    if (foundUser) {
-      userObj = { ...foundUser };
-    } else {
-      const foundSocio = sociosList.find(s => s.email.toLowerCase() === cleanEmail);
-      const foundVol = voluntariosList.find(v => v.email.toLowerCase() === cleanEmail);
-
-      if (foundSocio) {
-        userObj = {
-          email: foundSocio.email,
-          name: foundSocio.nombre,
-          role: "socio",
-          rut: foundSocio.rut,
-          permisoGestionVoluntarios: foundSocio.permisoGestionVoluntarios || false
-        };
-      } else if (foundVol) {
-        userObj = {
-          email: foundVol.email,
-          name: foundVol.nombre,
-          role: "voluntario",
-          rut: foundVol.rut,
-          permisoGestionVoluntarios: false
-        };
-      } else {
-        userObj = {
-          email: cleanEmail,
-          name: cleanEmail.split('@')[0],
-          role: "socio",
-          rut: "15.482.910-K",
-          permisoGestionVoluntarios: false
-        };
-      }
-    }
+    const userObj = resolveUserForEmail(cleanEmail, sociosList, voluntariosList);
 
     setCurrentUser(userObj);
     setIs2FAVerified(true);
+    setIsAuthRestoring(false);
     addSecurityLog(`AUTH_SUCCESS_SERVER_RESOLVED_ROLE_${userObj.role.toUpperCase()}`, userObj.email, "INFO");
 
     // Persistir sesión en localStorage
-    const session = {
-      token: generateSessionToken(),
-      user: userObj,
-      expiresAt: Date.now() + SESSION_DURATION_MS,
-      loginAt: new Date().toISOString()
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    if (!supabaseReady) {
+      const session = {
+        token: generateSessionToken(),
+        user: userObj,
+        expiresAt: Date.now() + LEGACY_SESSION_DURATION_MS,
+        loginAt: new Date().toISOString()
+      };
+      localStorage.setItem('pruaned_session', JSON.stringify(session));
+    } else {
+      clearLegacySession(localStorage);
+    }
 
     if (userObj.role === 'master' || userObj.role === 'directiva' || userObj.role === 'socio') {
       return 'socios';
@@ -429,17 +520,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    if (isSupabaseReady()) {
-      await supabase.auth.signOut();
+    const userLoggingOut = currentUser;
+    try {
+      if (supabaseReady) {
+        await supabase.auth.signOut();
+      }
+    } finally {
+      clearCurrentAuthentication();
+      if (userLoggingOut) {
+        addSecurityLog("USER_LOGOUT", userLoggingOut.email, "INFO");
+      }
     }
-    localStorage.removeItem(SESSION_KEY);
-    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-    if (currentUser) {
-      addSecurityLog("USER_LOGOUT", currentUser.email, "INFO");
-    }
-    setCurrentUser(null);
-    setIs2FAVerified(false);
-    setActiveTab('home');
   };
 
   // RBAC PERMISSION HELPERS
@@ -1112,6 +1203,7 @@ export const AuthProvider = ({ children }) => {
       updatePassword,
       logout,
       is2FAVerified,
+      isAuthRestoring,
       setIs2FAVerified,
       activeTab,
       setActiveTab,
