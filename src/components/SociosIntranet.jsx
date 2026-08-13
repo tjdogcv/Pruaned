@@ -520,10 +520,26 @@ export const SociosIntranet = () => {
     }
   };
 
-  const handleApproveApplicant = (postId, categoriaAsignada) => {
+  const handleApproveApplicant = async (postId, categoriaAsignada) => {
     updatePostulacionEstado(postId, 'Aceptada / Incorporado', categoriaAsignada);
+    const post = postulacionesList.find(p => p.id === postId);
+    if (post) {
+      await sendApprovalEmail(post).catch(console.error);
+    }
     setActivePostulacionModal(null);
     alert('¡Postulante incorporado exitosamente al Padrón Oficial de Socios!');
+  };
+
+  const handleRejectApplicant = async (postId) => {
+    if (window.confirm("¿Está seguro que desea rechazar esta postulación? Esta acción enviará un correo notificando al postulante.")) {
+      updatePostulacionEstado(postId, 'Rechazada');
+      const post = postulacionesList.find(p => p.id === postId);
+      if (post) {
+        await sendRejectionEmail(post).catch(console.error);
+      }
+      setActivePostulacionModal(null);
+      alert('Postulación rechazada. Se ha notificado al postulante.');
+    }
   };
 
   const handleAddExpenseSubmit = (e) => {
@@ -1395,7 +1411,8 @@ export const SociosIntranet = () => {
                         <p className="text-xs text-slate-500 font-mono">{post.rut} • {post.email}</p>
                       </div>
                       <span className={`badge-inst ${
-                        post.estado === 'Aceptada / Incorporado' ? 'badge-green' : 'badge-amber'
+                        post.estado === 'Aceptada / Incorporado' ? 'badge-green' : 
+                        post.estado === 'Rechazada' ? 'badge-rose' : 'badge-amber'
                       }`}>
                         {post.estado}
                       </span>
@@ -1410,12 +1427,20 @@ export const SociosIntranet = () => {
                       </button>
 
                       {post.estado === 'Pendiente Revisión Directorio' && (
-                        <button
-                          onClick={() => handleApproveApplicant(post.id, 'Socio Activo')}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
-                        >
-                          <Check className="w-3.5 h-3.5" /> Aprobar e Incorporar
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleRejectApplicant(post.id)}
+                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
+                          >
+                            <X className="w-3.5 h-3.5" /> Rechazar
+                          </button>
+                          <button
+                            onClick={() => handleApproveApplicant(post.id, 'Socio Activo')}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Aprobar e Incorporar
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1780,15 +1805,24 @@ export const SociosIntranet = () => {
                 Cerrar
               </button>
               {activePostulacionModal.estado === 'Pendiente Revisión Directorio' && (
-                <button
-                  onClick={() => {
-                    handleApproveApplicant(activePostulacionModal.id, 'Socio Activo');
-                    setActivePostulacionModal(null);
-                  }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
-                >
-                  <Check className="w-4 h-4" /> Aprobar e Incorporar
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      handleRejectApplicant(activePostulacionModal.id);
+                    }}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
+                  >
+                    <X className="w-4 h-4" /> Rechazar
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleApproveApplicant(activePostulacionModal.id, 'Socio Activo');
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
+                  >
+                    <Check className="w-4 h-4" /> Aprobar e Incorporar
+                  </button>
+                </div>
               )}
             </div>
           </div>

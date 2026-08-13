@@ -78,3 +78,55 @@ export const sendPagoEmail = async (pagoData, socioData) => {
     throw error;
   }
 };
+
+// ==========================================
+// NUEVOS CORREOS: APROBACIÓN Y RECHAZO
+// ==========================================
+const TEMPLATE_ID_APPROVAL = "template_aprobacion"; // <-- REEMPLAZAR AQUÍ
+const TEMPLATE_ID_REJECTION = "template_rechazo"; // <-- REEMPLAZAR AQUÍ
+
+export const sendApprovalEmail = async (postulanteData) => {
+  if (EMAILJS_PUBLIC_KEY === "TU_PUBLIC_KEY") {
+    console.warn(`[SIMULACIÓN] Correo de APROBACIÓN enviado a: ${postulanteData.email}`);
+    return Promise.resolve("Simulated");
+  }
+
+  try {
+    const response = await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      TEMPLATE_ID_APPROVAL,
+      {
+        to_email: postulanteData.email,
+        nombre_postulante: postulanteData.nombreCompleto
+      },
+      EMAILJS_PUBLIC_KEY
+    );
+    return response;
+  } catch (error) {
+    console.error("Error al enviar email de aprobación", error);
+    throw error;
+  }
+};
+
+export const sendRejectionEmail = async (postulanteData) => {
+  if (EMAILJS_PUBLIC_KEY === "TU_PUBLIC_KEY") {
+    console.warn(`[SIMULACIÓN] Correo de RECHAZO enviado a: ${postulanteData.email}`);
+    return Promise.resolve("Simulated");
+  }
+
+  try {
+    const response = await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      TEMPLATE_ID_REJECTION,
+      {
+        to_email: postulanteData.email,
+        nombre_postulante: postulanteData.nombreCompleto
+      },
+      EMAILJS_PUBLIC_KEY
+    );
+    return response;
+  } catch (error) {
+    console.error("Error al enviar email de rechazo", error);
+    throw error;
+  }
+};
