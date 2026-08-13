@@ -9,6 +9,19 @@ const currency = new Intl.NumberFormat('es-CL', {
 });
 
 export default function DashboardHome() {
+  const auth = useAuth();
+  const { isAuthRestoring } = auth;
+
+  if (isAuthRestoring) {
+    return (
+      <section className="grid min-h-[16rem] place-items-center" aria-busy="true">
+        <p role="status" aria-live="polite" className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-sm">
+          Verificando sesión…
+        </p>
+      </section>
+    );
+  }
+
   const {
     currentUser,
     sociosList = [],
@@ -20,7 +33,7 @@ export default function DashboardHome() {
     isDirectiva,
     canManageFinances,
     canManageVoluntarios
-  } = useAuth();
+  } = auth;
 
   const canViewInstitutional = isMasterUser || isDirectiva;
   const name = currentUser?.name?.split(' ')[0] || 'miembro';
