@@ -382,6 +382,10 @@ export const SociosIntranet = () => {
   const [editTelefono, setEditTelefono] = useState(currentSocio?.telefono || '');
   const [editDomicilio, setEditDomicilio] = useState(currentSocio?.domicilio || '');
   const [editComuna, setEditComuna] = useState(currentSocio?.comuna || '');
+  const [editRegion, setEditRegion] = useState(currentSocio?.region || '');
+  const [editFechaNacimiento, setEditFechaNacimiento] = useState(currentSocio?.fechaNacimiento || '');
+  const [editEstadoCivil, setEditEstadoCivil] = useState(currentSocio?.estadoCivil || '');
+  const [editProfesion, setEditProfesion] = useState(currentSocio?.profesion || '');
   const [editFotoPerfil, setEditFotoPerfil] = useState(currentSocio?.fotoPerfil || '');
 
   const [activePaymentModal, setActivePaymentModal] = useState(null);
@@ -472,9 +476,13 @@ export const SociosIntranet = () => {
       telefono: editTelefono.trim(),
       domicilio: editDomicilio.trim(),
       comuna: editComuna.trim(),
+      region: editRegion.trim(),
+      fechaNacimiento: editFechaNacimiento,
+      estadoCivil: editEstadoCivil.trim(),
+      profesion: editProfesion.trim(),
       fotoPerfil: editFotoPerfil
     });
-    alert('¡Tus datos de contacto y foto de perfil han sido actualizados!');
+    alert('¡Tus datos de contacto y perfil han sido actualizados!');
   };
 
   const handleRegisterPayment = (e) => {
@@ -843,12 +851,52 @@ export const SociosIntranet = () => {
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Domicilio Particular *</label>
+                    <label className="block font-bold text-slate-700 mb-1">Fecha de Nacimiento *</label>
+                    <input
+                      type="date"
+                      required
+                      value={editFechaNacimiento}
+                      onChange={(e) => setEditFechaNacimiento(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Estado Civil *</label>
+                    <select
+                      required
+                      value={editEstadoCivil}
+                      onChange={(e) => setEditEstadoCivil(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="Soltero">Soltero/a</option>
+                      <option value="Casado">Casado/a</option>
+                      <option value="Conviviente Civil">Conviviente Civil</option>
+                      <option value="Divorciado">Divorciado/a</option>
+                      <option value="Viudo">Viudo/a</option>
+                      <option value="Separado">Separado/a</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Profesión *</label>
                     <input
                       type="text"
                       required
-                      value={editDomicilio}
-                      onChange={(e) => setEditDomicilio(e.target.value)}
+                      value={editProfesion}
+                      onChange={(e) => setEditProfesion(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Región *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editRegion}
+                      onChange={(e) => setEditRegion(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
                     />
                   </div>
@@ -860,6 +908,17 @@ export const SociosIntranet = () => {
                       required
                       value={editComuna}
                       onChange={(e) => setEditComuna(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Dirección Completa *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editDomicilio}
+                      onChange={(e) => setEditDomicilio(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
                     />
                   </div>

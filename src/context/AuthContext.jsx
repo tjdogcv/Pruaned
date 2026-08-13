@@ -574,6 +574,10 @@ export const AuthProvider = ({ children }) => {
             telefono: perfilData.telefono,
             domicilio: perfilData.domicilio,
             comuna: perfilData.comuna,
+            region: perfilData.region,
+            fecha_nacimiento: perfilData.fechaNacimiento,
+            estado_civil: perfilData.estadoCivil,
+            profesion: perfilData.profesion,
             foto_perfil: perfilData.fotoPerfil
           })
           .eq('id', socioId);
@@ -594,6 +598,10 @@ export const AuthProvider = ({ children }) => {
           telefono: perfilData.telefono || s.telefono,
           domicilio: perfilData.domicilio || s.domicilio,
           comuna: perfilData.comuna || s.comuna,
+          region: perfilData.region || s.region,
+          fechaNacimiento: perfilData.fechaNacimiento || s.fechaNacimiento,
+          estadoCivil: perfilData.estadoCivil || s.estadoCivil,
+          profesion: perfilData.profesion || s.profesion,
           fotoPerfil: perfilData.fotoPerfil || s.fotoPerfil
         };
         return updated;
