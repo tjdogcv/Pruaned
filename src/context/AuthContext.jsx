@@ -164,10 +164,9 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : INITIAL_FINANCIAL_SETTINGS;
   });
 
-  const [expensesList, setExpensesList] = useState(() => {
-    const saved = localStorage.getItem('pruaned_expenses');
-    return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
-  });
+  const [expensesList, setExpensesList] = useState([]);
+  const [cobrosList, setCobrosList] = useState([]);
+  const [balancesList, setBalancesList] = useState([]);
 
   const [newsList, setNewsList] = useState(() => {
     const saved = localStorage.getItem('pruaned_news');
@@ -204,13 +203,16 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseReady()) {
       const fetchSupabaseData = async () => {
         try {
-          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes] = await Promise.all([
+          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, cobrosRes, balancesRes] = await Promise.all([
             supabase.from('socios').select('*'),
             supabase.from('voluntarios').select('*'),
             supabase.from('noticias').select('*'),
             supabase.from('documentos').select('*'),
             supabase.from('donaciones').select('*'),
-            supabase.from('directorio_cargos').select('*').eq('id', 1).single()
+            supabase.from('directorio_cargos').select('*').eq('id', 1).single(),
+            supabase.from('egresos').select('*'),
+            supabase.from('cobros').select('*'),
+            supabase.from('balances_anuales').select('*')
           ]);
 
           const snakeToCamel = (obj) => {
@@ -245,6 +247,15 @@ export const AuthProvider = ({ children }) => {
 
           if (donRes.data && donRes.data.length > 0) setDonacionesList(snakeToCamel(donRes.data));
           else if (donRes.data && donRes.data.length === 0) setDonacionesList([]);
+
+          if (egresosRes.data && egresosRes.data.length > 0) setExpensesList(snakeToCamel(egresosRes.data));
+          else if (egresosRes.data && egresosRes.data.length === 0) setExpensesList([]);
+
+          if (cobrosRes.data && cobrosRes.data.length > 0) setCobrosList(snakeToCamel(cobrosRes.data));
+          else if (cobrosRes.data && cobrosRes.data.length === 0) setCobrosList([]);
+
+          if (balancesRes.data && balancesRes.data.length > 0) setBalancesList(snakeToCamel(balancesRes.data));
+          else if (balancesRes.data && balancesRes.data.length === 0) setBalancesList([]);
 
           if (cargosRes.data) {
             setDirectorioCargos({
@@ -292,9 +303,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('pruaned_financial_settings', JSON.stringify(financialSettings));
   }, [financialSettings]);
 
-  useEffect(() => {
-    localStorage.setItem('pruaned_expenses', JSON.stringify(expensesList));
-  }, [expensesList]);
+
 
   useEffect(() => {
     localStorage.setItem('pruaned_news', JSON.stringify(newsList));
@@ -684,13 +693,60 @@ export const AuthProvider = ({ children }) => {
     }));
   };
 
-  const addExpense = (expenseItem) => {
-    const itemWithId = { ...expenseItem, id: `exp-${Date.now()}` };
-    setExpensesList(prev => [itemWithId, ...prev]);
+  const addExpense = async (expenseItem) => {
+    if (isSupabaseReady()) {
+      const dbItem = {
+        fecha: expenseItem.fecha,
+        tipo_documento: expenseItem.tipoDocumento,
+        numero_documento: expenseItem.numeroDocumento,
+        proveedor: expenseItem.proveedor,
+        categoria: expenseItem.categoria,
+        origen_fondo: expenseItem.origenFondo || 'Fondo Cuotas',
+        monto: expenseItem.monto,
+        glosa: expenseItem.glosa
+      };
+      const { data, error } = await supabase.from('egresos').insert([dbItem]).select();
+      if (!error && data && data.length > 0) {
+        const d = data[0];
+        setExpensesList(prev => [...prev, {
+          id: d.id, fecha: d.fecha, tipoDocumento: d.tipo_documento, 
+          numeroDocumento: d.numero_documento, proveedor: d.proveedor, 
+          categoria: d.categoria, origenFondo: d.origen_fondo, 
+          monto: d.monto, glosa: d.glosa
+        }]);
+      }
+    } else {
+      const itemWithId = { ...expenseItem, id: `exp-${Date.now()}` };
+      setExpensesList(prev => [...prev, itemWithId]);
+    }
   };
 
-  const deleteExpense = (id) => {
+  const deleteExpense = async (id) => {
+    if (isSupabaseReady()) {
+      await supabase.from('egresos').delete().eq('id', id);
+    }
     setExpensesList(prev => prev.filter(e => e.id !== id));
+  };
+
+  const addCobrosBatch = async (cobrosArray) => {
+    if (isSupabaseReady()) {
+      const dbItems = cobrosArray.map(c => ({
+        socio_id: c.socioId,
+        titulo: c.titulo,
+        monto: c.monto,
+        pagado: c.pagado || false
+      }));
+      const { data, error } = await supabase.from('cobros').insert(dbItems).select();
+      if (!error && data) {
+        const camelData = data.map(d => ({
+          id: d.id, socioId: d.socio_id, titulo: d.titulo, monto: d.monto, pagado: d.pagado, fechaCreacion: d.fecha_creacion
+        }));
+        setCobrosList(prev => [...prev, ...camelData]);
+      }
+    } else {
+      const localData = cobrosArray.map((c, i) => ({ ...c, id: `cobro-${Date.now()}-${i}` }));
+      setCobrosList(prev => [...prev, ...localData]);
+    }
   };
 
   const updateSocioCuota = (socioId, newEstado, newComprobante = null, isSuspensionRequest = false, isCuotaIncorporacion = false) => {
@@ -821,6 +877,11 @@ export const AuthProvider = ({ children }) => {
       expensesList,
       addExpense,
       deleteExpense,
+      cobrosList,
+      setCobrosList,
+      addCobrosBatch,
+      balancesList,
+      setBalancesList,
       newsList,
       addNews,
       deleteNews,

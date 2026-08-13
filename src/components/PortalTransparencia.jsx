@@ -24,11 +24,15 @@ export const PortalTransparencia = () => {
     deleteDonacion, 
     expensesList, 
     sociosList, 
-    currentUser 
+    currentUser,
+    balancesList = [],
+    addBalance = () => {},
+    deleteBalance = () => {}
   } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDonacionModalOpen, setIsAddDonacionModalOpen] = useState(false);
+  const [newBalance, setNewBalance] = useState({ titulo: '', anio: '', urlDocumento: '' });
 
   // Donación Form State (Campos opcionales flexibilizados)
   const [newDonacion, setNewDonacion] = useState({
@@ -41,15 +45,22 @@ export const PortalTransparencia = () => {
   });
 
   // Financial Calculations
-  const totalCuotas = sociosList.reduce((acc, socio) => {
-    const pagos = socio.historialPagos.reduce((pAcc, p) => pAcc + (p.monto || 0), 0);
-    return acc + pagos;
-  }, 0);
-
   const totalDonaciones = donacionesList.reduce((acc, don) => acc + Number(don.monto || 0), 0);
-  const totalIngresos = totalCuotas + totalDonaciones;
-  const totalEgresos = expensesList.reduce((acc, exp) => acc + Number(exp.monto || 0), 0);
-  const saldoCaja = totalIngresos - totalEgresos;
+  const totalIngresos = totalDonaciones;
+  const totalEgresosDonaciones = expensesList.filter(e => e.origenFondo === 'Fondo Donaciones').reduce((acc, exp) => acc + Number(exp.monto || 0), 0);
+  const saldoCaja = totalIngresos - totalEgresosDonaciones;
+
+  const handleAddBalanceSubmit = (e) => {
+    e.preventDefault();
+    if (newBalance.titulo && newBalance.anio && newBalance.urlDocumento) {
+      addBalance({
+        ...newBalance,
+        fechaSubida: new Date().toISOString().split('T')[0]
+      });
+      setNewBalance({ titulo: '', anio: '', urlDocumento: '' });
+      alert('¡Memoria/Balance anual publicado exitosamente!');
+    }
+  };
 
   const filteredDonaciones = donacionesList.filter(d => 
     (d.donante || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,21 +138,10 @@ export const PortalTransparencia = () => {
         </div>
 
         {/* Global Financial KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-500 font-bold uppercase">
-              <span>Recaudación Cuotas</span>
-              <DollarSign className="w-4 h-4 text-blue-900" />
-            </div>
-            <div className="text-2xl font-extrabold text-blue-900 font-['Outfit']">
-              ${totalCuotas.toLocaleString('es-CL')} CLP
-            </div>
-            <p className="text-[11px] text-slate-500">Aportes ordinarios socios</p>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-bold uppercase">
-              <span>Donaciones Bancarias</span>
+              <span>Donaciones Recibidas</span>
               <TrendingUp className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-2xl font-extrabold text-emerald-700 font-['Outfit']">
@@ -152,24 +152,24 @@ export const PortalTransparencia = () => {
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-500 font-bold uppercase">
-              <span>Egresos / Gastos</span>
+              <span>Egresos del Fondo</span>
               <TrendingDown className="w-4 h-4 text-rose-600" />
             </div>
             <div className="text-2xl font-extrabold text-rose-600 font-['Outfit']">
-              ${totalEgresos.toLocaleString('es-CL')} CLP
+              ${totalEgresosDonaciones.toLocaleString('es-CL')} CLP
             </div>
-            <p className="text-[11px] text-slate-500">Rendición de facturas y boletas</p>
+            <p className="text-[11px] text-slate-500">Rendición de gastos de donaciones</p>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-500 font-bold uppercase">
-              <span>Saldo Neto en Caja</span>
+              <span>Saldo Neto del Fondo</span>
               <Wallet className="w-4 h-4 text-emerald-700" />
             </div>
             <div className="text-2xl font-extrabold text-emerald-700 font-['Outfit']">
               ${saldoCaja.toLocaleString('es-CL')} CLP
             </div>
-            <p className="text-[11px] text-slate-500">Cuenta corriente bancaria oficial</p>
+            <p className="text-[11px] text-slate-500">Saldo exclusivo de donaciones</p>
           </div>
         </div>
 
@@ -252,6 +252,88 @@ export const PortalTransparencia = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* MEMORIAS Y BALANCES ANUALES */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-900" />
+              Memorias y Balances Anuales
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Documentos oficiales de rendición anual aprobados por asamblea.
+            </p>
+          </div>
+
+          {currentUser?.role === 'admin' && (
+            <form onSubmit={handleAddBalanceSubmit} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 mb-6">
+              <h4 className="text-sm font-bold text-slate-800">Publicar Nuevo Documento</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  required
+                  placeholder="Título (Ej. Memoria 2025)"
+                  value={newBalance.titulo}
+                  onChange={e => setNewBalance({ ...newBalance, titulo: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="Año"
+                  value={newBalance.anio}
+                  onChange={e => setNewBalance({ ...newBalance, anio: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                />
+                <input
+                  type="url"
+                  required
+                  placeholder="URL del PDF"
+                  value={newBalance.urlDocumento}
+                  onChange={e => setNewBalance({ ...newBalance, urlDocumento: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600"
+                />
+              </div>
+              <button type="submit" className="px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 transition-colors">
+                <PlusCircle className="w-3.5 h-3.5" /> Agregar Documento
+              </button>
+            </form>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {balancesList.map(balance => (
+              <div key={balance.id} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between hover:border-blue-300 transition-colors shadow-sm">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-900 font-bold text-[10px] rounded-full">
+                      {balance.anio}
+                    </span>
+                    {currentUser?.role === 'admin' && (
+                      <button onClick={() => deleteBalance(balance.id)} className="text-rose-500 hover:text-rose-700" title="Eliminar">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <h4 className="font-bold text-slate-900 mt-2 mb-1">{balance.titulo}</h4>
+                  <p className="text-[10px] text-slate-500 font-mono">Publicado: {balance.fechaSubida}</p>
+                </div>
+                <a
+                  href={balance.urlDocumento}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 flex items-center justify-center gap-1.5 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" /> Descargar PDF
+                </a>
+              </div>
+            ))}
+            {balancesList.length === 0 && (
+              <div className="col-span-full py-8 text-center text-slate-500 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                Aún no se han publicado memorias ni balances anuales.
+              </div>
+            )}
           </div>
         </div>
 

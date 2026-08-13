@@ -363,7 +363,9 @@ export const SociosIntranet = () => {
     canPublishCMS,
     currentUser,
     setActiveTab,
-    securityLogs
+    securityLogs,
+    cobrosList = [],
+    addCobrosBatch = () => {}
   } = useAuth();
 
   const [activeTabLocal, setActiveTabLocal] = useState(isMasterUser ? 'padron' : 'mi-cuenta');
@@ -406,6 +408,13 @@ export const SociosIntranet = () => {
     monto: '',
     categoria: 'Insumos Médicos Veterinarios',
     glosa: ''
+  });
+
+  const [newCobro, setNewCobro] = useState({
+    titulo: '',
+    monto: '',
+    asignacion: 'A todos',
+    socioId: ''
   });
 
   const postulacionesPendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisión Directorio').length;
@@ -534,10 +543,47 @@ export const SociosIntranet = () => {
     }
   };
 
+  const handleAddCobroEspecial = (e) => {
+    e.preventDefault();
+    if (newCobro.titulo && newCobro.monto) {
+      let arrayToBatch = [];
+      if (newCobro.asignacion === 'A todos') {
+        arrayToBatch = sociosList
+          .filter(s => s.estadoCuota !== 'Exento' && !s.estadoCuota.includes('Desvinculado') && s.email !== 'ag.pruaned@gmail.com')
+          .map(s => ({
+            socioId: s.id,
+            titulo: newCobro.titulo,
+            monto: Number(newCobro.monto),
+            fecha: new Date().toISOString().split('T')[0],
+            pagado: false
+          }));
+      } else if (newCobro.socioId) {
+        arrayToBatch = [{
+          socioId: newCobro.socioId,
+          titulo: newCobro.titulo,
+          monto: Number(newCobro.monto),
+          fecha: new Date().toISOString().split('T')[0],
+          pagado: false
+        }];
+      }
+
+      if (arrayToBatch.length > 0) {
+        addCobrosBatch(arrayToBatch);
+        setNewCobro({ titulo: '', monto: '', asignacion: 'A todos', socioId: '' });
+        alert(`¡Cobro especial aplicado a ${arrayToBatch.length} socio(s)!`);
+      }
+    }
+  };
+
   const handleExportCSV = () => {
     const headers = "RUT,Nombre,Categoria,EstadoCuota,MesesAdeudados,DeudaCalculadaCLP,UltimoPago\n";
     const rows = sociosList.map(s => {
-      const deuda = (s.mesesAdeudados || 0) * (s.montoCuotaMensual || financialSettings.cuotaMensualActual);
+      const isFeeActive = new Date() >= new Date('2026-09-01');
+      const pendingCobros = cobrosList.filter(c => c.socioId === s.id && !c.pagado).reduce((acc, c) => acc + (c.monto || 0), 0);
+      const cuotaIncorpPagadaReal = s.cuotaIncorporacionPagada || (s.fechaIngreso && new Date(s.fechaIngreso).getFullYear() < 2026);
+      const cuotaIncorp = cuotaIncorpPagadaReal ? 0 : (s.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
+      const deuda = (s.estadoCuota === 'Exento' || s.estadoCuota.includes('Desvinculado') || s.categoria === 'Socio Honorario') ? 0 : (isFeeActive ? (s.mesesAdeudados || 0) * (s.montoCuotaMensual || financialSettings.cuotaMensualActual) : 0) + cuotaIncorp + pendingCobros;
+
       return `"${s.rut}","${s.nombre}","${s.categoria}","${s.estadoCuota}","${s.mesesAdeudados || 0}","${deuda}","${s.ultimaCuotaPagada}"`;
     }).join("\n");
     
@@ -635,6 +681,15 @@ export const SociosIntranet = () => {
                   }`}
                 >
                   Registro Egresos
+                </button>
+
+                <button
+                  onClick={() => setActiveTabLocal('cobros-especiales')}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeTabLocal === 'cobros-especiales' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
+                  }`}
+                >
+                  Cobros Especiales
                 </button>
 
                 <button
@@ -1077,7 +1132,12 @@ export const SociosIntranet = () => {
                       const esAntiguo = socio.fechaIngreso && new Date(socio.fechaIngreso).getFullYear() < 2026;
                       const cuotaIncorpPagadaReal = socio.cuotaIncorporacionPagada || esAntiguo;
                       const cuotaIncorp = cuotaIncorpPagadaReal ? 0 : (socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
-                      const deudaCalculada = (socio.estadoCuota === 'Exento' || socio.estadoCuota.includes('Desvinculado') || socio.categoria === 'Socio Honorario') ? 0 : ((socio.mesesAdeudados || 0) * cuotaMensual) + cuotaIncorp;
+                      
+                      const currentDate = new Date();
+                      const feeStartDate = new Date('2026-09-01');
+                      const isFeeActive = currentDate >= feeStartDate;
+                      const pendingCobros = cobrosList.filter(c => c.socioId === socio.id && !c.pagado).reduce((acc, c) => acc + (c.monto || 0), 0);
+                      const deudaCalculada = (socio.estadoCuota === 'Exento' || socio.estadoCuota.includes('Desvinculado') || socio.categoria === 'Socio Honorario') ? 0 : (isFeeActive ? (socio.mesesAdeudados || 0) * cuotaMensual : 0) + cuotaIncorp + pendingCobros;
 
                       return (
                         <tr key={socio.id} className="hover:bg-slate-50 transition-colors">
@@ -1526,6 +1586,73 @@ export const SociosIntranet = () => {
           </div>
         )}
 
+        {/* TAB 6: COBROS ESPECIALES */}
+        {activeTabLocal === 'cobros-especiales' && canManageFinances && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-amber-600" />
+                Asignación de Cobros Especiales
+              </h3>
+              
+              <form onSubmit={handleAddCobroEspecial} className="space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Título del Cobro</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Cuota Extraordinaria Asamblea"
+                      value={newCobro.titulo}
+                      onChange={(e) => setNewCobro({...newCobro, titulo: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Monto ($ CLP)</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="Ej. 10000"
+                      value={newCobro.monto}
+                      onChange={(e) => setNewCobro({...newCobro, monto: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Asignación</label>
+                  <select
+                    value={newCobro.asignacion}
+                    onChange={(e) => setNewCobro({...newCobro, asignacion: e.target.value})}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
+                  >
+                    <option value="A todos">A todos los socios activos / morosos</option>
+                    <option value="Individual">Individual (Seleccionar socio)</option>
+                  </select>
+                </div>
+
+                {newCobro.asignacion === 'Individual' && (
+                  <SocioSearchSelect
+                    sociosList={sociosList}
+                    selectedId={newCobro.socioId}
+                    onSelect={(id) => setNewCobro({...newCobro, socioId: id})}
+                    label="Seleccionar Socio:"
+                  />
+                )}
+
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow flex items-center gap-1"
+                >
+                  <PlusCircle className="w-4 h-4" /> Generar Cobro(s)
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
         {activeTabLocal === 'auditoria' && (isMasterUser || isDirectiva) && (
           <AuditoriaPanel securityLogs={securityLogs || []} />
         )}
@@ -1643,6 +1770,20 @@ export const SociosIntranet = () => {
                     <div><span className="font-bold text-rose-700 text-xs block">Fecha Solicitud / Retiro</span>{activeSocioModal.fechaRetiroOficial || activeSocioModal.fechaSolicitudRenuncia || '-'}</div>
                     <div className="col-span-2"><span className="font-bold text-rose-700 text-xs block">Motivo / Acta de Directorio</span>{activeSocioModal.actaDirectorioAprobacion || activeSocioModal.motivoRenuncia || '-'}</div>
                   </div>
+                </div>
+              )}
+
+              {cobrosList.filter(c => c.socioId === activeSocioModal.id && !c.pagado).length > 0 && (
+                <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                  <h4 className="font-bold text-amber-900 mb-2 border-b border-amber-200 pb-2 flex items-center gap-2"><DollarSign className="w-4 h-4"/> Cobros Especiales Pendientes</h4>
+                  <ul className="space-y-2">
+                    {cobrosList.filter(c => c.socioId === activeSocioModal.id && !c.pagado).map((cobro, idx) => (
+                      <li key={idx} className="flex justify-between text-xs text-amber-800">
+                        <span>{cobro.titulo}</span>
+                        <span className="font-bold">${cobro.monto.toLocaleString('es-CL')}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

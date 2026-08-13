@@ -171,6 +171,20 @@ export const AuthModal = ({ isOpen, onClose }) => {
             )}
           </div>
 
+          {mode === 'login' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-emerald-400" /> Código 2FA (Autenticador)
+              </label>
+              <input
+                type="text"
+                placeholder="123456"
+                maxLength={6}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono tracking-widest text-center"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={isLoading}
