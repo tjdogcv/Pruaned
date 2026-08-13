@@ -101,20 +101,14 @@ export const AuthProvider = ({ children }) => {
   const [activeTab, setActiveTab] = useState('home');
 
   // Firmas Digitales Oficiales (Presidente y Secretario)
-  const [firmasOficiales, setFirmasOficiales] = useState(() => {
-    const saved = localStorage.getItem('pruaned_firmas_oficiales');
-    return saved ? JSON.parse(saved) : INITIAL_FIRMAS;
-  });
+  const [firmasOficiales, setFirmasOficiales] = useState(INITIAL_FIRMAS);
 
   // Estado de Convocatoria Activa de Emergencia
-  const [convocatoriaActiva, setConvocatoriaActiva] = useState(() => {
-    const saved = localStorage.getItem('pruaned_convocatoria_activa');
-    return saved ? JSON.parse(saved) : {
-      activa: false,
-      asunto: '',
-      mensaje: '',
-      fechaDespacho: ''
-    };
+  const [convocatoriaActiva, setConvocatoriaActiva] = useState({
+    activa: false,
+    asunto: '',
+    mensaje: '',
+    fechaDespacho: ''
   });
 
   const [directorioCargos, setDirectorioCargos] = useState(INITIAL_DIRECTORIO_CARGOS);
@@ -126,10 +120,7 @@ export const AuthProvider = ({ children }) => {
 
   const [postulacionesList, setPostulacionesList] = useState([]);
 
-  const [financialSettings, setFinancialSettings] = useState(() => {
-    const saved = localStorage.getItem('pruaned_financial_settings');
-    return saved ? JSON.parse(saved) : INITIAL_FINANCIAL_SETTINGS;
-  });
+  const [financialSettings, setFinancialSettings] = useState(INITIAL_FINANCIAL_SETTINGS);
 
   const [expensesList, setExpensesList] = useState([]);
   const [cobrosList, setCobrosList] = useState([]);
@@ -140,10 +131,7 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : INITIAL_NEWS;
   });
 
-  const [docCategories, setDocCategories] = useState(() => {
-    const saved = localStorage.getItem('pruaned_doc_categories');
-    return saved ? JSON.parse(saved) : INITIAL_DOC_CATEGORIES;
-  });
+  const [docCategories, setDocCategories] = useState(INITIAL_DOC_CATEGORIES);
 
   const [documentsList, setDocumentsList] = useState(() => {
     const saved = localStorage.getItem('pruaned_documents');
@@ -160,17 +148,14 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : INITIAL_VOLUNTARIOS;
   });
 
-  const [coursesList, setCoursesList] = useState(() => {
-    const saved = localStorage.getItem('pruaned_courses');
-    return saved ? JSON.parse(saved) : INITIAL_COURSES;
-  });
+  const [coursesList, setCoursesList] = useState(INITIAL_COURSES);
 
   // FETCH DESDE SUPABASE SIEMPRE (RLS se encarga de filtrar qué puede ver un visitante vs un admin)
   useEffect(() => {
     if (isSupabaseReady()) {
       const fetchSupabaseData = async () => {
         try {
-          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, cobrosRes, balancesRes, postulacionesRes] = await Promise.all([
+          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes] = await Promise.all([
             supabase.from('socios').select('*'),
             supabase.from('voluntarios').select('*'),
             supabase.from('noticias').select('*'),
@@ -180,7 +165,10 @@ export const AuthProvider = ({ children }) => {
             supabase.from('egresos').select('*'),
             supabase.from('cobros').select('*'),
             supabase.from('balances_anuales').select('*'),
-            supabase.from('postulaciones').select('*').order('created_at', { ascending: false })
+            supabase.from('postulaciones').select('*').order('created_at', { ascending: false }),
+            supabase.from('parametros_sistema').select('*'),
+            supabase.from('cursos_lms').select('*').order('created_at', { ascending: false }),
+            supabase.from('auditoria_logs').select('*').order('fecha', { ascending: false }).limit(200)
           ]);
 
           const snakeToCamel = (obj) => {
@@ -237,6 +225,17 @@ export const AuthProvider = ({ children }) => {
             });
           }
 
+          if (paramsRes && paramsRes.data) {
+            paramsRes.data.forEach(param => {
+              if (param.id === 'financial_settings') setFinancialSettings(param.valor);
+              if (param.id === 'doc_categories') setDocCategories(param.valor);
+              if (param.id === 'convocatoria_activa') setConvocatoriaActiva(param.valor);
+              if (param.id === 'firmas_oficiales') setFirmasOficiales(param.valor);
+            });
+          }
+          if (cursosRes && cursosRes.data && cursosRes.data.length > 0) setCoursesList(snakeToCamel(cursosRes.data));
+          if (logsRes && logsRes.data && logsRes.data.length > 0) setSecurityLogs(snakeToCamel(logsRes.data));
+
         } catch (error) {
           console.error("Error sincronizando con Supabase:", error);
         }
@@ -246,64 +245,41 @@ export const AuthProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  const [securityLogs, setSecurityLogs] = useState(() => {
-    const saved = localStorage.getItem('pruaned_security_logs');
-    return saved ? JSON.parse(saved) : INITIAL_SECURITY_LOGS;
-  });
+  const [securityLogs, setSecurityLogs] = useState(INITIAL_SECURITY_LOGS);
 
-  // Sync localStorage
+  const addSecurityLog = (eventType, userEmail, severity = "INFO") => {
+    // Generar el log y actualizar UI localmente (pasando 'prev')
+    setSecurityLogs(prev => logSecurityEvent(prev, eventType, userEmail, severity));
+
+    // Si Supabase está listo, también lo insertamos en la BD usando humanize 
+    if (isSupabaseReady()) {
+      // Necesitamos recrear la misma lógica de humanize, o extraer el último elemento agregado, 
+      // pero logSecurityEvent hace humanize por nosotros.
+      // logSecurityEvent(prev, eventType...) retorna un arreglo con el nuevo log en la posición 0.
+      const newLogs = logSecurityEvent([], eventType, userEmail, severity);
+      const newLog = newLogs[0];
+      supabase.from('auditoria_logs').insert([{
+        fecha: newLog.date,
+        accion: newLog.label,
+        usuario: newLog.user,
+        severidad: newLog.severity
+      }]).catch(err => console.error("Error guardando log de auditoría:", err));
+    }
+  };
+
+  // Limpiar localStorage de tablas migradas a Supabase
   useEffect(() => {
-    localStorage.setItem('pruaned_firmas_oficiales', JSON.stringify(firmasOficiales));
-  }, [firmasOficiales]);
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_convocatoria_activa', JSON.stringify(convocatoriaActiva));
-  }, [convocatoriaActiva]);
-
-
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_donaciones', JSON.stringify(donacionesList));
-  }, [donacionesList]);
-
-  // Limpiar localStorage de postulaciones (migradas a Supabase)
-  useEffect(() => {
-    localStorage.removeItem('pruaned_postulaciones');
+    const keysToRemove = [
+      'pruaned_postulaciones',
+      'pruaned_firmas_oficiales',
+      'pruaned_convocatoria_activa',
+      'pruaned_financial_settings',
+      'pruaned_doc_categories',
+      'pruaned_courses',
+      'pruaned_security_logs'
+    ];
+    keysToRemove.forEach(k => localStorage.removeItem(k));
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_financial_settings', JSON.stringify(financialSettings));
-  }, [financialSettings]);
-
-
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_news', JSON.stringify(newsList));
-  }, [newsList]);
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_doc_categories', JSON.stringify(docCategories));
-  }, [docCategories]);
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_documents', JSON.stringify(documentsList));
-  }, [documentsList]);
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_socios', JSON.stringify(sociosList));
-  }, [sociosList]);
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_voluntarios', JSON.stringify(voluntariosList));
-  }, [voluntariosList]);
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_courses', JSON.stringify(coursesList));
-  }, [coursesList]);
-
-  useEffect(() => {
-    localStorage.setItem('pruaned_security_logs', JSON.stringify(securityLogs));
-  }, [securityLogs]);
 
   // INACTIVITY TIMER
   const inactivityTimerRef = React.useRef(null);
@@ -411,7 +387,7 @@ export const AuthProvider = ({ children }) => {
 
     setCurrentUser(userObj);
     setIs2FAVerified(true);
-    setSecurityLogs(prev => logSecurityEvent(prev, `AUTH_SUCCESS_SERVER_RESOLVED_ROLE_${userObj.role.toUpperCase()}`, userObj.email, "INFO"));
+    addSecurityLog(`AUTH_SUCCESS_SERVER_RESOLVED_ROLE_${userObj.role.toUpperCase()}`, userObj.email, "INFO");
 
     // Persistir sesión en localStorage
     const session = {
@@ -459,7 +435,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem(SESSION_KEY);
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     if (currentUser) {
-      setSecurityLogs(prev => logSecurityEvent(prev, "USER_LOGOUT", currentUser.email, "INFO"));
+      addSecurityLog("USER_LOGOUT", currentUser.email, "INFO");
     }
     setCurrentUser(null);
     setIs2FAVerified(false);
@@ -483,25 +459,53 @@ export const AuthProvider = ({ children }) => {
   const canPublishCMS = isMasterUser || isDirectiva;
 
   // DIGITALIZACIÓN DE FIRMAS OFICIALES
-  const updateFirmaOficial = (cargoKey, firmaDataUrl) => {
-    setFirmasOficiales(prev => ({
-      ...prev,
-      [cargoKey]: firmaDataUrl
-    }));
-    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_OFFICIAL_SIGNATURE_${cargoKey}`, currentUser?.email, "INFO"));
+  const updateFirmaOficial = async (cargoKey, firmaDataUrl) => {
+    let newState = {};
+    setFirmasOficiales(prev => {
+      newState = { ...prev, [cargoKey]: firmaDataUrl };
+      return newState;
+    });
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('parametros_sistema').upsert({ id: 'firmas_oficiales', valor: newState });
+      } catch (err) { console.error('Error saving firmasOficiales:', err); }
+    }
+    addSecurityLog(`UPDATE_OFFICIAL_SIGNATURE_${cargoKey}`, currentUser?.email, "INFO");
   };
 
   // GESTIÓN DEL MÓDULO LMS (CREAR Y ELIMINAR CURSOS)
-  const addCourse = (courseData) => {
+  const addCourse = async (courseData) => {
     const newId = `c${Date.now()}`;
     const newCourse = { ...courseData, id: newId };
     setCoursesList(prev => [newCourse, ...prev]);
-    setSecurityLogs(prev => logSecurityEvent(prev, `CREATE_LMS_COURSE_${courseData.code}`, currentUser?.email, "INFO"));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('cursos_lms').insert([{
+          id: newCourse.id,
+          code: newCourse.code,
+          title: newCourse.title,
+          instructor: newCourse.instructor,
+          description: newCourse.description,
+          duration: newCourse.duration,
+          difficulty: newCourse.difficulty,
+          category: newCourse.category,
+          status: newCourse.status,
+          requirements: newCourse.requirements || [],
+          modules: newCourse.modules || []
+        }]);
+      } catch (err) { console.error('Error saving new course:', err); }
+    }
+    addSecurityLog(`CREATE_LMS_COURSE_${courseData.code}`, currentUser?.email, "INFO");
   };
 
-  const deleteCourse = (courseId) => {
+  const deleteCourse = async (courseId) => {
     setCoursesList(prev => prev.filter(c => c.id !== courseId));
-    setSecurityLogs(prev => logSecurityEvent(prev, `DELETE_LMS_COURSE_${courseId}`, currentUser?.email, "WARN"));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('cursos_lms').delete().eq('id', courseId);
+      } catch (err) { console.error('Error deleting course:', err); }
+    }
+    addSecurityLog(`DELETE_LMS_COURSE_${courseId}`, currentUser?.email, "WARN");
   };
 
   // ACREDITACIÓN Y ESCALAFÓN DE VOLUNTARIOS
@@ -520,7 +524,7 @@ export const AuthProvider = ({ children }) => {
         await supabase.from('voluntarios').update({ nivel_acreditacion: nuevoNivel }).eq('id', volId);
       } catch (err) { console.error('Error in updateVoluntarioAcreditacion:', err); }
     }
-    setSecurityLogs(prev => logSecurityEvent(prev, `PROMOTED_VOLUNTEER_RANK_${volId}_TO_${nuevoNivel}`, currentUser?.email, "INFO"));
+    addSecurityLog(`PROMOTED_VOLUNTEER_RANK_${volId}_TO_${nuevoNivel}`, currentUser?.email, "INFO");
   };
 
   const updateSocioCategoria = (socioId, nuevaCategoria) => {
@@ -536,14 +540,14 @@ export const AuthProvider = ({ children }) => {
       }
       return s;
     }));
-    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_CATEGORY_${socioId}_TO_${nuevaCategoria}`, currentUser?.email, "INFO"));
+    addSecurityLog(`UPDATE_SOCIO_CATEGORY_${socioId}_TO_${nuevaCategoria}`, currentUser?.email, "INFO");
   };
 
   const updateSocioCuotaIncorporacion = (id, pagada) => {
     setSociosList(prev => prev.map(s => s.id === id ? { ...s, cuotaIncorporacionPagada: pagada } : s));
   };
 
-  const levantarConvocatoriaEmergencia = (asunto, mensaje) => {
+  const levantarConvocatoriaEmergencia = async (asunto, mensaje) => {
     const nuevaConvocatoria = {
       activa: true,
       asunto: asunto,
@@ -551,17 +555,28 @@ export const AuthProvider = ({ children }) => {
       fechaDespacho: new Date().toISOString()
     };
     setConvocatoriaActiva(nuevaConvocatoria);
-    setSecurityLogs(prev => logSecurityEvent(prev, `EMERGENCY_CONVOCATORIA_RAISED`, currentUser?.email, "WARN"));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('parametros_sistema').upsert({ id: 'convocatoria_activa', valor: nuevaConvocatoria });
+      } catch (err) { console.error('Error raising emergency:', err); }
+    }
+    addSecurityLog(`EMERGENCY_CONVOCATORIA_RAISED`, currentUser?.email, "WARN");
   };
 
-  const cerrarConvocatoriaEmergencia = () => {
-    setConvocatoriaActiva({
+  const cerrarConvocatoriaEmergencia = async () => {
+    const cerrada = {
       activa: false,
       asunto: '',
       mensaje: '',
       fechaDespacho: ''
-    });
-    setSecurityLogs(prev => logSecurityEvent(prev, `EMERGENCY_CONVOCATORIA_CLOSED`, currentUser?.email, "INFO"));
+    };
+    setConvocatoriaActiva(cerrada);
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('parametros_sistema').upsert({ id: 'convocatoria_activa', valor: cerrada });
+      } catch (err) { console.error('Error closing emergency:', err); }
+    }
+    addSecurityLog(`EMERGENCY_CONVOCATORIA_CLOSED`, currentUser?.email, "INFO");
   };
 
   const updateSocioPerfil = async (socioId, perfilData) => {
@@ -617,7 +632,7 @@ export const AuthProvider = ({ children }) => {
       }));
     }
 
-    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_SOCIO_PROFILE_${socioId}`, currentUser?.email, "INFO"));
+    addSecurityLog(`UPDATE_SOCIO_PROFILE_${socioId}`, currentUser?.email, "INFO");
   };
 
   const updateDirectorioCargo = async (cargoKey, newSocioId) => {
@@ -635,7 +650,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_DIRECTORIO_CARGO_${cargoKey}_TO_${newSocioId}`, currentUser?.email, "INFO"));
+    addSecurityLog(`UPDATE_DIRECTORIO_CARGO_${cargoKey}_TO_${newSocioId}`, currentUser?.email, "INFO");
   };
 
   const getDirectorioMember = (cargoKey) => {
@@ -664,7 +679,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
     
-    setSecurityLogs(prev => logSecurityEvent(prev, `TOGGLE_VOLUNTEER_PERMISSION_${socioId}`, currentUser?.email, "INFO"));
+    addSecurityLog(`TOGGLE_VOLUNTEER_PERMISSION_${socioId}`, currentUser?.email, "INFO");
   };
 
   const addDonacion = async (donacionData) => {
@@ -684,7 +699,7 @@ export const AuthProvider = ({ children }) => {
         }]);
       } catch (err) { console.error('Error in addDonacion Supabase:', err); }
     }
-    setSecurityLogs(prev => logSecurityEvent(prev, `ADD_BANK_DONATION_${donacionData.monto}`, currentUser?.email, "INFO"));
+    addSecurityLog(`ADD_BANK_DONATION_${donacionData.monto}`, currentUser?.email, "INFO");
   };
 
   const deleteDonacion = async (id) => {
@@ -694,7 +709,7 @@ export const AuthProvider = ({ children }) => {
         await supabase.from('donaciones').delete().eq('id', id);
       } catch (err) { console.error('Error in deleteDonacion Supabase:', err); }
     }
-    setSecurityLogs(prev => logSecurityEvent(prev, `DELETE_DONATION_${id}`, currentUser?.email, "WARN"));
+    addSecurityLog(`DELETE_DONATION_${id}`, currentUser?.email, "WARN");
   };
 
   const updateVoluntarioDisponibilidad = async (volId, disponibilidadData) => {
@@ -723,12 +738,12 @@ export const AuthProvider = ({ children }) => {
         }).eq('id', volId);
       } catch (err) { console.error('Error in updateVoluntarioDisponibilidad:', err); }
     }
-    setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_VOLUNTEER_AVAILABILITY_${volId}`, currentUser?.email, "INFO"));
+    addSecurityLog(`UPDATE_VOLUNTEER_AVAILABILITY_${volId}`, currentUser?.email, "INFO");
   };
 
   const addPostulacion = async (postulacionData) => {
     setPostulacionesList(prev => [postulacionData, ...prev]);
-    setSecurityLogs(prev => logSecurityEvent(prev, `NEW_SOCIO_APPLICATION_${postulacionData.rut}`, postulacionData.email, "INFO"));
+    addSecurityLog(`NEW_SOCIO_APPLICATION_${postulacionData.rut}`, postulacionData.email, "INFO");
     if (isSupabaseReady()) {
       try {
         await supabase.from('postulaciones').insert([{
@@ -871,12 +886,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateFinancialSettings = (newCuotaMensual, newCuotaIncorporacion) => {
+  const updateFinancialSettings = async (newCuotaMensual, newCuotaIncorporacion) => {
     const updated = {
       cuotaMensualActual: Number(newCuotaMensual),
       cuotaIncorporacionActual: Number(newCuotaIncorporacion)
     };
     setFinancialSettings(updated);
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('parametros_sistema').upsert({ id: 'financial_settings', valor: updated });
+      } catch (err) { console.error('Error updating financial settings:', err); }
+    }
     setSociosList(prev => prev.map(s => {
       if (s.categoria !== 'Socio Honorario') {
         return { ...s, montoCuotaMensual: Number(newCuotaMensual) };
@@ -1004,14 +1024,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const addDocCategory = (categoryName) => {
-    if (!docCategories.includes(categoryName.trim())) {
-      setDocCategories(prev => [...prev, categoryName.trim()]);
+  const addDocCategory = async (categoryName) => {
+    const cat = categoryName.trim();
+    if (!docCategories.includes(cat)) {
+      let newState = [];
+      setDocCategories(prev => {
+        newState = [...prev, cat];
+        return newState;
+      });
+      if (isSupabaseReady()) {
+        try {
+          await supabase.from('parametros_sistema').upsert({ id: 'doc_categories', valor: newState });
+        } catch (err) { console.error('Error addDocCategory:', err); }
+      }
     }
   };
 
-  const deleteDocCategory = (categoryName) => {
-    setDocCategories(prev => prev.filter(c => c !== categoryName));
+  const deleteDocCategory = async (categoryName) => {
+    let newState = [];
+    setDocCategories(prev => {
+      newState = prev.filter(c => c !== categoryName);
+      return newState;
+    });
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('parametros_sistema').upsert({ id: 'doc_categories', valor: newState });
+      } catch (err) { console.error('Error deleteDocCategory:', err); }
+    }
   };
 
   const addDocument = async (docItem) => {
