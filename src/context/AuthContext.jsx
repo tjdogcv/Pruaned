@@ -505,7 +505,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ACREDITACIÓN Y ESCALAFÓN DE VOLUNTARIOS
-  const updateVoluntarioAcreditacion = (volId, nuevoNivel) => {
+  const updateVoluntarioAcreditacion = async (volId, nuevoNivel) => {
     setVoluntariosList(prev => prev.map(vol => {
       if (vol.id === volId) {
         return {
@@ -515,6 +515,11 @@ export const AuthProvider = ({ children }) => {
       }
       return vol;
     }));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('voluntarios').update({ nivel_acreditacion: nuevoNivel }).eq('id', volId);
+      } catch (err) { console.error('Error in updateVoluntarioAcreditacion:', err); }
+    }
     setSecurityLogs(prev => logSecurityEvent(prev, `PROMOTED_VOLUNTEER_RANK_${volId}_TO_${nuevoNivel}`, currentUser?.email, "INFO"));
   };
 
@@ -662,30 +667,62 @@ export const AuthProvider = ({ children }) => {
     setSecurityLogs(prev => logSecurityEvent(prev, `TOGGLE_VOLUNTEER_PERMISSION_${socioId}`, currentUser?.email, "INFO"));
   };
 
-  const addDonacion = (donacionData) => {
+  const addDonacion = async (donacionData) => {
     const itemWithId = { ...donacionData, id: `don-${Date.now()}` };
     setDonacionesList(prev => [itemWithId, ...prev]);
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('donaciones').insert([{
+          id: itemWithId.id,
+          fecha: donacionData.fecha,
+          donante: donacionData.donante,
+          rut_donante: donacionData.rutDonante || donacionData.rut_donante,
+          monto: donacionData.monto,
+          metodo_pago: donacionData.metodoPago || donacionData.metodo_pago,
+          codigo_transaccion: donacionData.codigoTransaccion || donacionData.codigo_transaccion,
+          estado: donacionData.estado
+        }]);
+      } catch (err) { console.error('Error in addDonacion Supabase:', err); }
+    }
     setSecurityLogs(prev => logSecurityEvent(prev, `ADD_BANK_DONATION_${donacionData.monto}`, currentUser?.email, "INFO"));
   };
 
-  const deleteDonacion = (id) => {
+  const deleteDonacion = async (id) => {
     setDonacionesList(prev => donacionesList.filter(d => d.id !== id));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('donaciones').delete().eq('id', id);
+      } catch (err) { console.error('Error in deleteDonacion Supabase:', err); }
+    }
     setSecurityLogs(prev => logSecurityEvent(prev, `DELETE_DONATION_${id}`, currentUser?.email, "WARN"));
   };
 
-  const updateVoluntarioDisponibilidad = (volId, disponibilidadData) => {
+  const updateVoluntarioDisponibilidad = async (volId, disponibilidadData) => {
+    let newState = {};
     setVoluntariosList(prev => prev.map(vol => {
       if (vol.id === volId) {
-        return {
+        newState = {
           ...vol,
           disponibilidadRespuesta: disponibilidadData.disponibilidadRespuesta,
           recursosPropios: disponibilidadData.recursosPropios,
           laboresQuePuedeRealizar: disponibilidadData.laboresQuePuedeRealizar,
           ultimaActualizacionDisponibilidad: new Date().toISOString()
         };
+        return newState;
       }
       return vol;
     }));
+    
+    if (isSupabaseReady() && newState.id) {
+      try {
+        await supabase.from('voluntarios').update({
+          disponibilidad_respuesta: newState.disponibilidadRespuesta,
+          recursos_propios: newState.recursosPropios,
+          labores_que_puede_realizar: newState.laboresQuePuedeRealizar,
+          ultima_actualizacion_disponibilidad: newState.ultimaActualizacionDisponibilidad
+        }).eq('id', volId);
+      } catch (err) { console.error('Error in updateVoluntarioDisponibilidad:', err); }
+    }
     setSecurityLogs(prev => logSecurityEvent(prev, `UPDATE_VOLUNTEER_AVAILABILITY_${volId}`, currentUser?.email, "INFO"));
   };
 
@@ -778,24 +815,36 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const solicitarRenunciaSocio = (socioId, motivoRenuncia) => {
+  const solicitarRenunciaSocio = async (socioId, motivoRenuncia) => {
+    let newState = {};
     setSociosList(prev => prev.map(socio => {
       if (socio.id === socioId) {
-        return {
+        newState = {
           ...socio,
           estadoCuota: 'Solicitud Renuncia Pendiente Directorio',
           motivoRenuncia: motivoRenuncia,
           fechaSolicitudRenuncia: new Date().toISOString().split('T')[0]
         };
+        return newState;
       }
       return socio;
     }));
+    if (isSupabaseReady() && newState.id) {
+      try {
+        await supabase.from('socios').update({
+          estado_cuota: newState.estadoCuota,
+          motivo_renuncia: newState.motivoRenuncia,
+          fecha_solicitud_renuncia: newState.fechaSolicitudRenuncia
+        }).eq('id', socioId);
+      } catch (err) { console.error('Error in solicitarRenunciaSocio:', err); }
+    }
   };
 
-  const aprobarRenunciaDirectorio = (socioId, numeroActaDirectorio) => {
+  const aprobarRenunciaDirectorio = async (socioId, numeroActaDirectorio) => {
+    let newState = {};
     setSociosList(prev => prev.map(socio => {
       if (socio.id === socioId) {
-        return {
+        newState = {
           ...socio,
           estadoCuota: 'Desvinculado / Retiro Aprobado DL 2757',
           fechaRetiroOficial: new Date().toISOString().split('T')[0],
@@ -804,9 +853,22 @@ export const AuthProvider = ({ children }) => {
           telefono: 'Desvinculado ARCO',
           domicilio: 'Anonimizado por Ley 21.719'
         };
+        return newState;
       }
       return socio;
     }));
+    if (isSupabaseReady() && newState.id) {
+      try {
+        await supabase.from('socios').update({
+          estado_cuota: newState.estadoCuota,
+          fecha_retiro_oficial: newState.fechaRetiroOficial,
+          acta_directorio_aprobacion: newState.actaDirectorioAprobacion,
+          email: newState.email,
+          telefono: newState.telefono,
+          domicilio: newState.domicilio
+        }).eq('id', socioId);
+      } catch (err) { console.error('Error in aprobarRenunciaDirectorio:', err); }
+    }
   };
 
   const updateFinancialSettings = (newCuotaMensual, newCuotaIncorporacion) => {
@@ -915,13 +977,31 @@ export const AuthProvider = ({ children }) => {
     }));
   };
 
-  const addNews = (newsItem) => {
+  const addNews = async (newsItem) => {
     const itemWithId = { ...newsItem, id: `n-${Date.now()}` };
     setNewsList(prev => [itemWithId, ...prev]);
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('noticias').insert([{
+          id: itemWithId.id,
+          titulo: newsItem.titulo,
+          contenido: newsItem.contenido,
+          fecha_publicacion: newsItem.fechaPublicacion || newsItem.fecha_publicacion,
+          autor: newsItem.autor,
+          categoria: newsItem.categoria,
+          imagen_url: newsItem.imagenUrl || newsItem.imagen_url
+        }]);
+      } catch (err) { console.error('Error addNews Supabase:', err); }
+    }
   };
 
-  const deleteNews = (id) => {
+  const deleteNews = async (id) => {
     setNewsList(prev => prev.filter(n => n.id !== id));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('noticias').delete().eq('id', id);
+      } catch (err) { console.error('Error deleteNews Supabase:', err); }
+    }
   };
 
   const addDocCategory = (categoryName) => {
@@ -934,27 +1014,54 @@ export const AuthProvider = ({ children }) => {
     setDocCategories(prev => prev.filter(c => c !== categoryName));
   };
 
-  const addDocument = (docItem) => {
+  const addDocument = async (docItem) => {
     const itemWithId = { ...docItem, id: `doc-${Date.now()}` };
     setDocumentsList(prev => [itemWithId, ...prev]);
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('documentos').insert([{
+          id: itemWithId.id,
+          titulo: docItem.titulo,
+          categoria: docItem.categoria,
+          fecha_subida: docItem.fechaSubida || docItem.fecha_subida,
+          url: docItem.url,
+          privado: docItem.privado
+        }]);
+      } catch (err) { console.error('Error addDocument Supabase:', err); }
+    }
   };
 
-  const deleteDocument = (id) => {
+  const deleteDocument = async (id) => {
     setDocumentsList(prev => prev.filter(d => d.id !== id));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('documentos').delete().eq('id', id);
+      } catch (err) { console.error('Error deleteDocument Supabase:', err); }
+    }
   };
 
-  const updateVolunteerCert = (volId, courseId) => {
+  const updateVolunteerCert = async (volId, courseId) => {
+    let newState = {};
     setVoluntariosList(prev => prev.map(vol => {
       if (vol.id === volId) {
         const cursos = vol.cursosAprobados.includes(courseId) ? vol.cursosAprobados : [...vol.cursosAprobados, courseId];
-        return {
+        newState = {
           ...vol,
           cursosAprobados: cursos,
           horasAcumuladas: vol.horasAcumuladas + 10
         };
+        return newState;
       }
       return vol;
     }));
+    if (isSupabaseReady() && newState.id) {
+      try {
+        await supabase.from('voluntarios').update({
+          cursos_aprobados: newState.cursosAprobados,
+          horas_acumuladas: newState.horasAcumuladas
+        }).eq('id', volId);
+      } catch (err) { console.error('Error in updateVolunteerCert:', err); }
+    }
   };
 
   return (
