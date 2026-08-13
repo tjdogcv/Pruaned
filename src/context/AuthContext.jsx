@@ -124,40 +124,7 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : INITIAL_DONACIONES;
   });
 
-  const [postulacionesList, setPostulacionesList] = useState(() => {
-    const saved = localStorage.getItem('pruaned_postulaciones');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: "POST-982101",
-        fechaEnvio: "2026-08-10",
-        estado: "Pendiente Revisión Directorio",
-        nombreCompleto: "Dra. María Paz Morales",
-        rut: "17.102.394-5",
-        fechaNacimiento: "1992-05-14",
-        email: "maria.morales@gmail.com",
-        telefono: "+56 9 9123 4567",
-        domicilio: "Av. Las Condes 4020",
-        comuna: "Santiago",
-        profesion: "Médico Veterinaria Cirujana",
-        nivelEstudios: "Educación Superior Completa",
-        experienciaPrevia: "5 años de respuesta operativa en albergues veterinarios post-incendios.",
-        formacionCertificada: ["Rescate técnico animal", "Primeros auxilios veterinarios"],
-        razonesIntegracion: "Deseo aportar desde la coordinación científica y veterinaria en terreno.",
-        aporteEsperado: "Redes institucionales y protocolos de triage rápido.",
-        haParticipadoOrgs: "Sí",
-        tiempoDisponible: "8–12 horas",
-        areasParticipacion: ["Activación en emergencias", "Capacitaciones"],
-        experienciasComplejas: "Sí",
-        descripcionExperiencias: "Atención de felinos con quemaduras de 3er grado en incendio Valparaíso.",
-        necesitaApoyoBienestar: "No",
-        tipoApoyoUtil: "No aplica",
-        cartaIntencionNombre: "Carta_Intencion_MariaMorales.pdf",
-        declaracionVeracidad: "Sí",
-        autorizacionDatos: "Sí",
-        aceptaLeyDatos: "Sí, acepto"
-      }
-    ];
-  });
+  const [postulacionesList, setPostulacionesList] = useState([]);
 
   const [financialSettings, setFinancialSettings] = useState(() => {
     const saved = localStorage.getItem('pruaned_financial_settings');
@@ -203,7 +170,7 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseReady()) {
       const fetchSupabaseData = async () => {
         try {
-          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, cobrosRes, balancesRes] = await Promise.all([
+          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, cobrosRes, balancesRes, postulacionesRes] = await Promise.all([
             supabase.from('socios').select('*'),
             supabase.from('voluntarios').select('*'),
             supabase.from('noticias').select('*'),
@@ -212,7 +179,8 @@ export const AuthProvider = ({ children }) => {
             supabase.from('directorio_cargos').select('*').eq('id', 1).single(),
             supabase.from('egresos').select('*'),
             supabase.from('cobros').select('*'),
-            supabase.from('balances_anuales').select('*')
+            supabase.from('balances_anuales').select('*'),
+            supabase.from('postulaciones').select('*').order('created_at', { ascending: false })
           ]);
 
           const snakeToCamel = (obj) => {
@@ -257,6 +225,9 @@ export const AuthProvider = ({ children }) => {
           if (balancesRes.data && balancesRes.data.length > 0) setBalancesList(snakeToCamel(balancesRes.data));
           else if (balancesRes.data && balancesRes.data.length === 0) setBalancesList([]);
 
+          if (postulacionesRes.data && postulacionesRes.data.length > 0) setPostulacionesList(snakeToCamel(postulacionesRes.data));
+          else if (postulacionesRes.data && postulacionesRes.data.length === 0) setPostulacionesList([]);
+
           if (cargosRes.data) {
             setDirectorioCargos({
               presidenteId: cargosRes.data.presidente_id || INITIAL_DIRECTORIO_CARGOS.presidenteId,
@@ -295,9 +266,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('pruaned_donaciones', JSON.stringify(donacionesList));
   }, [donacionesList]);
 
+  // Limpiar localStorage de postulaciones (migradas a Supabase)
   useEffect(() => {
-    localStorage.setItem('pruaned_postulaciones', JSON.stringify(postulacionesList));
-  }, [postulacionesList]);
+    localStorage.removeItem('pruaned_postulaciones');
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('pruaned_financial_settings', JSON.stringify(financialSettings));
@@ -666,14 +638,27 @@ export const AuthProvider = ({ children }) => {
     return sociosList.find(s => s.id === socioId) || sociosList[0];
   };
 
-  const togglePermisoGestionVoluntariosSocio = (socioId) => {
+  const togglePermisoGestionVoluntariosSocio = async (socioId) => {
+    let nuevoPermiso = false;
     setSociosList(prev => prev.map(s => {
       if (s.id === socioId) {
-        const nuevoPermiso = !s.permisoGestionVoluntarios;
+        nuevoPermiso = !s.permisoGestionVoluntarios;
         return { ...s, permisoGestionVoluntarios: nuevoPermiso };
       }
       return s;
     }));
+    
+    if (isSupabaseReady()) {
+      try {
+        await supabase
+          .from('socios')
+          .update({ permiso_gestion_voluntarios: nuevoPermiso })
+          .eq('id', socioId);
+      } catch (err) {
+        console.error("Error updating permiso_gestion_voluntarios in Supabase", err);
+      }
+    }
+    
     setSecurityLogs(prev => logSecurityEvent(prev, `TOGGLE_VOLUNTEER_PERMISSION_${socioId}`, currentUser?.email, "INFO"));
   };
 
