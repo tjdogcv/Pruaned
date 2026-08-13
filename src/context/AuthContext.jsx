@@ -303,7 +303,9 @@ export const AuthProvider = ({ children }) => {
         accion: newLog.label,
         usuario: newLog.user,
         severidad: newLog.severity
-      }]).catch(err => console.error("Error guardando log de auditoría:", err));
+      }]).then(({ error }) => {
+        if (error) console.error("Error guardando log de auditoría:", error);
+      }).catch(err => console.error("Error guardando log de auditoría:", err));
     }
   };
 
