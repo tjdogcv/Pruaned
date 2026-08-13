@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { evaluatePasswordStrength, sanitizeInput } from '../utils/security';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
-import { Lock, UserPlus, AlertTriangle, Eye, EyeOff, User, MailCheck } from 'lucide-react';
+import { Lock, UserPlus, AlertTriangle, Eye, EyeOff, User, MailCheck, ShieldAlert } from 'lucide-react';
 import { isSupabaseReady, supabase } from '../lib/supabase';
 
 export const AuthModal = ({ isOpen, onClose }) => {
@@ -18,12 +18,47 @@ export const AuthModal = ({ isOpen, onClose }) => {
   const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Rate Limiting State
+  const [failedAttempts, setFailedAttempts] = useState(() => {
+    return parseInt(localStorage.getItem('pruaned_auth_attempts') || '0', 10);
+  });
+  const [lockoutUntil, setLockoutUntil] = useState(() => {
+    return parseInt(localStorage.getItem('pruaned_auth_lockout') || '0', 10);
+  });
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (lockoutUntil > Date.now()) {
+      setLockoutRemaining(Math.ceil((lockoutUntil - Date.now()) / 1000));
+      interval = setInterval(() => {
+        const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+        if (remaining <= 0) {
+          setLockoutRemaining(0);
+          setFailedAttempts(0);
+          localStorage.removeItem('pruaned_auth_attempts');
+          localStorage.removeItem('pruaned_auth_lockout');
+          clearInterval(interval);
+        } else {
+          setLockoutRemaining(remaining);
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [lockoutUntil]);
+
   if (!isOpen) return null;
 
   const passwordInfo = evaluatePasswordStrength(password);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (lockoutRemaining > 0) {
+      setErrorMsg(`Sistema bloqueado temporalmente. Inténtalo de nuevo en ${lockoutRemaining} segundos.`);
+      return;
+    }
+
     setErrorMsg('');
     setSuccessMsg('');
     const cleanEmail = sanitizeInput(email);
@@ -45,6 +80,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
         await loginStep1_RequestOTP(cleanEmail, password);
         setMode('login_otp');
         setSuccessMsg('Código enviado a tu correo. Por favor revísalo e ingrésalo a continuación.');
+        setFailedAttempts(0);
+        localStorage.removeItem('pruaned_auth_attempts');
       } else if (mode === 'login_otp') {
         // Paso 2: Validar OTP y entrar
         if (!twoFactorCode || twoFactorCode.length !== 6) {
@@ -52,6 +89,8 @@ export const AuthModal = ({ isOpen, onClose }) => {
         }
 
         const targetTab = await loginStep2_VerifyOTP(cleanEmail, twoFactorCode);
+        setFailedAttempts(0);
+        localStorage.removeItem('pruaned_auth_attempts');
         onClose();
         if (targetTab === 'socios') navigate('/intranet/socios');
         else if (targetTab === 'voluntarios') navigate('/intranet/voluntarios');
@@ -73,7 +112,18 @@ export const AuthModal = ({ isOpen, onClose }) => {
         }
       }
     } catch (error) {
-      setErrorMsg(error.message || 'Error en la autenticación.');
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      localStorage.setItem('pruaned_auth_attempts', newAttempts.toString());
+
+      if (newAttempts >= 3) {
+        const lockTime = Date.now() + 5 * 60 * 1000; // 5 minutos de bloqueo
+        setLockoutUntil(lockTime);
+        localStorage.setItem('pruaned_auth_lockout', lockTime.toString());
+        setErrorMsg('Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado por 5 minutos.');
+      } else {
+        setErrorMsg(error.message || 'Error en la autenticación. Intento ' + newAttempts + ' de 3.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -202,10 +252,18 @@ export const AuthModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
+          {lockoutRemaining > 0 && (
+            <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-300 text-sm font-bold text-center flex flex-col items-center gap-2 animate-pulse">
+              <ShieldAlert className="w-8 h-8 text-rose-400" />
+              <span>SISTEMA BLOQUEADO</span>
+              <span className="text-xs font-normal">Inténtalo de nuevo en {Math.floor(lockoutRemaining / 60)}:{String(lockoutRemaining % 60).padStart(2, '0')}</span>
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={isLoading}
-            className={`w-full py-3.5 ${(mode === 'login' || mode === 'login_otp') ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400'} text-white font-bold rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            disabled={isLoading || lockoutRemaining > 0}
+            className={`w-full py-3.5 ${(mode === 'login' || mode === 'login_otp') ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400'} text-white font-bold rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 ${(isLoading || lockoutRemaining > 0) ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
           >
             {isLoading ? (
               <span className="animate-pulse">Cargando...</span>
