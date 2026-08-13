@@ -12,7 +12,13 @@ export const INSTITUTIONAL_INFO = {
 
 export const INITIAL_FINANCIAL_SETTINGS = {
   cuotaMensualActual: 5000,
-  cuotaIncorporacionActual: 30000
+  cuotaIncorporacionActual: 30000,
+  cuotasPorCategoria: {
+    "Socio Activo": 5000,
+    "Socio Adherente": 5000,
+    "Socio Honorario": 0,
+    "Estudiante/Pasante": 0
+  }
 };
 
 export const INITIAL_DIRECTORIO_CARGOS = {
