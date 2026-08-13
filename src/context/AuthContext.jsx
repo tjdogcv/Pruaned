@@ -357,16 +357,48 @@ export const AuthProvider = ({ children }) => {
   }, [currentUser, resetInactivityTimer]);
 
   // AUTHENTICATION
-  const loginWithCredentials = async (emailInput, passwordInput) => {
+  const loginStep1_RequestOTP = async (emailInput, passwordInput) => {
     const cleanEmail = emailInput.trim().toLowerCase();
 
     if (isSupabaseReady()) {
-      // Modo Nube Real (Supabase)
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Paso 1: Validar la contraseña primero
+      const { error: passError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: passwordInput,
       });
-      if (error) throw new Error(error.message);
+      
+      if (passError) throw new Error(passError.message);
+      
+      // Contraseña correcta. Cerramos sesión inmediatamente para no otorgar acceso aún.
+      await supabase.auth.signOut();
+      
+      // Paso 2: Disparar el envío del OTP por correo
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+      });
+      
+      if (otpError) throw new Error("Error enviando código OTP al correo: " + otpError.message);
+      
+      return true;
+    }
+
+    // Modo Mock
+    return true; 
+  };
+
+  const loginStep2_VerifyOTP = async (emailInput, otpCode) => {
+    const cleanEmail = emailInput.trim().toLowerCase();
+
+    if (isSupabaseReady()) {
+      const { error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: otpCode,
+        type: 'email'
+      });
+      
+      if (error) throw new Error("Código 2FA incorrecto o expirado.");
+    } else {
+      if (otpCode !== '123456') throw new Error("Código inválido (usa 123456 en modo demo).");
     }
 
     const foundUser = USER_DATABASE.find(u => u.email.toLowerCase() === cleanEmail);
@@ -857,7 +889,8 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       currentUser,
-      loginWithCredentials,
+      loginStep1_RequestOTP,
+      loginStep2_VerifyOTP,
       logout,
       is2FAVerified,
       setIs2FAVerified,
