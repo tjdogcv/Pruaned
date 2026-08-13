@@ -34,6 +34,24 @@ export function validateSupabaseSession({ session, user, sessionError, userError
   };
 }
 
+export function createRestorationEpoch() {
+  let currentEpoch = 0;
+  let acceptsRestoration = true;
+
+  return {
+    capture: () => acceptsRestoration ? currentEpoch : null,
+    invalidate: () => {
+      acceptsRestoration = false;
+      return ++currentEpoch;
+    },
+    enable: () => {
+      acceptsRestoration = true;
+      return ++currentEpoch;
+    },
+    isCurrent: (epoch) => epoch !== null && acceptsRestoration && epoch === currentEpoch
+  };
+}
+
 export function getSignedOutAuthState() {
   return {
     currentUser: null,

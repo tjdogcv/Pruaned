@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   LEGACY_SESSION_KEY,
   clearLegacySession,
+  createRestorationEpoch,
   getPrivateRouteState,
   getSignedOutAuthState,
   loadLegacySession,
@@ -24,6 +25,14 @@ function currentSession() {
   return { access_token: 'not-persisted-by-this-helper', expires_at: NOW / 1000 + 60 };
 }
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 test('una sesión Supabase válida permite restaurar el gate OTP', () => {
   const validation = validateSupabaseSession({
     session: currentSession(),
@@ -36,6 +45,32 @@ test('una sesión Supabase válida permite restaurar el gate OTP', () => {
     getPrivateRouteState({ isAuthRestoring: false, currentUser: { email: 'socia@pruaned.cl' }, is2FAVerified: validation.isValid }),
     'allowed'
   );
+});
+
+test('SIGNED_OUT invalida una restauracion cuyo getUser termina tarde', async () => {
+  const restorationEpoch = createRestorationEpoch();
+  const validationEpoch = restorationEpoch.capture();
+  const delayedGetUser = deferred();
+  let restoredUser = null;
+  let restoredOtp = false;
+
+  const restore = delayedGetUser.promise.then((user) => {
+    const validation = validateSupabaseSession({ session: currentSession(), user, now: NOW });
+    if (validation.isValid && restorationEpoch.isCurrent(validationEpoch)) {
+      restoredUser = user;
+      restoredOtp = true;
+    }
+  });
+
+  const signedOutState = getSignedOutAuthState();
+  restorationEpoch.invalidate();
+  assert.equal(restorationEpoch.capture(), null);
+  delayedGetUser.resolve({ email: 'socia@pruaned.cl' });
+  await restore;
+
+  assert.equal(restoredUser, null);
+  assert.equal(restoredOtp, false);
+  assert.equal(getPrivateRouteState({ ...signedOutState }), 'unauthorized');
 });
 
 test('una sesión local devuelta por getSession no concede acceso si getUser falla', () => {

@@ -18,6 +18,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase';
 import {
   LEGACY_SESSION_DURATION_MS,
   clearLegacySession,
+  createRestorationEpoch,
   getSignedOutAuthState,
   loadLegacySession,
   validateSupabaseSession
@@ -322,18 +323,26 @@ export const AuthProvider = ({ children }) => {
 
   // Sesión de demo: se conserva el TTL y cierre por inactividad sólo fuera de Supabase.
   const inactivityTimerRef = React.useRef(null);
-  const restorationInFlightRef = React.useRef(false);
-  const restorationCompletedRef = React.useRef(false);
+  const restorationEpochRef = React.useRef(createRestorationEpoch());
+
+  const invalidateRestoration = React.useCallback(() => {
+    restorationEpochRef.current.invalidate();
+  }, []);
+
+  const enableRestoration = React.useCallback(() => {
+    restorationEpochRef.current.enable();
+  }, []);
 
   const clearCurrentAuthentication = React.useCallback(() => {
     const signedOutState = getSignedOutAuthState();
+    invalidateRestoration();
     clearLegacySession(localStorage);
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     setCurrentUser(signedOutState.currentUser);
     setIs2FAVerified(signedOutState.is2FAVerified);
     setIsAuthRestoring(signedOutState.isAuthRestoring);
     setActiveTab('home');
-  }, []);
+  }, [invalidateRestoration]);
 
   useEffect(() => {
     if (!supabaseReady) {
@@ -342,11 +351,18 @@ export const AuthProvider = ({ children }) => {
     }
 
     let isMounted = true;
+    let validationInFlight = false;
+    let restorationCompleted = false;
 
     const restoreSupabaseSession = async (forceValidation = false) => {
-      if (!isMounted || restorationInFlightRef.current || (restorationCompletedRef.current && !forceValidation)) return;
+      if (!isMounted || validationInFlight || (restorationCompleted && !forceValidation)) return;
 
-      restorationInFlightRef.current = true;
+      const validationEpoch = restorationEpochRef.current.capture();
+      if (validationEpoch === null) return;
+
+      validationInFlight = true;
+      const isValidationCurrent = () =>
+        isMounted && restorationEpochRef.current.isCurrent(validationEpoch);
       setIsAuthRestoring(true);
 
       try {
@@ -363,21 +379,23 @@ export const AuthProvider = ({ children }) => {
 
         const validation = validateSupabaseSession({ session, user, sessionError, userError });
         if (!validation.isValid) {
-          if (isMounted) clearCurrentAuthentication();
+          if (isValidationCurrent()) clearCurrentAuthentication();
           return;
         }
 
-        if (isMounted) {
+        if (isValidationCurrent()) {
           clearLegacySession(localStorage);
           setCurrentUser(resolveUserForEmail(user.email, sociosListRef.current, voluntariosListRef.current));
           setIs2FAVerified(true);
         }
       } catch {
-        if (isMounted) clearCurrentAuthentication();
+        if (isValidationCurrent()) clearCurrentAuthentication();
       } finally {
-        restorationInFlightRef.current = false;
-        restorationCompletedRef.current = true;
-        if (isMounted) setIsAuthRestoring(false);
+        validationInFlight = false;
+        if (isValidationCurrent()) {
+          restorationCompleted = true;
+          setIsAuthRestoring(false);
+        }
       }
     };
 
@@ -391,7 +409,6 @@ export const AuthProvider = ({ children }) => {
       if (event === 'INITIAL_SESSION') queueValidation();
       if (event === 'TOKEN_REFRESHED') queueValidation(true);
       if (event === 'SIGNED_OUT') {
-        restorationCompletedRef.current = true;
         clearCurrentAuthentication();
       }
     });
@@ -463,11 +480,14 @@ export const AuthProvider = ({ children }) => {
         token: otpCode,
         type: 'email'
       });
+
       
       if (error) throw new Error("Código 2FA incorrecto o expirado.");
     } else {
       if (otpCode !== '123456') throw new Error("Código inválido (usa 123456 en modo demo).");
     }
+
+    if (supabaseReady) enableRestoration();
 
     const userObj = resolveUserForEmail(cleanEmail, sociosList, voluntariosList);
 
@@ -521,6 +541,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     const userLoggingOut = currentUser;
+    invalidateRestoration();
     try {
       if (supabaseReady) {
         await supabase.auth.signOut();
