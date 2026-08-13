@@ -339,7 +339,6 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
     updateSocioCategoria,
     updateSocioCuotaIncorporacion,
     financialSettings, 
-    updateFinancialSettings, 
     expensesList, 
     addExpense, 
     deleteExpense, 
@@ -400,6 +399,18 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
   const [motivoRenunciaInput, setMotivoRenunciaInput] = useState('');
   const [actaDirectorioInput, setActaDirectorioInput] = useState('');
   const [isCuotaIncorporacionCheck, setIsCuotaIncorporacionCheck] = useState(false);
+
+  useEffect(() => {
+    if (!activePaymentModal && !activeRequestRenunciaModal && !activeApproveRenunciaModal) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key !== 'Escape') return;
+      setActivePaymentModal(null);
+      setActiveRequestRenunciaModal(null);
+      setActiveApproveRenunciaModal(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [activePaymentModal, activeRequestRenunciaModal, activeApproveRenunciaModal]);
 
   const presidente = getDirectorioMember('presidenteId');
   const vicepresidente = getDirectorioMember('vicepresidenteId');
@@ -534,10 +545,14 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
 
   const handleRegisterPayment = (e) => {
     e.preventDefault();
-    if (activePaymentModal) {
+    if (activePaymentModal && canManageFinances) {
+      const remainingMonthlyDebt = Math.max(0, Number(activePaymentModal.mesesAdeudados || 0) - 1);
+      const nextEstado = isCuotaIncorporacionCheck
+        ? activePaymentModal.estadoCuota
+        : remainingMonthlyDebt > 0 ? 'En Mora' : 'Al Día';
       updateSocioCuota(
         activePaymentModal.id, 
-        'Al Día', 
+        nextEstado,
         comprobanteInput.trim() || 'Validado por Tesorería', 
         false, 
         isCuotaIncorporacionCheck
@@ -557,7 +572,8 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
 
   const handleSolicitarRenunciaSubmit = (e) => {
     e.preventDefault();
-    if (activeRequestRenunciaModal && motivoRenunciaInput.trim()) {
+    const isOwnRequest = activeRequestRenunciaModal?.email?.toLowerCase() === currentUser?.email?.toLowerCase();
+    if (activeRequestRenunciaModal && isOwnRequest && motivoRenunciaInput.trim()) {
       solicitarRenunciaSocio(activeRequestRenunciaModal.id, motivoRenunciaInput.trim());
       setActiveRequestRenunciaModal(null);
       setMotivoRenunciaInput('');
@@ -567,8 +583,8 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
 
   const handleAprobarRenunciaSubmit = (e) => {
     e.preventDefault();
-    if (activeApproveRenunciaModal) {
-      aprobarRenunciaDirectorio(activeApproveRenunciaModal.id, actaDirectorioInput.trim() || 'Acta N° 2025-08');
+    if (activeApproveRenunciaModal && canManageFinances) {
+      aprobarRenunciaDirectorio(activeApproveRenunciaModal.id, actaDirectorioInput.trim());
       setActiveApproveRenunciaModal(null);
       setActaDirectorioInput('');
       alert('¡Renuncia aprobada formalmente por el Directorio Nacional!');
@@ -1123,7 +1139,7 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                     onClick={handleExportCSV}
                     className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
                   >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" /> Exportar Deudas (CSV)
+                    <Download className="w-3.5 h-3.5 text-emerald-400" /> Exportar cobros pendientes (CSV)
                   </button>
                   <button
                     onClick={handleExportRegistroSociosCSV}
@@ -1187,7 +1203,7 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                         <th className="py-3.5 px-5">Estado Cuota</th>
                         <th className="py-3.5 px-5">Cuota Incorp.</th>
                         <th className="py-3.5 px-5">Permiso Voluntarios</th>
-                        <th className="py-3.5 px-5">Monto Adeudado</th>
+                        <th className="py-3.5 px-5">Cobros e incorporación pendientes</th>
                         <th className="py-3.5 px-5 text-right">Acciones</th>
                       </tr>
                     </thead>
@@ -1320,22 +1336,22 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                               <Eye className="w-3.5 h-3.5" /> Ver Perfil
                             </button>
 
-                            {socio.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' ? (
+                            {socio.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' && canManageFinances ? (
                               <button
                                 onClick={() => setActiveApproveRenunciaModal(socio)}
                                 className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg transition-colors"
                               >
-                                Evaluando Directorio
+                                Revisar renuncia
                               </button>
-                            ) : (
+                            ) : socio.email?.toLowerCase() === currentUser?.email?.toLowerCase() && !socio.estadoCuota.includes('Desvinculado') ? (
                               <button
                                 onClick={() => setActiveRequestRenunciaModal(socio)}
                                 className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] rounded-lg transition-colors"
-                                title="Solicitar Renuncia al Directorio"
+                                title="Solicitar mi renuncia al Directorio"
                               >
-                                Solicitar Renuncia
+                                {socio.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' ? 'Solicitud enviada' : 'Solicitar mi renuncia'}
                               </button>
-                            )}
+                            ) : null}
                           </td>
 
                         </tr>
@@ -1360,7 +1376,7 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                 </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sociosList.filter(s => s.estadoCuota.includes('Renuncia') || s.estadoCuota.includes('Desvinculado')).map((soc) => (
+                {sociosList.filter(s => s.estadoCuota.includes('Renuncia') || s.estadoCuota.includes('Desvinculado')).length ? sociosList.filter(s => s.estadoCuota.includes('Renuncia') || s.estadoCuota.includes('Desvinculado')).map((soc) => (
                   <div key={soc.id} className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
@@ -1380,8 +1396,8 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                     </div>
 
                     <div className="text-xs text-slate-600 space-y-1 bg-white p-3 rounded-lg border border-slate-200">
-                      <div>• <strong>Fecha Solicitud:</strong> {soc.fechaSolicitudRenuncia || '2026-08-12'}</div>
-                      <div>• <strong>Motivo Expresado:</strong> {soc.motivoRenuncia || 'Razones personales'}</div>
+                      <div>• <strong>Fecha Solicitud:</strong> {soc.fechaSolicitudRenuncia || 'Sin fecha registrada'}</div>
+                      <div>• <strong>Motivo Expresado:</strong> {soc.motivoRenuncia || 'Sin motivo registrado'}</div>
                       {soc.actaDirectorioAprobacion && (
                         <div>• <strong>Acta Aprobación Directorio:</strong> <span className="font-bold text-emerald-800">{soc.actaDirectorioAprobacion}</span></div>
                       )}
@@ -1393,12 +1409,12 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                           onClick={() => setActiveApproveRenunciaModal(soc)}
                           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
                         >
-                          <Check className="w-4 h-4" /> Aprobar Renuncia en Acta de Directorio
+                          <Check className="w-4 h-4" /> Revisar y aprobar
                         </button>
                       )}
                     </div>
                   </div>
-                ))}
+                )) : <div className="col-span-full rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">No hay solicitudes de renuncia ni desvinculaciones registradas.</div>}
               </div>
             </div>
             ) : (
@@ -1411,12 +1427,20 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                   Si deseas desvincularte de PRUANED A.G. conforme a los estatutos, puedes enviar una solicitud formal de renuncia.
                   Esta será revisada y ratificada por el Directorio Nacional.
                 </p>
-                <button
-                  onClick={() => setActiveRequestRenunciaModal(currentSocio)}
-                  className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm transition-colors"
-                >
-                  Solicitar Renuncia Gremial
-                </button>
+                {currentSocio.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-950">
+                    <p className="font-bold">Solicitud enviada al Directorio</p>
+                    <p className="mt-1">Fecha: {currentSocio.fechaSolicitudRenuncia || 'Sin fecha registrada'}</p>
+                    <p className="mt-1">Motivo: {currentSocio.motivoRenuncia || 'Sin motivo registrado'}</p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setActiveRequestRenunciaModal(currentSocio)}
+                    className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm transition-colors"
+                  >
+                    Solicitar Renuncia Gremial
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1810,24 +1834,20 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                 Tarifario de Cuotas Mensuales
               </h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                {['Socio Activo', 'Socio Adherente', 'Socio Honorario', 'Estudiante/Pasante'].map(cat => (
-                  <div key={cat}>
-                    <label className="block font-bold text-slate-700 mb-1">{cat} ($)</label>
-                    <input
-                      type="number"
-                      value={financialSettings.cuotasPorCategoria?.[cat] ?? 0}
-                      onChange={(e) => updateFinancialSettings({
-                        ...financialSettings,
-                        cuotasPorCategoria: {
-                          ...(financialSettings.cuotasPorCategoria || {}),
-                          [cat]: Number(e.target.value)
-                        }
-                      })}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
-                    />
-                  </div>
-                ))}
+                <p className="text-xs leading-5 text-slate-600">Valores vigentes de referencia. La edición del tarifario se habilitará cuando el contrato financiero permita actualizar categorías sin reemplazar la configuración completa.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                  {['Socio Activo', 'Socio Adherente', 'Socio Honorario', 'Estudiante/Pasante'].map(cat => (
+                    <div key={cat}>
+                      <label className="block font-bold text-slate-700 mb-1">{cat} ($)</label>
+                      <input
+                        type="number"
+                        value={financialSettings.cuotasPorCategoria?.[cat] ?? 0}
+                        readOnly
+                        aria-readonly="true"
+                        className="w-full cursor-default rounded-xl border border-slate-200 bg-slate-100 p-2 text-slate-700"
+                      />
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
@@ -1927,6 +1947,84 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
           </div>
         );
       })()}
+
+      {activePaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <section role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title" aria-describedby="payment-dialog-description" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Tesorería</p>
+                <h3 id="payment-dialog-title" className="mt-1 font-['Outfit'] text-xl font-extrabold text-slate-950">Registrar pago</h3>
+              </div>
+              <button type="button" onClick={() => { setActivePaymentModal(null); setComprobanteInput(''); setIsCuotaIncorporacionCheck(false); }} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700" aria-label="Cerrar registro de pago"><X className="h-5 w-5" aria-hidden="true" /></button>
+            </div>
+            <form onSubmit={handleRegisterPayment} className="space-y-5 pt-5">
+              <p id="payment-dialog-description" className="text-sm leading-6 text-slate-600">Registra un pago para <strong className="text-slate-900">{activePaymentModal.nombre}</strong>. El estado sólo cambiará a “Al Día” si no quedan meses registrados en mora.</p>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                <div className="flex justify-between gap-3"><span className="text-slate-600">Cuota mensual</span><strong>${(activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual).toLocaleString('es-CL')} CLP</strong></div>
+                <div className="mt-2 flex justify-between gap-3"><span className="text-slate-600">Meses en mora</span><strong>{activePaymentModal.mesesAdeudados || 0}</strong></div>
+              </div>
+              <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
+                <input type="checkbox" checked={isCuotaIncorporacionCheck} onChange={event => setIsCuotaIncorporacionCheck(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-700" />
+                <span><span className="block font-bold text-slate-900">Corresponde a cuota de incorporación</span><span className="mt-1 block text-xs text-slate-600">Monto: ${(activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual).toLocaleString('es-CL')} CLP.</span></span>
+              </label>
+              <label className="block text-sm font-bold text-slate-800" htmlFor="payment-reference">Comprobante o referencia <span className="font-normal text-slate-500">(opcional)</span></label>
+              <input id="payment-reference" autoFocus value={comprobanteInput} onChange={event => setComprobanteInput(event.target.value)} placeholder="Ej. transferencia N.º 1234" className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
+              <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => { setActivePaymentModal(null); setComprobanteInput(''); setIsCuotaIncorporacionCheck(false); }} className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">Cancelar</button>
+                <button type="submit" className="min-h-11 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">Confirmar pago</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {activeRequestRenunciaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <section role="dialog" aria-modal="true" aria-labelledby="resignation-request-dialog-title" aria-describedby="resignation-request-dialog-description" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-rose-700">Solicitud personal</p>
+                <h3 id="resignation-request-dialog-title" className="mt-1 font-['Outfit'] text-xl font-extrabold text-slate-950">Solicitar mi renuncia</h3>
+              </div>
+              <button type="button" onClick={() => { setActiveRequestRenunciaModal(null); setMotivoRenunciaInput(''); }} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700" aria-label="Cerrar solicitud de renuncia"><X className="h-5 w-5" aria-hidden="true" /></button>
+            </div>
+            <form onSubmit={handleSolicitarRenunciaSubmit} className="space-y-5 pt-5">
+              <p id="resignation-request-dialog-description" className="text-sm leading-6 text-slate-600">La solicitud se enviará al Directorio Nacional para revisión. No se aprueba ni desvincula tu cuenta automáticamente.</p>
+              <label className="block text-sm font-bold text-slate-800" htmlFor="resignation-reason">Motivo de la solicitud</label>
+              <textarea id="resignation-reason" autoFocus required rows={5} value={motivoRenunciaInput} onChange={event => setMotivoRenunciaInput(event.target.value)} placeholder="Describe brevemente el motivo de tu solicitud." className="w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-900 focus:border-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-100" />
+              <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => { setActiveRequestRenunciaModal(null); setMotivoRenunciaInput(''); }} className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">Cancelar</button>
+                <button type="submit" className="min-h-11 rounded-xl bg-rose-700 px-5 text-sm font-bold text-white hover:bg-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700">Enviar solicitud</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {activeApproveRenunciaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <section role="dialog" aria-modal="true" aria-labelledby="resignation-approval-dialog-title" aria-describedby="resignation-approval-dialog-description" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-700">Revisión de Directorio</p>
+                <h3 id="resignation-approval-dialog-title" className="mt-1 font-['Outfit'] text-xl font-extrabold text-slate-950">Revisar y aprobar renuncia</h3>
+              </div>
+              <button type="button" onClick={() => { setActiveApproveRenunciaModal(null); setActaDirectorioInput(''); }} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700" aria-label="Cerrar revisión de renuncia"><X className="h-5 w-5" aria-hidden="true" /></button>
+            </div>
+            <form onSubmit={handleAprobarRenunciaSubmit} className="space-y-5 pt-5">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">{activeApproveRenunciaModal.nombre}</p><p className="mt-2">Motivo: {activeApproveRenunciaModal.motivoRenuncia || 'Sin motivo registrado'}</p><p className="mt-1">Solicitud: {activeApproveRenunciaModal.fechaSolicitudRenuncia || 'Sin fecha registrada'}</p></div>
+              <p id="resignation-approval-dialog-description" className="text-sm leading-6 text-slate-600">Esta acción registra la aprobación institucional y la desvinculación. Verifica el acta antes de confirmar.</p>
+              <label className="block text-sm font-bold text-slate-800" htmlFor="board-minutes">Referencia de acta de Directorio</label>
+              <input id="board-minutes" autoFocus required value={actaDirectorioInput} onChange={event => setActaDirectorioInput(event.target.value)} placeholder="Ej. Acta ordinaria N.º 12, 15/08/2026" className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-100" />
+              <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => { setActiveApproveRenunciaModal(null); setActaDirectorioInput(''); }} className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">Cancelar</button>
+                <button type="submit" className="min-h-11 rounded-xl bg-amber-700 px-5 text-sm font-bold text-white hover:bg-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">Aprobar renuncia</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       {/* SOCIO PERFIL MODAL */}
       {activeSocioModal && (

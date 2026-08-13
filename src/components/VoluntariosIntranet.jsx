@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { CertificateModal } from './CertificateModal';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
@@ -37,7 +37,7 @@ export const VoluntariosIntranet = () => {
   } = useAuth();
 
   const [subTab, setSubTab] = useState('lms'); // lms, mi-disponibilidad, padron (solo admin), convocatoria (solo admin)
-  const [selectedCourse, setSelectedCourse] = useState(coursesList[0]);
+  const [selectedCourse, setSelectedCourse] = useState(() => coursesList[0] || null);
   const [examAnswers, setExamAnswers] = useState({});
   const [examResult, setExamResult] = useState(null);
   const [certData, setCertData] = useState(null);
@@ -50,11 +50,28 @@ export const VoluntariosIntranet = () => {
   const [convocatoriaMensaje, setConvocatoriaMensaje] = useState('');
 
   // Formulario Mi Disponibilidad (para el Voluntario)
-  const activeVol = voluntariosList.find(v => v.email === currentUser?.email) || voluntariosList[0];
+  const activeVol = voluntariosList.find(v => v.email?.toLowerCase() === currentUser?.email?.toLowerCase()) || null;
 
-  const [volDisponibilidad, setVolDisponibilidad] = useState(activeVol.disponibilidadRespuesta || 'Disponible de inmediato');
-  const [volRecursos, setVolRecursos] = useState(activeVol.recursosPropios || []);
-  const [volLabores, setVolLabores] = useState(activeVol.laboresQuePuedeRealizar || []);
+  const [volDisponibilidad, setVolDisponibilidad] = useState(() => activeVol?.disponibilidadRespuesta || 'Disponible de inmediato');
+  const [volRecursos, setVolRecursos] = useState(() => activeVol?.recursosPropios || []);
+  const [volLabores, setVolLabores] = useState(() => activeVol?.laboresQuePuedeRealizar || []);
+
+  useEffect(() => {
+    if (!activeVol) return;
+    setVolDisponibilidad(activeVol.disponibilidadRespuesta || 'Disponible de inmediato');
+    setVolRecursos(activeVol.recursosPropios || []);
+    setVolLabores(activeVol.laboresQuePuedeRealizar || []);
+  }, [activeVol?.id]);
+
+  useEffect(() => {
+    if (!coursesList.length) {
+      setSelectedCourse(null);
+      return;
+    }
+    if (!coursesList.some(course => course.id === selectedCourse?.id)) {
+      setSelectedCourse(coursesList[0]);
+    }
+  }, [coursesList, selectedCourse?.id]);
 
   const handleCheckboxListToggle = (list, setList, item) => {
     if (list.includes(item)) {
@@ -66,6 +83,7 @@ export const VoluntariosIntranet = () => {
 
   const handleSaveDisponibilidadSubmit = (e) => {
     e.preventDefault();
+    if (!activeVol) return;
     updateVoluntarioDisponibilidad(activeVol.id, {
       disponibilidadRespuesta: volDisponibilidad,
       recursosPropios: volRecursos,
@@ -90,6 +108,7 @@ export const VoluntariosIntranet = () => {
 
   const handleEvaluateExam = (e) => {
     e.preventDefault();
+    if (!activeVol || !selectedCourse) return;
     let correctCount = 0;
     selectedCourse.examQuestions.forEach((q, idx) => {
       if (examAnswers[idx] === q.correct) {
@@ -119,9 +138,10 @@ export const VoluntariosIntranet = () => {
   };
 
   const filteredVoluntarios = voluntariosList.filter(v => {
-    return v.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           v.rut.includes(searchTerm) ||
-           v.especialidad.toLowerCase().includes(searchTerm.toLowerCase());
+    const normalizedSearch = searchTerm.toLowerCase();
+    return (v.nombre || '').toLowerCase().includes(normalizedSearch) ||
+           (v.rut || '').includes(searchTerm) ||
+           (v.especialidad || '').toLowerCase().includes(normalizedSearch);
   });
 
   return (

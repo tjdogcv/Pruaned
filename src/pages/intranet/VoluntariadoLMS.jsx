@@ -1,5 +1,5 @@
-import { VoluntariosIntranet } from '../../components/VoluntariosIntranet';
+import LmsAcademy from './LmsAcademy';
 
 export default function VoluntariadoLMS() {
-  return <VoluntariosIntranet />;
+  return <LmsAcademy />;
 }

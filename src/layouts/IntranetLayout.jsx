@@ -158,10 +158,11 @@ export function IntranetLayout() {
   const { currentUser, isMasterUser, isDirectiva, canManageVoluntarios } = auth;
   const navItems = [
     { path: '/intranet/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'principal' },
+    { path: '/intranet/voluntarios', label: 'Aula virtual', icon: GraduationCap, group: 'principal' },
     { path: '/intranet/socios', label: 'Socios', icon: Users, group: 'gestion', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/directorio', label: 'Directorio', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/finanzas', label: 'Finanzas', icon: Wallet, group: 'gestion', show: isMasterUser || isDirectiva },
-    { path: '/intranet/voluntarios', label: 'Voluntariado', icon: GraduationCap, group: 'gestion', show: canManageVoluntarios },
+    { path: '/intranet/voluntarios/gestion', label: 'Gestión de voluntariado', icon: ClipboardList, group: 'gestion', show: canManageVoluntarios },
     { path: '/intranet/admin', label: 'Contenidos', icon: FileText, group: 'administracion', show: isMasterUser || isDirectiva },
     { path: '/intranet/auditoria', label: 'Auditoría', icon: ClipboardList, group: 'administracion', show: isMasterUser || isDirectiva },
     { path: '/intranet/seguridad', label: 'Seguridad', icon: Shield, group: 'administracion', show: isMasterUser }

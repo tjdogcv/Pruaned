@@ -19,6 +19,7 @@ import SociosDirectory from './pages/intranet/SociosDirectory';
 import DirectorioNacional from './pages/intranet/DirectorioNacional';
 import FinanzasPanel from './pages/intranet/FinanzasPanel';
 import VoluntariadoLMS from './pages/intranet/VoluntariadoLMS';
+import VoluntariadoGestion from './pages/intranet/VoluntariadoGestion';
 import DocumentosCMS from './pages/intranet/DocumentosCMS';
 import AuditoriaLogs from './pages/intranet/AuditoriaLogs';
 
@@ -124,6 +125,7 @@ function AppRoutes() {
         <Route path="directorio" element={<DirectorioNacional />} />
         <Route path="finanzas" element={<FinanzasPanel />} />
         <Route path="voluntarios" element={<VoluntariadoLMS />} />
+        <Route path="voluntarios/gestion" element={<VoluntariadoGestion />} />
         <Route path="admin" element={<DocumentosCMS />} />
         <Route path="auditoria" element={<AuditoriaLogs />} />
         <Route path="seguridad" element={<SecurityDashboard />} />
