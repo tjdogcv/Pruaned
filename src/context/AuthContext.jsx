@@ -457,6 +457,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const resetPasswordRequest = async (emailInput) => {
+    const cleanEmail = emailInput.trim().toLowerCase();
+    if (isSupabaseReady()) {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: window.location.origin + '/?type=recovery'
+      });
+      if (error) throw new Error("Error solicitando recuperación: " + error.message);
+      return true;
+    }
+    // Mock mode
+    return true;
+  };
+
+  const updatePassword = async (newPassword) => {
+    if (isSupabaseReady()) {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw new Error("Error actualizando contraseña: " + error.message);
+      return true;
+    }
+    // Mock mode
+    return true;
+  };
+
   const logout = async () => {
     if (isSupabaseReady()) {
       await supabase.auth.signOut();
@@ -899,6 +922,8 @@ export const AuthProvider = ({ children }) => {
       currentUser,
       loginStep1_RequestOTP,
       loginStep2_VerifyOTP,
+      resetPasswordRequest,
+      updatePassword,
       logout,
       is2FAVerified,
       setIs2FAVerified,

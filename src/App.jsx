@@ -48,14 +48,19 @@ function IntranetLayout({ children }) {
 
 function HomePage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (location.search.includes('login=required') || location.search.includes('login=true')) {
+    if (location.hash.includes('type=recovery') || location.search.includes('type=recovery')) {
+      setAuthMode('update_password');
+      setIsAuthModalOpen(true);
+    } else if (location.search.includes('login=required') || location.search.includes('login=true')) {
+      setAuthMode('login');
       setIsAuthModalOpen(true);
     }
-  }, [location.search]);
+  }, [location.search, location.hash]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
@@ -73,6 +78,7 @@ function HomePage() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authMode}
       />
     </div>
   );
@@ -80,13 +86,18 @@ function HomePage() {
 
 function PublicPageWrapper({ component: Component, componentProps }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
   const location = useLocation();
 
   useEffect(() => {
-    if (location.search.includes('login=required') || location.search.includes('login=true')) {
+    if (location.hash.includes('type=recovery') || location.search.includes('type=recovery')) {
+      setAuthMode('update_password');
+      setIsAuthModalOpen(true);
+    } else if (location.search.includes('login=required') || location.search.includes('login=true')) {
+      setAuthMode('login');
       setIsAuthModalOpen(true);
     }
-  }, [location.search]);
+  }, [location.search, location.hash]);
 
   return (
     <PublicLayout onOpenAuth={() => setIsAuthModalOpen(true)}>
@@ -94,6 +105,7 @@ function PublicPageWrapper({ component: Component, componentProps }) {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authMode}
       />
     </PublicLayout>
   );

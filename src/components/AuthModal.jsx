@@ -6,17 +6,26 @@ import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { Lock, UserPlus, AlertTriangle, Eye, EyeOff, User, MailCheck, ShieldAlert } from 'lucide-react';
 import { isSupabaseReady, supabase } from '../lib/supabase';
 
-export const AuthModal = ({ isOpen, onClose }) => {
-  const { loginStep1_RequestOTP, loginStep2_VerifyOTP } = useAuth();
+export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
+  const { loginStep1_RequestOTP, loginStep2_VerifyOTP, resetPasswordRequest, updatePassword } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState('login'); // 'login', 'login_otp', or 'register'
+  const [mode, setMode] = useState(initialMode); // 'login', 'login_otp', 'register', 'forgot_password', 'update_password'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setErrorMsg('');
+      setSuccessMsg('');
+    }
+  }, [isOpen, initialMode]);
 
   // Rate Limiting State
   const [failedAttempts, setFailedAttempts] = useState(() => {
@@ -63,11 +72,11 @@ export const AuthModal = ({ isOpen, onClose }) => {
     setSuccessMsg('');
     const cleanEmail = sanitizeInput(email);
 
-    if (mode !== 'login_otp' && !cleanEmail.includes('@')) {
+    if (mode !== 'login_otp' && mode !== 'update_password' && !cleanEmail.includes('@')) {
       setErrorMsg('Por favor ingrese un correo electrónico válido.');
       return;
     }
-    if (mode === 'register' && password.length < 6) {
+    if ((mode === 'register' || mode === 'update_password') && password.length < 6) {
       setErrorMsg('La contraseña no cumple con los estándares mínimos de seguridad (6+ caracteres).');
       return;
     }
@@ -110,6 +119,19 @@ export const AuthModal = ({ isOpen, onClose }) => {
         } else {
           setErrorMsg('El sistema de registro en la nube aún no está conectado.');
         }
+      } else if (mode === 'forgot_password') {
+        await resetPasswordRequest(cleanEmail);
+        setSuccessMsg('Enlace de recuperación enviado. Revisa tu bandeja de entrada.');
+        setMode('login');
+      } else if (mode === 'update_password') {
+        if (password !== confirmPassword) {
+          setErrorMsg('Las contraseñas no coinciden.');
+          setIsLoading(false);
+          return;
+        }
+        await updatePassword(password);
+        setSuccessMsg('Contraseña actualizada correctamente. Ya puedes iniciar sesión.');
+        setMode('login');
       }
     } catch (error) {
       const newAttempts = failedAttempts + 1;
@@ -145,23 +167,25 @@ export const AuthModal = ({ isOpen, onClose }) => {
             <PRUANEDLogo className="h-14 w-auto" showText={false} />
           </div>
           <h3 className="text-2xl font-extrabold font-['Outfit']">
-            Portal Seguro PRUANED
+            {mode === 'forgot_password' ? 'Recuperar Clave' : mode === 'update_password' ? 'Nueva Contraseña' : 'Portal Seguro PRUANED'}
           </h3>
           
-          <div className="flex bg-slate-800 p-1 rounded-xl w-full mx-auto mt-4">
-            <button
-              onClick={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${(mode === 'login' || mode === 'login_otp') ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              onClick={() => { setMode('register'); setErrorMsg(''); setSuccessMsg(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'register' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              Activar Cuenta
-            </button>
-          </div>
+          {(mode === 'login' || mode === 'register' || mode === 'login_otp') && (
+            <div className="flex bg-slate-800 p-1 rounded-xl w-full mx-auto mt-4">
+              <button
+                onClick={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${(mode === 'login' || mode === 'login_otp') ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              >
+                Iniciar Sesión
+              </button>
+              <button
+                onClick={() => { setMode('register'); setErrorMsg(''); setSuccessMsg(''); }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'register' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              >
+                Activar Cuenta
+              </button>
+            </div>
+          )}
         </div>
 
         {errorMsg && (
@@ -179,7 +203,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {(mode === 'login' || mode === 'register') && (
+          {(mode === 'login' || mode === 'register' || mode === 'forgot_password') && (
             <>
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
@@ -195,7 +219,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
                 />
               </div>
 
-              <div>
+              {(mode === 'login' || mode === 'register') && (
                 <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5 text-emerald-400" /> {mode === 'login' ? 'Contraseña' : 'Crear Contraseña'}
                 </label>
@@ -233,7 +257,71 @@ export const AuthModal = ({ isOpen, onClose }) => {
                   </div>
                 )}
               </div>
+              
+              {mode === 'login' && (
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('forgot_password'); setErrorMsg(''); setSuccessMsg(''); }}
+                    className="text-[11px] text-blue-400 hover:text-blue-300"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
             </>
+          )}
+
+          {mode === 'update_password' && (
+            <div className="animate-fade-in space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" /> Nueva Contraseña
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-4 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-400">Robustez Contraseña:</span>
+                    <span style={{ color: passwordInfo.color }} className="font-bold">
+                      {passwordInfo.label}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full transition-all duration-300"
+                      style={{ width: `${passwordInfo.score}%`, backgroundColor: passwordInfo.color }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" /> Confirmar Contraseña
+                </label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
           )}
 
           {mode === 'login_otp' && (
@@ -263,16 +351,22 @@ export const AuthModal = ({ isOpen, onClose }) => {
           <button
             type="submit"
             disabled={isLoading || lockoutRemaining > 0}
-            className={`w-full py-3.5 ${(mode === 'login' || mode === 'login_otp') ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400'} text-white font-bold rounded-xl text-sm shadow-lg flex items-center justify-center gap-2 ${(isLoading || lockoutRemaining > 0) ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+            className="w-full py-3.5 rounded-xl font-bold transition-all disabled:opacity-50 mt-6 shadow-lg shadow-blue-900/20 bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center gap-2"
           >
             {isLoading ? (
-              <span className="animate-pulse">Cargando...</span>
-            ) : mode === 'login' ? (
-              <><Lock className="w-4 h-4" /> Continuar</>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : lockoutRemaining > 0 ? (
+              `Bloqueado (${lockoutRemaining}s)`
+            ) : mode === 'forgot_password' ? (
+              'Enviar Enlace de Recuperación'
+            ) : mode === 'update_password' ? (
+              'Guardar Nueva Contraseña'
+            ) : mode === 'register' ? (
+              'Verificar y Activar Cuenta'
             ) : mode === 'login_otp' ? (
-              <><MailCheck className="w-4 h-4" /> Verificar Código</>
+              'Validar y Entrar'
             ) : (
-              <><UserPlus className="w-4 h-4" /> Activar Mi Cuenta</>
+              'Continuar con Contraseña'
             )}
           </button>
         </form>
