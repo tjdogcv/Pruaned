@@ -7,5 +7,5 @@ export default function DirectorioNacional() {
 
   if (!isMasterUser && !isDirectiva) return <Navigate to="/intranet/dashboard" replace />;
 
-  return <SociosIntranet initialTab="directorio-gestion" />;
+  return <SociosIntranet section="directorio" initialTab="directorio-gestion" />;
 }

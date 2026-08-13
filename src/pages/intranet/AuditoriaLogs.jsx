@@ -7,5 +7,5 @@ export default function AuditoriaLogs() {
 
   if (!isMasterUser && !isDirectiva) return <Navigate to="/intranet/dashboard" replace />;
 
-  return <SociosIntranet initialTab="auditoria" />;
+  return <SociosIntranet section="auditoria" initialTab="auditoria" />;
 }

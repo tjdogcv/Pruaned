@@ -7,5 +7,5 @@ export default function FinanzasPanel() {
 
   if (!canManageFinances) return <Navigate to="/intranet/dashboard" replace />;
 
-  return <SociosIntranet initialTab="balance" />;
+  return <SociosIntranet section="finanzas" initialTab="balance" />;
 }

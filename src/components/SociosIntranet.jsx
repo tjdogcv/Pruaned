@@ -29,7 +29,6 @@ import {
   ToggleLeft,
   ToggleRight,
   ShieldAlert,
-  GraduationCap,
   User,
   Camera,
   Upload,
@@ -333,7 +332,7 @@ const SocioSearchSelect = ({ sociosList, selectedId, onSelect, label }) => {
   );
 };
 
-export const SociosIntranet = ({ initialTab }) => {
+export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
   const { 
     sociosList, 
     updateSocioCuota, 
@@ -358,11 +357,8 @@ export const SociosIntranet = ({ initialTab }) => {
     canManageCategoriesAndCargos,
     isMasterUser,
     isDirectiva,
-    canManageVoluntarios,
     canManageFinances,
-    canPublishCMS,
     currentUser,
-    setActiveTab,
     securityLogs,
     cobrosList = [],
     addCobrosBatch = () => {}
@@ -430,6 +426,52 @@ export const SociosIntranet = ({ initialTab }) => {
 
   const postulacionesPendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisión Directorio').length;
   const renunciasPendientes = sociosList.filter(s => s.estadoCuota === 'Solicitud Renuncia Pendiente Directorio').length;
+  const sectionMeta = {
+    socios: {
+      eyebrow: 'Área personal',
+      title: 'Mi cuenta y padrón',
+      description: 'Actualiza tu ficha, consulta el padrón y revisa tus solicitudes.'
+    },
+    directorio: {
+      eyebrow: 'Directorio nacional',
+      title: 'Cargos y firmas',
+      description: 'Gestiona la representación institucional y sus firmas oficiales.'
+    },
+    finanzas: {
+      eyebrow: 'Administración financiera',
+      title: 'Finanzas',
+      description: 'Consulta el balance y administra cobros, egresos y postulaciones.'
+    },
+    auditoria: {
+      eyebrow: 'Control institucional',
+      title: 'Registro de auditoría',
+      description: 'Revisa la actividad relevante de la intranet.'
+    }
+  }[section] || {
+    eyebrow: 'Intranet',
+    title: 'Gestión de socios',
+    description: 'Administra la información gremial.'
+  };
+  const contextualTabs = {
+    socios: [
+      { id: 'mi-cuenta', label: 'Mi cuenta', icon: User },
+      { id: 'padron', label: 'Padrón y cuotas', icon: Users },
+      { id: 'renuncias', label: canManageFinances ? 'Renuncias' : 'Mi renuncia', icon: UserX, badge: canManageFinances ? renunciasPendientes : null }
+    ],
+    directorio: canManageCategoriesAndCargos ? [
+      { id: 'directorio-gestion', label: 'Cargos y firmas', icon: ClipboardList }
+    ] : [],
+    finanzas: canManageFinances ? [
+      { id: 'balance', label: 'Balance', icon: PieChart },
+      { id: 'egresos', label: 'Egresos', icon: Receipt },
+      { id: 'cobros-especiales', label: 'Cobros', icon: Wallet },
+      { id: 'postulaciones', label: 'Postulaciones', icon: UserPlus, badge: postulacionesPendientes },
+      { id: 'renuncias', label: 'Renuncias', icon: UserX, badge: renunciasPendientes }
+    ] : [],
+    auditoria: (isMasterUser || isDirectiva) ? [
+      { id: 'auditoria', label: 'Actividad institucional', icon: ClipboardList }
+    ] : []
+  }[section] || [];
 
   const totalIngresos = sociosList.reduce((acc, socio) => {
     const pagosSocio = (socio.historialPagos || []).reduce((pAcc, p) => pAcc + (p.monto || 0), 0);
@@ -660,133 +702,36 @@ export const SociosIntranet = ({ initialTab }) => {
   };
 
   return (
-    <section className="py-12 bg-slate-50 text-slate-900 min-h-screen font-['Plus_Jakarta_Sans']">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 pb-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-900 text-xs font-bold uppercase tracking-wider mb-2">
-              <Users className="w-3.5 h-3.5" /> Intranet de Socios, Directiva & Maestro
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-['Outfit']">
-              Portal de Socios, Padrón & Mi Cuenta
-            </h2>
-            <p className="text-slate-600 text-xs mt-1">
-              Usuario Conectado: <strong className="text-slate-900">{currentUser?.name}</strong> ({currentUser?.email}) • Rol: <span className="uppercase font-bold text-blue-900">{currentUser?.role}</span>
-            </p>
+    <section className="min-h-screen bg-slate-50 py-2 text-slate-900 font-['Plus_Jakarta_Sans']">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <header className="border-b border-slate-200 pb-0">
+          <div className="max-w-2xl pb-6">
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-blue-700">{sectionMeta.eyebrow}</p>
+            <h2 className="font-['Outfit'] text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">{sectionMeta.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{sectionMeta.description}</p>
           </div>
 
-          <div className="flex flex-wrap bg-slate-200 p-1 rounded-xl border border-slate-300 gap-1">
-            <button
-              onClick={() => setActiveTabLocal('mi-cuenta')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                activeTabLocal === 'mi-cuenta' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              👤 Mi Cuenta
-            </button>
-
-            <button
-              onClick={() => setActiveTabLocal('padron')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                activeTabLocal === 'padron' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              Padrón & Cuotas
-            </button>
-
-            {canManageCategoriesAndCargos && (
-              <button
-                onClick={() => setActiveTabLocal('directorio-gestion')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                  activeTabLocal === 'directorio-gestion' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-                }`}
-              >
-                🏛️ Gestión Cargos & Firmas
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveTabLocal('renuncias')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
-                activeTabLocal === 'renuncias' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              {canManageFinances ? 'Aprobación Renuncias' : 'Solicitar Renuncia'}
-              {canManageFinances && renunciasPendientes > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full font-bold">
-                  {renunciasPendientes}
-                </span>
-              )}
-            </button>
-
-            {canManageFinances && (
-              <>
-                <button
-                  onClick={() => setActiveTabLocal('postulaciones')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all relative ${
-                    activeTabLocal === 'postulaciones' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-                  }`}
-                >
-                  Postulaciones Socios
-                  {postulacionesPendientes > 0 && (
-                    <span className="ml-1.5 px-1.5 py-0.5 bg-emerald-500 text-white text-[10px] rounded-full font-bold">
-                      {postulacionesPendientes}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setActiveTabLocal('egresos')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                    activeTabLocal === 'egresos' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-                  }`}
-                >
-                  Registro Egresos
-                </button>
-
-                <button
-                  onClick={() => setActiveTabLocal('cobros-especiales')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                    activeTabLocal === 'cobros-especiales' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-                  }`}
-                >
-                  Emisión de Cobros
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={() => setActiveTabLocal('balance')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                activeTabLocal === 'balance' ? 'bg-blue-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-              }`}
-            >
-              Balance General
-            </button>
-
-            {canManageVoluntarios && (
-              <button
-                onClick={() => setActiveTab('voluntarios')}
-                className="px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white shadow flex items-center gap-1.5"
-              >
-                <GraduationCap className="w-3.5 h-3.5" /> Ir a Gestión Voluntarios
-              </button>
-            )}
-
-            {(isMasterUser || isDirectiva) && (
-              <button
-                onClick={() => setActiveTabLocal('auditoria')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeTabLocal === 'auditoria' ? 'bg-violet-900 text-white shadow' : 'text-slate-700 hover:bg-slate-300/50'
-                }`}
-              >
-                <ClipboardList className="w-3.5 h-3.5" /> Registro Auditoría
-              </button>
-            )}
-          </div>
-        </div>
+          {contextualTabs.length > 0 && (
+            <nav className="flex gap-1 overflow-x-auto" aria-label={`Opciones de ${sectionMeta.title}`}>
+              {contextualTabs.map(({ id, label, icon: Icon, badge }) => {
+                const active = activeTabLocal === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTabLocal(id)}
+                    aria-current={active ? 'page' : undefined}
+                    className={`inline-flex min-h-11 flex-none items-center gap-2 border-b-2 px-3 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 ${active ? 'border-blue-700 text-blue-800' : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-950'}`}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    {label}
+                    {badge > 0 && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-900">{badge}</span>}
+                  </button>
+                );
+              })}
+            </nav>
+          )}
+        </header>
 
         {/* SUBTAB: MI CUENTA */}
         {activeTabLocal === 'mi-cuenta' && (
