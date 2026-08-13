@@ -619,9 +619,28 @@ export const SociosIntranet = () => {
     }).join("\n");
     
     const element = document.createElement("a");
-    const file = new Blob([headers + rows], { type: 'text/csv;charset=utf-8' });
+    const file = new Blob(['\uFEFF' + headers + rows], { type: 'text/csv;charset=utf-8' });
     element.href = URL.createObjectURL(file);
-    element.download = `Padron_Socios_Deudas_${new Date().toISOString().split('T')[0]}.csv`;
+    element.download = `Padron_Deudas_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const handleExportRegistroSociosCSV = () => {
+    const headers = "Nombre Socio,RUT,Fecha Ingreso,Fecha Renuncia/Desvinculación,Motivo Renuncia\n";
+    const rows = sociosList.map(s => {
+      const fechaIngreso = s.fechaIngreso || 'No registrada';
+      const fechaRenuncia = s.fechaRetiroOficial || s.fechaSolicitudRenuncia || 'Activo';
+      const motivo = s.motivoRenuncia || (s.estadoCuota.includes('Desvinculado') ? 'Desvinculado' : 'N/A');
+      
+      return `"${s.nombre}","${s.rut}","${fechaIngreso}","${fechaRenuncia}","${motivo}"`;
+    }).join("\n");
+    
+    const element = document.createElement("a");
+    const file = new Blob(['\uFEFF' + headers + rows], { type: 'text/csv;charset=utf-8' });
+    element.href = URL.createObjectURL(file);
+    element.download = `Registro_Socios_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
@@ -1096,6 +1115,12 @@ export const SociosIntranet = () => {
                     className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
                   >
                     <Download className="w-3.5 h-3.5 text-emerald-400" /> Exportar Deudas (CSV)
+                  </button>
+                  <button
+                    onClick={handleExportRegistroSociosCSV}
+                    className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-400" /> Libro Registro Socios (CSV)
                   </button>
                 </div>
               </div>
