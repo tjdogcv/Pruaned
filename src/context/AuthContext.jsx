@@ -39,6 +39,16 @@ const DEFAULT_FINANCIAL_CATEGORIES = [
   { id: 'offline-donacion-egreso-capacitacion', tipo: 'donacion_egreso', nombre: 'Capacitación y materiales', activo: true }
 ];
 
+const toPublicDonation = (donation) => ({
+  id: donation.id,
+  fecha: donation.fecha,
+  monto: donation.monto ?? donation.montoClp ?? donation.monto_clp ?? 0,
+  banco: donation.banco || '',
+  cuentaId: donation.cuentaId || donation.cuenta_id || null,
+  numeroComprobante: donation.numeroComprobante || donation.numero_comprobante || donation.nComprobante || donation.n_comprobante || '',
+  categoria: donation.categoria || donation.destinoAporte || donation.destino_aporte || 'Aporte libre'
+});
+
 const AuthContext = createContext();
 
 const USER_DATABASE = [
@@ -156,9 +166,13 @@ export const AuthProvider = ({ children }) => {
   const [directorioCargos, setDirectorioCargos] = useState(INITIAL_DIRECTORIO_CARGOS);
 
   const [donacionesList, setDonacionesList] = useState(() => {
+    if (supabaseReady) return [];
     const saved = localStorage.getItem('pruaned_donaciones');
     return saved ? JSON.parse(saved) : INITIAL_DONACIONES;
   });
+  const [publicDonationsList, setPublicDonationsList] = useState(() => (
+    supabaseReady ? [] : INITIAL_DONACIONES.map(toPublicDonation)
+  ));
 
   const [postulacionesList, setPostulacionesList] = useState([]);
 
@@ -222,12 +236,13 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseReady()) {
       const fetchSupabaseData = async () => {
         try {
-          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, financialCategoriesRes, financialAccountsRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes] = await Promise.all([
+          const [sociosRes, volRes, newsRes, docsRes, donRes, publicDonRes, cargosRes, egresosRes, financialCategoriesRes, financialAccountsRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes] = await Promise.all([
             supabase.from('socios').select('*'),
             supabase.from('voluntarios').select('*'),
             supabase.from('noticias').select('*'),
             supabase.from('documentos').select('*'),
             supabase.from('donaciones').select('*'),
+            supabase.from('donaciones_publicas').select('*').order('fecha', { ascending: false }),
             supabase.from('directorio_cargos').select('*').eq('id', 1).single(),
             supabase.from('egresos').select('*'),
             supabase.from('categorias_financieras').select('*').order('tipo').order('nombre'),
@@ -272,6 +287,8 @@ export const AuthProvider = ({ children }) => {
 
           if (donRes.data && donRes.data.length > 0) setDonacionesList(snakeToCamel(donRes.data));
           else if (donRes.data && donRes.data.length === 0) setDonacionesList([]);
+
+          if (publicDonRes.data) setPublicDonationsList(snakeToCamel(publicDonRes.data));
 
           if (egresosRes.data && egresosRes.data.length > 0) setExpensesList(snakeToCamel(egresosRes.data));
           else if (egresosRes.data && egresosRes.data.length === 0) setExpensesList([]);
@@ -985,6 +1002,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     setDonacionesList(prev => [itemWithId, ...prev]);
+    if (donacionData.publico ?? true) setPublicDonationsList(prev => [toPublicDonation(itemWithId), ...prev]);
     addSecurityLog(`ADD_BANK_DONATION_${monto}`, currentUser?.email, "INFO");
     return itemWithId;
   };
@@ -995,6 +1013,7 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
     }
     setDonacionesList(prev => prev.filter(d => d.id !== id));
+    setPublicDonationsList(prev => prev.filter(d => d.id !== id));
     addSecurityLog(`DELETE_DONATION_${id}`, currentUser?.email, "WARN");
   };
 
@@ -1668,6 +1687,7 @@ export const AuthProvider = ({ children }) => {
       updateSocioPerfil,
       // Data
       donacionesList,
+      publicDonationsList,
       addDonacion,
       deleteDonacion,
       postulacionesList,

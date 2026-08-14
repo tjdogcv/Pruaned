@@ -19,11 +19,10 @@ import {
 
 export const PortalTransparencia = () => {
   const { 
-    donacionesList, 
+    publicDonationsList = [],
     addDonacion, 
     deleteDonacion, 
     expensesList, 
-    sociosList,
     canManageFinances,
     financialCategories = [],
     financialAccounts = [],
@@ -64,7 +63,7 @@ export const PortalTransparencia = () => {
   }, [publicAccounts, newDonacion.cuentaId]);
 
   // Financial Calculations
-  const totalDonaciones = donacionesList.reduce((acc, don) => acc + Number(don.monto || 0), 0);
+  const totalDonaciones = publicDonationsList.reduce((acc, don) => acc + Number(don.monto || 0), 0);
   const totalIngresos = totalDonaciones;
   const totalEgresosDonaciones = expensesList.filter(e => e.origenFondo === 'Fondo Donaciones').reduce((acc, exp) => acc + Number(exp.monto || 0), 0);
   const saldoCaja = totalIngresos - totalEgresosDonaciones;
@@ -81,8 +80,7 @@ export const PortalTransparencia = () => {
     }
   };
 
-  const filteredDonaciones = donacionesList.filter(d => 
-    (d.donante || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredDonaciones = publicDonationsList.filter(d =>
     (d.numeroComprobante || '').includes(searchTerm) ||
     (d.categoria || d.destinoAporte || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -193,7 +191,7 @@ export const PortalTransparencia = () => {
             <div className="text-2xl font-extrabold text-emerald-700 font-['Outfit']">
               ${totalDonaciones.toLocaleString('es-CL')} CLP
             </div>
-            <p className="text-[11px] text-slate-500">{donacionesList.length} aportes institucionales</p>
+            <p className="text-[11px] text-slate-500">{publicDonationsList.length} aportes institucionales</p>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
@@ -236,7 +234,7 @@ export const PortalTransparencia = () => {
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Buscar donante o N° comprobante..."
+                placeholder="Buscar comprobante o categoría..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
@@ -249,7 +247,6 @@ export const PortalTransparencia = () => {
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase">
                   <th className="py-3 px-4">Fecha / Comprobante</th>
-                  <th className="py-3 px-4">Donante / Identificación</th>
                   <th className="py-3 px-4">Cuenta Bancaria Destino</th>
                   <th className="py-3 px-4">Destino del Aporte</th>
                   <th className="py-3 px-4">Monto Donado</th>
@@ -262,11 +259,6 @@ export const PortalTransparencia = () => {
                     <td className="py-3 px-4">
                       <div className="font-bold font-mono text-slate-900">{don.numeroComprobante}</div>
                       <div className="text-[11px] text-slate-400 font-mono">{don.fecha}</div>
-                    </td>
-
-                    <td className="py-3 px-4">
-                      <div className="font-bold text-slate-900">{don.donante}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">RUT/Doc: {don.rutODocumentoDonante}</div>
                     </td>
 
                     <td className="py-3 px-4 text-slate-700 font-medium">

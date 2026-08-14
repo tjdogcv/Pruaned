@@ -372,12 +372,12 @@ export const FondoDonacionesPanel = () => {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-left text-xs">
-            <thead><tr className="border-b border-slate-200 bg-slate-50 font-bold uppercase tracking-wide text-slate-500"><th className="px-3 py-3">Fecha / comprobante</th><th className="px-3 py-3">Donante</th><th className="px-3 py-3">Categoría</th><th className="px-3 py-3 text-right">Monto</th><th className="px-3 py-3 text-right">Acción</th></tr></thead>
+            <thead><tr className="border-b border-slate-200 bg-slate-50 font-bold uppercase tracking-wide text-slate-500"><th className="px-3 py-3">Fecha / comprobante</th><th className="px-3 py-3">Registro</th><th className="px-3 py-3">Categoría</th><th className="px-3 py-3 text-right">Monto</th><th className="px-3 py-3 text-right">Acción</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
               {donacionesList.slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).slice(0, 12).map(donation => (
                 <tr key={donation.id} className="hover:bg-slate-50">
                   <td className="px-3 py-3"><p className="font-mono font-bold text-slate-800">{donation.numeroComprobante || donation.nComprobante || 'Sin comprobante'}</p><p className="mt-0.5 text-[10px] text-slate-400">{donation.fecha}</p></td>
-                  <td className="px-3 py-3 font-semibold text-slate-800">{donation.donante}</td>
+                  <td className="px-3 py-3 font-semibold text-slate-500">Donación confidencial</td>
                   <td className="px-3 py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 font-bold text-emerald-800">{donation.categoria || donation.destinoAporte || 'Aporte libre'}</span></td>
                   <td className="px-3 py-3 text-right font-mono font-extrabold text-emerald-700">+{formatCLP(donation.monto)}</td>
                   <td className="px-3 py-3 text-right"><button type="button" onClick={() => handleDeleteDonation(donation)} className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Eliminar registro" aria-label={`Eliminar donación de ${formatCLP(donation.monto)}`}><Trash2 className="h-4 w-4" /></button></td>
