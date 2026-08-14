@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  PencilRuler,
   Search,
   Shield,
   Users,
@@ -155,10 +156,11 @@ export function IntranetLayout() {
     );
   }
 
-  const { currentUser, isMasterUser, isDirectiva, canManageVoluntarios } = auth;
+  const { currentUser, isMasterUser, isDirectiva, canManageVoluntarios, isLmsManager } = auth;
   const navItems = [
     { path: '/intranet/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'principal' },
     { path: '/intranet/voluntarios', label: 'Aula virtual', icon: GraduationCap, group: 'principal' },
+    { path: '/intranet/voluntarios/gestion/aula', label: 'Administrar aula virtual', icon: PencilRuler, group: 'principal', show: isLmsManager },
     { path: '/intranet/socios', label: 'Socios', icon: Users, group: 'gestion', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/directorio', label: 'Directorio', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/finanzas', label: 'Finanzas', icon: Wallet, group: 'gestion', show: isMasterUser || isDirectiva },
