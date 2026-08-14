@@ -27,7 +27,8 @@ export const FondoDonacionesPanel = () => {
     addFinancialCategory,
     archiveFinancialCategory,
     addFinancialAccount,
-    removeFinancialAccount
+    removeFinancialAccount,
+    updateFinancialAccountRut
   } = useAuth();
 
   const incomeCategories = useMemo(
@@ -39,7 +40,11 @@ export const FondoDonacionesPanel = () => {
     [financialCategories]
   );
   const activeAccounts = useMemo(
-    () => financialAccounts.filter(account => account.activa && account.publicada),
+    () => financialAccounts.filter(account => account.activa && account.publicada && account.rutTitular),
+    [financialAccounts]
+  );
+  const pendingRutAccounts = useMemo(
+    () => financialAccounts.filter(account => account.activa && !account.rutTitular),
     [financialAccounts]
   );
 
@@ -58,12 +63,15 @@ export const FondoDonacionesPanel = () => {
     banco: '',
     tipoCuenta: 'Cuenta corriente',
     numeroCuenta: '',
-    titular: 'PRUANED A.G.'
+    titular: 'PRUANED A.G.',
+    rutTitular: ''
   });
   const [categoryType, setCategoryType] = useState(INCOME_CATEGORY);
   const [isSavingDonation, setIsSavingDonation] = useState(false);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const [savingAccountRut, setSavingAccountRut] = useState(null);
+  const [accountRutDrafts, setAccountRutDrafts] = useState({});
   const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
@@ -160,7 +168,8 @@ export const FondoDonacionesPanel = () => {
         banco: '',
         tipoCuenta: 'Cuenta corriente',
         numeroCuenta: '',
-        titular: 'PRUANED A.G.'
+        titular: 'PRUANED A.G.',
+        rutTitular: ''
       });
       setFeedback('Cuenta registrada y publicada en Transparencia.');
     } catch (error) {
@@ -179,6 +188,21 @@ export const FondoDonacionesPanel = () => {
       setFeedback('Cuenta retirada de la publicación y de los nuevos registros.');
     } catch (error) {
       setFeedback(error.message || 'No fue posible retirar la cuenta.');
+    }
+  };
+
+  const handleCompleteAccountRut = async (event, account) => {
+    event.preventDefault();
+    setFeedback('');
+    try {
+      setSavingAccountRut(account.id);
+      await updateFinancialAccountRut(account.id, accountRutDrafts[account.id] || '');
+      setAccountRutDrafts(previous => ({ ...previous, [account.id]: '' }));
+      setFeedback('RUT guardado: la cuenta ya está publicada.');
+    } catch (error) {
+      setFeedback(error.message || 'No fue posible guardar el RUT.');
+    } finally {
+      setSavingAccountRut(null);
     }
   };
 
@@ -343,6 +367,9 @@ export const FondoDonacionesPanel = () => {
             <label className="block font-bold text-slate-700">Titular
               <input required value={newAccount.titular} onChange={(event) => setNewAccount({ ...newAccount, titular: event.target.value })} placeholder="PRUANED A.G." className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900" />
             </label>
+            <label className="block font-bold text-slate-700 sm:col-span-2">RUT del titular
+              <input required value={newAccount.rutTitular} onChange={(event) => setNewAccount({ ...newAccount, rutTitular: event.target.value })} placeholder="Ej: 76.123.456-7" className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 font-mono text-slate-900" />
+            </label>
             <button type="submit" disabled={isSavingAccount} className="sm:col-span-2 mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 font-bold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60"><PlusCircle className="h-4 w-4" /> {isSavingAccount ? 'Publicando…' : 'Registrar y publicar cuenta'}</button>
           </div>
         </form>
@@ -355,13 +382,28 @@ export const FondoDonacionesPanel = () => {
           <ul className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-100">
             {activeAccounts.map(account => (
               <li key={account.id} className="flex flex-col gap-2 px-4 py-3 text-xs sm:flex-row sm:items-center">
-                <div className="min-w-0 flex-1"><p className="font-bold text-slate-800">{account.nombre}</p><p className="mt-0.5 text-slate-500">{account.banco} · {account.tipoCuenta} · <span className="font-mono">{account.numeroCuenta}</span> · {account.titular}</p></div>
+                <div className="min-w-0 flex-1"><p className="font-bold text-slate-800">{account.nombre}</p><p className="mt-0.5 text-slate-500">{account.banco} · {account.tipoCuenta} · <span className="font-mono">{account.numeroCuenta}</span> · {account.titular} · RUT <span className="font-mono">{account.rutTitular}</span></p></div>
                 <span className="w-fit rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800">Pública</span>
                 <button type="button" onClick={() => handleRemoveAccount(account)} className="inline-flex w-fit items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /> Retirar</button>
               </li>
             ))}
             {!activeAccounts.length && <li className="px-4 py-8 text-center text-xs italic text-slate-500">Aún no hay cuentas públicas. Registra la primera para habilitar donaciones.</li>}
           </ul>
+          {pendingRutAccounts.length > 0 && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-xs font-bold text-amber-900">Cuentas pendientes de RUT</p>
+              <p className="mt-1 text-[11px] text-amber-800">Completa el RUT para publicarlas y permitir que reciban nuevas donaciones.</p>
+              <div className="mt-3 space-y-2">
+                {pendingRutAccounts.map(account => (
+                  <form key={account.id} onSubmit={(event) => handleCompleteAccountRut(event, account)} className="flex flex-col gap-2 sm:flex-row">
+                    <span className="flex-1 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700">{account.nombre}</span>
+                    <input required value={accountRutDrafts[account.id] || ''} onChange={(event) => setAccountRutDrafts(previous => ({ ...previous, [account.id]: event.target.value }))} placeholder="RUT del titular" className="rounded-lg border border-amber-300 bg-white px-3 py-2 font-mono text-xs text-slate-900" />
+                    <button type="submit" disabled={savingAccountRut === account.id} className="rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-60">{savingAccountRut === account.id ? 'Guardando…' : 'Publicar'}</button>
+                  </form>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </section>
 

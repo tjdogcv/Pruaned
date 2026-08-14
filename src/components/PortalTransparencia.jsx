@@ -48,7 +48,7 @@ export const PortalTransparencia = () => {
   const donationIncomeCategories = financialCategories.filter(category => (
     category.tipo === 'donacion_ingreso' && category.activo
   ));
-  const publicAccounts = financialAccounts.filter(account => account.activa && account.publicada);
+  const publicAccounts = financialAccounts.filter(account => account.activa && account.publicada && account.rutTitular);
 
   useEffect(() => {
     if (!newDonacion.categoria && donationIncomeCategories[0]) {
@@ -167,6 +167,7 @@ export const PortalTransparencia = () => {
                 <p className="mt-2 text-xs font-semibold text-slate-700">{account.banco} · {account.tipoCuenta}</p>
                 <p className="mt-1 break-all font-mono text-sm font-extrabold text-emerald-800">{account.numeroCuenta}</p>
                 <p className="mt-2 text-[11px] text-slate-500">Titular: {account.titular}</p>
+                <p className="mt-1 font-mono text-[11px] font-bold text-slate-700">RUT: {account.rutTitular}</p>
               </article>
             ))}
             {!publicAccounts.length && <p className="rounded-xl border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-xs italic text-slate-600 md:col-span-2 xl:col-span-3">Las cuentas para aportes se publicarán aquí una vez que Tesorería las registre.</p>}

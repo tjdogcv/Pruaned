@@ -49,6 +49,32 @@ const toPublicDonation = (donation) => ({
   categoria: donation.categoria || donation.destinoAporte || donation.destino_aporte || 'Aporte libre'
 });
 
+const normalizeChileanRut = (value) => String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
+
+const formatChileanRut = (value) => {
+  const normalized = normalizeChileanRut(value);
+  if (normalized.length < 2) return normalized;
+  const body = normalized.slice(0, -1);
+  const verifier = normalized.slice(-1);
+  return `${body.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${verifier}`;
+};
+
+const isValidChileanRut = (value) => {
+  const normalized = normalizeChileanRut(value);
+  if (!/^\d{7,8}[\dK]$/.test(normalized)) return false;
+  const body = normalized.slice(0, -1);
+  const verifier = normalized.slice(-1);
+  let sum = 0;
+  let multiplier = 2;
+  for (let index = body.length - 1; index >= 0; index -= 1) {
+    sum += Number(body[index]) * multiplier;
+    multiplier = multiplier === 7 ? 2 : multiplier + 1;
+  }
+  const remainder = 11 - (sum % 11);
+  const expected = remainder === 11 ? '0' : remainder === 10 ? 'K' : String(remainder);
+  return verifier === expected;
+};
+
 const AuthContext = createContext();
 
 const USER_DATABASE = [
@@ -1304,10 +1330,12 @@ export const AuthProvider = ({ children }) => {
     const tipoCuenta = accountData.tipoCuenta?.trim();
     const numeroCuenta = accountData.numeroCuenta?.trim().replace(/\s+/g, ' ');
     const titular = accountData.titular?.trim().replace(/\s+/g, ' ');
+    const rutTitular = formatChileanRut(accountData.rutTitular);
 
-    if (!nombre || !banco || !tipoCuenta || !numeroCuenta || !titular) {
-      throw new Error('Completa nombre público, banco, tipo, número y titular de la cuenta.');
+    if (!nombre || !banco || !tipoCuenta || !numeroCuenta || !titular || !rutTitular) {
+      throw new Error('Completa nombre público, banco, tipo, número, titular y RUT de la cuenta.');
     }
+    if (!isValidChileanRut(rutTitular)) throw new Error('El RUT del titular no es válido.');
 
     let account;
     if (isSupabaseReady()) {
@@ -1319,6 +1347,7 @@ export const AuthProvider = ({ children }) => {
           tipo_cuenta: tipoCuenta,
           numero_cuenta: numeroCuenta,
           titular,
+          rut_titular: rutTitular,
           publicada: true,
           activa: true
         })
@@ -1332,6 +1361,7 @@ export const AuthProvider = ({ children }) => {
         tipoCuenta: data.tipo_cuenta,
         numeroCuenta: data.numero_cuenta,
         titular: data.titular,
+        rutTitular: data.rut_titular,
         publicada: data.publicada,
         activa: data.activa
       };
@@ -1343,6 +1373,7 @@ export const AuthProvider = ({ children }) => {
         tipoCuenta,
         numeroCuenta,
         titular,
+        rutTitular,
         publicada: true,
         activa: true
       };
@@ -1363,6 +1394,22 @@ export const AuthProvider = ({ children }) => {
     }
     setFinancialAccounts(previous => previous.filter(account => account.id !== id));
     addSecurityLog('REMOVE_PUBLIC_FINANCIAL_ACCOUNT', currentUser?.email, 'WARN');
+  };
+
+  const updateFinancialAccountRut = async (id, rawRut) => {
+    const rutTitular = formatChileanRut(rawRut);
+    if (!isValidChileanRut(rutTitular)) throw new Error('El RUT del titular no es válido.');
+    if (isSupabaseReady()) {
+      const { error } = await supabase
+        .from('cuentas_financieras')
+        .update({ rut_titular: rutTitular, publicada: true, activa: true })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setFinancialAccounts(previous => previous.map(account => (
+      account.id === id ? { ...account, rutTitular, publicada: true, activa: true } : account
+    )));
+    addSecurityLog('UPDATE_PUBLIC_FINANCIAL_ACCOUNT_RUT', currentUser?.email, 'INFO');
   };
 
   const addCobrosBatch = async (cobrosArray) => {
@@ -1706,6 +1753,7 @@ export const AuthProvider = ({ children }) => {
       financialAccounts,
       addFinancialAccount,
       removeFinancialAccount,
+      updateFinancialAccountRut,
       cobrosList,
       setCobrosList,
       addCobrosBatch,
