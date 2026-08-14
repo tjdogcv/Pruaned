@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
+import { FondoDonacionesPanel } from './FondoDonacionesPanel';
 import { sendPagoEmail, sendApprovalEmail, sendRejectionEmail } from '../lib/emailConfig';
 import { 
   Users, 
@@ -54,6 +55,14 @@ const SEVERITY_CFG = {
   WARN:  { color: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500',  label: 'Alerta' },
   ERROR: { color: 'bg-rose-100 text-rose-800 border-rose-200',    dot: 'bg-rose-500',   label: 'Error' },
 };
+
+const QUOTA_EXPENSE_CATEGORIES = [
+  'Insumos Médicos Veterinarios',
+  'Logística Terreno & Combustible',
+  'Albergues Temporales & Alimentación',
+  'Capacitaciones & Materiales',
+  'Gastos Administrativos'
+];
 
 const AuditoriaPanel = ({ securityLogs = [] }) => {
   const [auditSearch, setAuditSearch] = useState('');
@@ -342,6 +351,7 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
     expensesList, 
     addExpense, 
     deleteExpense, 
+    financialCategories = [],
     postulacionesList,
     updatePostulacionEstado,
     solicitarRenunciaSocio,
@@ -422,6 +432,7 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
     numeroDocumento: '',
     proveedor: '',
     monto: '',
+    origenFondo: 'Fondo Cuotas',
     categoria: 'Insumos Médicos Veterinarios',
     glosa: ''
   });
@@ -434,6 +445,19 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
     socioId: '',
     mesesAGenerar: 1
   });
+
+  const donationExpenseCategories = financialCategories
+    .filter(category => category.tipo === 'donacion_egreso' && category.activo)
+    .map(category => category.nombre);
+  const availableExpenseCategories = newExpense.origenFondo === 'Fondo Donaciones'
+    ? donationExpenseCategories
+    : QUOTA_EXPENSE_CATEGORIES;
+
+  useEffect(() => {
+    if (availableExpenseCategories.length && !availableExpenseCategories.includes(newExpense.categoria)) {
+      setNewExpense(previous => ({ ...previous, categoria: availableExpenseCategories[0] }));
+    }
+  }, [newExpense.origenFondo, financialCategories]);
 
   const postulacionesPendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisión Directorio').length;
   const renunciasPendientes = sociosList.filter(s => s.estadoCuota === 'Solicitud Renuncia Pendiente Directorio').length;
@@ -474,6 +498,7 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
     ] : [],
     finanzas: canManageFinances ? [
       { id: 'balance', label: 'Balance', icon: PieChart },
+      { id: 'donaciones', label: 'Fondo donaciones', icon: DollarSign },
       { id: 'egresos', label: 'Egresos', icon: Receipt },
       { id: 'cobros-especiales', label: 'Cobros', icon: Wallet },
       { id: 'postulaciones', label: 'Postulaciones', icon: UserPlus, badge: postulacionesPendientes },
@@ -613,22 +638,27 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
     }
   };
 
-  const handleAddExpenseSubmit = (e) => {
+  const handleAddExpenseSubmit = async (e) => {
     e.preventDefault();
-    if (newExpense.numeroDocumento && newExpense.monto) {
-      addExpense({
+    if (newExpense.numeroDocumento && newExpense.monto && newExpense.categoria) {
+      try {
+        await addExpense({
         ...newExpense,
         monto: Number(newExpense.monto),
         fecha: new Date().toISOString().split('T')[0]
       });
-      setNewExpense({
-        tipoDocumento: 'Factura',
-        numeroDocumento: '',
-        proveedor: '',
-        monto: '',
-        categoria: 'Insumos Médicos Veterinarios',
-        glosa: ''
-      });
+        setNewExpense({
+          tipoDocumento: 'Factura',
+          numeroDocumento: '',
+          proveedor: '',
+          monto: '',
+          origenFondo: 'Fondo Cuotas',
+          categoria: QUOTA_EXPENSE_CATEGORIES[0],
+          glosa: ''
+        });
+      } catch (error) {
+        alert(error.message || 'No fue posible registrar el egreso. Verifica la migración financiera y tu permiso.');
+      }
     }
   };
 
@@ -1541,6 +1571,8 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
           );
         })()}
 
+        {activeTabLocal === 'donaciones' && canManageFinances && <FondoDonacionesPanel />}
+
         {/* TAB 4: REGISTRO DE EGRESOS */}
         {activeTabLocal === 'egresos' && canManageFinances && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in">
@@ -1551,6 +1583,22 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
               </h3>
 
               <form onSubmit={handleAddExpenseSubmit} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Fondo que financia el egreso</label>
+                  <select
+                    value={newExpense.origenFondo}
+                    onChange={(e) => setNewExpense({ ...newExpense, origenFondo: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
+                  >
+                    <option value="Fondo Cuotas">Fondo de cuotas sociales</option>
+                    <option value="Fondo Donaciones">Fondo de donaciones</option>
+                  </select>
+                  {newExpense.origenFondo === 'Fondo Donaciones' && (
+                    <p className="mt-1.5 rounded-lg bg-emerald-50 px-2.5 py-2 text-[11px] font-medium text-emerald-800">
+                      Este movimiento descontará exclusivamente el saldo del Fondo de Donaciones.
+                    </p>
+                  )}
+                </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Tipo de Documento</label>
                   <select
@@ -1604,18 +1652,21 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Categoría del Gasto</label>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {newExpense.origenFondo === 'Fondo Donaciones' ? 'Categoría del egreso del fondo' : 'Categoría del gasto'}
+                  </label>
                   <select
                     value={newExpense.categoria}
                     onChange={(e) => setNewExpense({...newExpense, categoria: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900"
+                    disabled={!availableExpenseCategories.length}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <option value="Insumos Médicos Veterinarios">Insumos Médicos Veterinarios</option>
-                    <option value="Logística Terreno & Combustible">Logística Terreno & Combustible</option>
-                    <option value="Albergues Temporales & Alimentación">Albergues Temporales & Alimentación</option>
-                    <option value="Capacitaciones & Materiales">Capacitaciones & Materiales</option>
-                    <option value="Gastos Administrativos">Gastos Administrativos</option>
+                    {!availableExpenseCategories.length && <option value="">Crea una categoría en Fondo donaciones</option>}
+                    {availableExpenseCategories.map(category => <option key={category} value={category}>{category}</option>)}
                   </select>
+                  {newExpense.origenFondo === 'Fondo Donaciones' && (
+                    <p className="mt-1 text-[10px] text-slate-500">Administra estas categorías en la pestaña <span className="font-bold">Fondo donaciones</span>.</p>
+                  )}
                 </div>
 
                 <div>
@@ -1631,9 +1682,10 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow"
+                  disabled={!newExpense.categoria}
+                  className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60 text-white font-bold rounded-xl text-xs shadow"
                 >
-                  Registrar Egreso en Libro
+                  {newExpense.origenFondo === 'Fondo Donaciones' ? 'Registrar egreso del fondo' : 'Registrar egreso en libro'}
                 </button>
               </form>
             </div>
@@ -1648,7 +1700,7 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                   <thead>
                     <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase">
                       <th className="py-2.5 px-3">Fecha / Doc</th>
-                      <th className="py-2.5 px-3">Proveedor / Categoría</th>
+                      <th className="py-2.5 px-3">Proveedor / Fondo / Categoría</th>
                       <th className="py-2.5 px-3">Monto</th>
                       <th className="py-2.5 px-3 text-right">Acción</th>
                     </tr>
@@ -1662,7 +1714,12 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="font-semibold text-slate-800">{exp.proveedor}</div>
-                          <span className="text-[10px] text-rose-600 font-bold">{exp.categoria}</span>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${exp.origenFondo === 'Fondo Donaciones' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
+                              {exp.origenFondo || 'Fondo Cuotas'}
+                            </span>
+                            <span className="text-[10px] text-rose-600 font-bold">{exp.categoria}</span>
+                          </div>
                         </td>
                         <td className="py-2.5 px-3 font-mono font-bold text-rose-600">
                           -${Number(exp.monto).toLocaleString('es-CL')} CLP

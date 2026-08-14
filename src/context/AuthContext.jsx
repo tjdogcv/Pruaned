@@ -27,6 +27,18 @@ import {
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
 
+const DEFAULT_FINANCIAL_CATEGORIES = [
+  { id: 'offline-donacion-ingreso-libre', tipo: 'donacion_ingreso', nombre: 'Aporte libre', activo: true },
+  { id: 'offline-donacion-ingreso-campana', tipo: 'donacion_ingreso', nombre: 'Campaña de recaudación', activo: true },
+  { id: 'offline-donacion-ingreso-convenio', tipo: 'donacion_ingreso', nombre: 'Convenio o alianza', activo: true },
+  { id: 'offline-donacion-ingreso-destino', tipo: 'donacion_ingreso', nombre: 'Aporte con destino específico', activo: true },
+  { id: 'offline-donacion-egreso-insumos', tipo: 'donacion_egreso', nombre: 'Insumos médicos veterinarios', activo: true },
+  { id: 'offline-donacion-egreso-albergue', tipo: 'donacion_egreso', nombre: 'Alimentación y albergue', activo: true },
+  { id: 'offline-donacion-egreso-logistica', tipo: 'donacion_egreso', nombre: 'Logística y transporte', activo: true },
+  { id: 'offline-donacion-egreso-operativo', tipo: 'donacion_egreso', nombre: 'Operativo de emergencia', activo: true },
+  { id: 'offline-donacion-egreso-capacitacion', tipo: 'donacion_egreso', nombre: 'Capacitación y materiales', activo: true }
+];
+
 const AuthContext = createContext();
 
 const USER_DATABASE = [
@@ -153,6 +165,9 @@ export const AuthProvider = ({ children }) => {
   const [financialSettings, setFinancialSettings] = useState(INITIAL_FINANCIAL_SETTINGS);
 
   const [expensesList, setExpensesList] = useState([]);
+  const [financialCategories, setFinancialCategories] = useState(() => (
+    supabaseReady ? [] : DEFAULT_FINANCIAL_CATEGORIES
+  ));
   const [cobrosList, setCobrosList] = useState([]);
   const [balancesList, setBalancesList] = useState([]);
 
@@ -206,7 +221,7 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseReady()) {
       const fetchSupabaseData = async () => {
         try {
-          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes] = await Promise.all([
+          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, financialCategoriesRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes] = await Promise.all([
             supabase.from('socios').select('*'),
             supabase.from('voluntarios').select('*'),
             supabase.from('noticias').select('*'),
@@ -214,6 +229,7 @@ export const AuthProvider = ({ children }) => {
             supabase.from('donaciones').select('*'),
             supabase.from('directorio_cargos').select('*').eq('id', 1).single(),
             supabase.from('egresos').select('*'),
+            supabase.from('categorias_financieras').select('*').order('tipo').order('nombre'),
             supabase.from('cobros').select('*'),
             supabase.from('balances_anuales').select('*'),
             supabase.from('postulaciones').select('*').order('created_at', { ascending: false }),
@@ -257,6 +273,8 @@ export const AuthProvider = ({ children }) => {
 
           if (egresosRes.data && egresosRes.data.length > 0) setExpensesList(snakeToCamel(egresosRes.data));
           else if (egresosRes.data && egresosRes.data.length === 0) setExpensesList([]);
+
+          if (financialCategoriesRes.data) setFinancialCategories(snakeToCamel(financialCategoriesRes.data));
 
           if (cobrosRes.data && cobrosRes.data.length > 0) setCobrosList(snakeToCamel(cobrosRes.data));
           else if (cobrosRes.data && cobrosRes.data.length === 0) setCobrosList([]);
@@ -913,32 +931,62 @@ export const AuthProvider = ({ children }) => {
   };
 
   const addDonacion = async (donacionData) => {
-    const itemWithId = { ...donacionData, id: `don-${Date.now()}` };
-    setDonacionesList(prev => [itemWithId, ...prev]);
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('donaciones').insert([{
-          id: itemWithId.id,
-          fecha: donacionData.fecha,
-          donante: donacionData.donante,
-          rut_donante: donacionData.rutDonante || donacionData.rut_donante,
-          monto: donacionData.monto,
-          metodo_pago: donacionData.metodoPago || donacionData.metodo_pago,
-          codigo_transaccion: donacionData.codigoTransaccion || donacionData.codigo_transaccion,
-          estado: donacionData.estado
-        }]);
-      } catch (err) { console.error('Error in addDonacion Supabase:', err); }
+    const monto = Number(donacionData.monto);
+    if (!Number.isFinite(monto) || monto <= 0) {
+      throw new Error('El monto de la donación debe ser mayor que cero.');
     }
-    addSecurityLog(`ADD_BANK_DONATION_${donacionData.monto}`, currentUser?.email, "INFO");
+
+    let itemWithId;
+    if (isSupabaseReady()) {
+      const { data, error } = await supabase.from('donaciones').insert([{
+        fecha: donacionData.fecha,
+        donante: donacionData.donante,
+        rut_donante: donacionData.rutDonante || donacionData.rutODocumentoDonante || donacionData.rut_donante || null,
+        monto,
+        banco: donacionData.banco || null,
+        numero_comprobante: donacionData.numeroComprobante || donacionData.numero_comprobante || null,
+        destino_aporte: donacionData.categoria || donacionData.destinoAporte || 'Aporte libre',
+        categoria: donacionData.categoria || donacionData.destinoAporte || 'Aporte libre',
+        metodo_pago: donacionData.metodoPago || donacionData.metodo_pago || 'Transferencia',
+        codigo_transaccion: donacionData.codigoTransaccion || donacionData.codigo_transaccion || null,
+        estado: donacionData.estado || 'Confirmada',
+        publico: donacionData.publico ?? true
+      }]).select().single();
+
+      if (error) throw error;
+      itemWithId = {
+        ...donacionData,
+        id: data.id,
+        fecha: data.fecha,
+        monto: data.monto,
+        donante: data.donante,
+        rutDonante: data.rut_donante,
+        rutODocumentoDonante: data.rut_donante,
+        banco: data.banco,
+        numeroComprobante: data.numero_comprobante || data.n_comprobante,
+        destinoAporte: data.destino_aporte,
+        categoria: data.categoria || data.destino_aporte
+      };
+    } else {
+      itemWithId = {
+        ...donacionData,
+        id: `don-${Date.now()}`,
+        monto,
+        categoria: donacionData.categoria || donacionData.destinoAporte || 'Aporte libre'
+      };
+    }
+
+    setDonacionesList(prev => [itemWithId, ...prev]);
+    addSecurityLog(`ADD_BANK_DONATION_${monto}`, currentUser?.email, "INFO");
+    return itemWithId;
   };
 
   const deleteDonacion = async (id) => {
-    setDonacionesList(prev => donacionesList.filter(d => d.id !== id));
     if (isSupabaseReady()) {
-      try {
-        await supabase.from('donaciones').delete().eq('id', id);
-      } catch (err) { console.error('Error in deleteDonacion Supabase:', err); }
+      const { error } = await supabase.from('donaciones').delete().eq('id', id);
+      if (error) throw error;
     }
+    setDonacionesList(prev => prev.filter(d => d.id !== id));
     addSecurityLog(`DELETE_DONATION_${id}`, currentUser?.email, "WARN");
   };
 
@@ -1136,6 +1184,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const addExpense = async (expenseItem) => {
+    const monto = Number(expenseItem.monto);
+    if (!Number.isFinite(monto) || monto <= 0) {
+      throw new Error('El monto del egreso debe ser mayor que cero.');
+    }
+
     if (isSupabaseReady()) {
       const dbItem = {
         fecha: expenseItem.fecha,
@@ -1144,11 +1197,12 @@ export const AuthProvider = ({ children }) => {
         proveedor: expenseItem.proveedor,
         categoria: expenseItem.categoria,
         origen_fondo: expenseItem.origenFondo || 'Fondo Cuotas',
-        monto: expenseItem.monto,
+        monto,
         glosa: expenseItem.glosa
       };
       const { data, error } = await supabase.from('egresos').insert([dbItem]).select();
-      if (!error && data && data.length > 0) {
+      if (error) throw error;
+      if (data && data.length > 0) {
         const d = data[0];
         setExpensesList(prev => [...prev, {
           id: d.id, fecha: d.fecha, tipoDocumento: d.tipo_documento, 
@@ -1158,16 +1212,63 @@ export const AuthProvider = ({ children }) => {
         }]);
       }
     } else {
-      const itemWithId = { ...expenseItem, id: `exp-${Date.now()}` };
+      const itemWithId = { ...expenseItem, monto, id: `exp-${Date.now()}` };
       setExpensesList(prev => [...prev, itemWithId]);
     }
+    addSecurityLog(`ADD_EXPENSE_${expenseItem.origenFondo || 'Fondo Cuotas'}_${monto}`, currentUser?.email, "INFO");
   };
 
   const deleteExpense = async (id) => {
     if (isSupabaseReady()) {
-      await supabase.from('egresos').delete().eq('id', id);
+      const { error } = await supabase.from('egresos').delete().eq('id', id);
+      if (error) throw error;
     }
     setExpensesList(prev => prev.filter(e => e.id !== id));
+  };
+
+  const addFinancialCategory = async (tipo, nombre) => {
+    if (!['donacion_ingreso', 'donacion_egreso'].includes(tipo)) {
+      throw new Error('Tipo de categoría financiera no válido.');
+    }
+
+    const safeName = nombre.trim().replace(/\s+/g, ' ');
+    if (safeName.length < 2) throw new Error('Ingresa un nombre de categoría válido.');
+    if (financialCategories.some(category => (
+      category.tipo === tipo && category.nombre.trim().toLocaleLowerCase('es-CL') === safeName.toLocaleLowerCase('es-CL')
+    ))) {
+      throw new Error('Esa categoría ya existe.');
+    }
+
+    let category;
+    if (isSupabaseReady()) {
+      const { data, error } = await supabase
+        .from('categorias_financieras')
+        .insert({ tipo, nombre: safeName })
+        .select()
+        .single();
+      if (error) throw error;
+      category = { id: data.id, tipo: data.tipo, nombre: data.nombre, activo: data.activo };
+    } else {
+      category = { id: `offline-finance-category-${Date.now()}`, tipo, nombre: safeName, activo: true };
+    }
+
+    setFinancialCategories(prev => [...prev, category].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
+    addSecurityLog(`ADD_FINANCIAL_CATEGORY_${tipo}`, currentUser?.email, 'INFO');
+    return category;
+  };
+
+  const archiveFinancialCategory = async (id) => {
+    if (isSupabaseReady()) {
+      const { error } = await supabase
+        .from('categorias_financieras')
+        .update({ activo: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setFinancialCategories(prev => prev.map(category => (
+      category.id === id ? { ...category, activo: false } : category
+    )));
+    addSecurityLog('ARCHIVE_FINANCIAL_CATEGORY', currentUser?.email, 'WARN');
   };
 
   const addCobrosBatch = async (cobrosArray) => {
@@ -1504,6 +1605,9 @@ export const AuthProvider = ({ children }) => {
       expensesList,
       addExpense,
       deleteExpense,
+      financialCategories,
+      addFinancialCategory,
+      archiveFinancialCategory,
       cobrosList,
       setCobrosList,
       addCobrosBatch,
