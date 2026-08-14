@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { DocumentManager } from './DocumentManager';
 import { Newspaper, FolderPlus, FileText, PlusCircle, Trash2, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 export const AdminCMS = () => {
-  const { newsList, addNews, deleteNews, docCategories, addDocCategory, deleteDocCategory, documentsList, addDocument, deleteDocument } = useAuth();
+  const { newsList, addNews, deleteNews, docCategories, addDocCategory, deleteDocCategory } = useAuth();
   
   const [activeTab, setActiveTab] = useState('news'); // news, categories, docs
   
@@ -16,6 +17,7 @@ export const AdminCMS = () => {
 
   // Category form state
   const [catNameInput, setCatNameInput] = useState('');
+  const [categoryError, setCategoryError] = useState('');
 
   const handlePublishNews = (e) => {
     e.preventDefault();
@@ -36,11 +38,26 @@ export const AdminCMS = () => {
     }
   };
 
-  const handleAddCategory = (e) => {
+  const handleAddCategory = async (e) => {
     e.preventDefault();
+    setCategoryError('');
     if (catNameInput.trim()) {
-      addDocCategory(catNameInput.trim());
+      try {
+        await addDocCategory(catNameInput.trim());
+      } catch (error) {
+        setCategoryError(error.message || 'No fue posible crear la categoría.');
+        return;
+      }
       setCatNameInput('');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryName) => {
+    setCategoryError('');
+    try {
+      await deleteDocCategory(categoryName);
+    } catch (error) {
+      setCategoryError(error.message || 'No fue posible eliminar la categoría.');
     }
   };
 
@@ -62,7 +79,7 @@ export const AdminCMS = () => {
             </p>
           </div>
 
-          <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 gap-1">
+          <div className="flex flex-wrap bg-slate-800 p-1.5 rounded-2xl border border-slate-700 gap-1">
             <button
               onClick={() => setActiveTab('news')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -78,6 +95,14 @@ export const AdminCMS = () => {
               }`}
             >
               Categorías de Documentos
+            </button>
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'documents' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Documentos Publicados
             </button>
           </div>
         </div>
@@ -160,6 +185,7 @@ export const AdminCMS = () => {
                   Publicar Noticia en Sitio Público
                 </button>
               </form>
+
             </div>
 
             {/* List of Published News */}
@@ -216,6 +242,8 @@ export const AdminCMS = () => {
                 </button>
               </form>
 
+              {categoryError && <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200">{categoryError}</p>}
+
               <div className="border-t border-slate-700 pt-4 space-y-3">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Categorías Activas:</h4>
                 <div className="space-y-2">
@@ -223,7 +251,7 @@ export const AdminCMS = () => {
                     <div key={c} className="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800 text-sm">
                       <span className="font-bold text-white">{c}</span>
                       <button
-                        onClick={() => deleteDocCategory(c)}
+                        onClick={() => handleDeleteCategory(c)}
                         className="text-rose-400 hover:text-rose-300 p-1"
                         title="Eliminar categoría"
                       >
@@ -236,6 +264,8 @@ export const AdminCMS = () => {
             </div>
           </div>
         )}
+
+        {activeTab === 'documents' && <DocumentManager />}
 
       </div>
     </section>

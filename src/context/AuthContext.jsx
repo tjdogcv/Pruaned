@@ -14,7 +14,7 @@ import {
   INITIAL_FIRMAS
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
-import { supabase, isSupabaseReady } from '../lib/supabase';
+import { BUCKETS, supabase, isSupabaseReady } from '../lib/supabase';
 import { attachCourseModules, normalizeAudience } from '../lib/lmsProgress';
 import {
   LEGACY_SESSION_DURATION_MS,
@@ -26,6 +26,40 @@ import {
 } from './authSession';
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
+const DOCUMENT_MAX_BYTES = 20 * 1024 * 1024;
+const DOCUMENT_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+]);
+const DOCUMENT_EXTENSIONS = new Set(['pdf', 'docx', 'xlsx']);
+
+const formatDocumentSize = (bytes) => {
+  const value = Number(bytes);
+  if (!Number.isFinite(value) || value < 1) return '—';
+  if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const normalizeDocument = (document) => ({
+  ...document,
+  title: document.title || document.titulo || '',
+  category: document.category || document.categoria || 'Sin categoría',
+  description: document.description || document.descripcion || '',
+  date: document.date || document.fecha || document.fechaPublicacion || document.createdAt || '',
+  version: document.version || 'v1.0',
+  size: document.size || formatDocumentSize(document.archivoBytes || document.archivo_bytes),
+  published: document.published ?? document.publicado ?? true,
+  fileName: document.fileName || document.archivoNombre || document.archivo_nombre || '',
+  fileType: document.fileType || document.archivoTipo || document.archivo_tipo || '',
+  storagePath: document.storagePath || document.storage_path || ''
+});
+
+const fileExtension = (fileName = '') => fileName.split('.').pop().toLowerCase();
+const safeStorageFileName = (fileName) => {
+  const normalized = fileName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return normalized.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'documento';
+};
 
 const DEFAULT_FINANCIAL_CATEGORIES = [
   { id: 'offline-donacion-ingreso-libre', tipo: 'donacion_ingreso', nombre: 'Aporte libre', activo: true },
@@ -221,7 +255,7 @@ export const AuthProvider = ({ children }) => {
 
   const [documentsList, setDocumentsList] = useState(() => {
     const saved = localStorage.getItem('pruaned_documents');
-    return saved ? JSON.parse(saved) : INITIAL_DOCUMENTS;
+    return (saved ? JSON.parse(saved) : INITIAL_DOCUMENTS).map(normalizeDocument);
   });
 
   const [sociosList, setSociosList] = useState(() => {
@@ -262,7 +296,7 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseReady()) {
       const fetchSupabaseData = async () => {
         try {
-          const [sociosRes, volRes, newsRes, docsRes, donRes, publicDonRes, cargosRes, egresosRes, financialCategoriesRes, financialAccountsRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes] = await Promise.all([
+          const [sociosRes, volRes, newsRes, docsRes, donRes, publicDonRes, cargosRes, egresosRes, financialCategoriesRes, financialAccountsRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes, documentCategoriesRes] = await Promise.all([
             supabase.from('socios').select('*'),
             supabase.from('voluntarios').select('*'),
             supabase.from('noticias').select('*'),
@@ -278,7 +312,8 @@ export const AuthProvider = ({ children }) => {
             supabase.from('postulaciones').select('*').order('created_at', { ascending: false }),
             supabase.from('parametros_sistema').select('*'),
             supabase.from('cursos_lms').select('id, code, title, description, hours, level, modality, audience, status, instructor, duration, difficulty, category, requirements, video_url, has_evaluation, created_at, updated_at').order('created_at', { ascending: false }),
-            supabase.from('auditoria_logs').select('*').order('fecha', { ascending: false }).limit(200)
+            supabase.from('auditoria_logs').select('*').order('fecha', { ascending: false }).limit(200),
+            supabase.from('document_categories').select('name').order('name')
           ]);
 
           const snakeToCamel = (obj) => {
@@ -308,7 +343,7 @@ export const AuthProvider = ({ children }) => {
           if (newsRes.data && newsRes.data.length > 0) setNewsList(snakeToCamel(newsRes.data));
           else if (newsRes.data && newsRes.data.length === 0) setNewsList([]);
 
-          if (docsRes.data && docsRes.data.length > 0) setDocumentsList(snakeToCamel(docsRes.data));
+          if (docsRes.data && docsRes.data.length > 0) setDocumentsList(snakeToCamel(docsRes.data).map(normalizeDocument));
           else if (docsRes.data && docsRes.data.length === 0) setDocumentsList([]);
 
           if (donRes.data && donRes.data.length > 0) setDonacionesList(snakeToCamel(donRes.data));
@@ -343,13 +378,13 @@ export const AuthProvider = ({ children }) => {
           if (paramsRes && paramsRes.data) {
             paramsRes.data.forEach(param => {
               if (param.id === 'financial_settings') setFinancialSettings(param.valor);
-              if (param.id === 'doc_categories') setDocCategories(param.valor);
               if (param.id === 'convocatoria_activa') setConvocatoriaActiva(param.valor);
               if (param.id === 'firmas_oficiales') setFirmasOficiales(param.valor);
             });
           }
           if (cursosRes && cursosRes.data) setCoursesList(snakeToCamel(cursosRes.data));
           if (logsRes && logsRes.data && logsRes.data.length > 0) setSecurityLogs(snakeToCamel(logsRes.data));
+          if (documentCategoriesRes?.data) setDocCategories(documentCategoriesRes.data.map((category) => category.name));
 
         } catch (error) {
           console.error("Error sincronizando con Supabase:", error);
@@ -1498,58 +1533,106 @@ export const AuthProvider = ({ children }) => {
 
   const addDocCategory = async (categoryName) => {
     const cat = categoryName.trim();
-    if (!docCategories.includes(cat)) {
-      let newState = [];
-      setDocCategories(prev => {
-        newState = [...prev, cat];
-        return newState;
-      });
-      if (isSupabaseReady()) {
-        try {
-          await supabase.from('parametros_sistema').upsert({ id: 'doc_categories', valor: newState });
-        } catch (err) { console.error('Error addDocCategory:', err); }
-      }
-    }
+    if (!cat || docCategories.some((item) => item.toLocaleLowerCase('es-CL') === cat.toLocaleLowerCase('es-CL'))) return;
+    if (!isSupabaseReady()) throw new Error('Las categorías requieren una conexión segura a Supabase.');
+    const { data, error } = await supabase.from('document_categories').insert({ name: cat }).select('name').single();
+    if (error) throw error;
+    setDocCategories((previous) => [...previous, data.name].sort((first, second) => first.localeCompare(second, 'es')));
   };
 
   const deleteDocCategory = async (categoryName) => {
-    let newState = [];
-    setDocCategories(prev => {
-      newState = prev.filter(c => c !== categoryName);
-      return newState;
-    });
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('parametros_sistema').upsert({ id: 'doc_categories', valor: newState });
-      } catch (err) { console.error('Error deleteDocCategory:', err); }
+    if (documentsList.some((document) => document.category === categoryName)) {
+      throw new Error('No puedes eliminar una categoría que aún tiene documentos asociados.');
     }
+    if (!isSupabaseReady()) throw new Error('Las categorías requieren una conexión segura a Supabase.');
+    const { error } = await supabase.from('document_categories').delete().eq('name', categoryName);
+    if (error) throw error;
+    setDocCategories((previous) => previous.filter((category) => category !== categoryName));
   };
 
-  const addDocument = async (docItem) => {
-    const itemWithId = { ...docItem, id: `doc-${Date.now()}` };
-    setDocumentsList(prev => [itemWithId, ...prev]);
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('documentos').insert([{
-          id: itemWithId.id,
-          titulo: docItem.titulo,
-          categoria: docItem.categoria,
-          fecha_subida: docItem.fechaSubida || docItem.fecha_subida,
-          url: docItem.url,
-          privado: docItem.privado
-        }]);
-      } catch (err) { console.error('Error addDocument Supabase:', err); }
+  const addDocument = async ({ file, title, category, description, version = 'v1.0' }) => {
+    if (!isSupabaseReady()) {
+      throw new Error('La publicación documental requiere una conexión segura a Supabase.');
     }
+    if (!(file instanceof File)) throw new Error('Selecciona un archivo para publicar.');
+    if (file.size < 1 || file.size > DOCUMENT_MAX_BYTES) {
+      throw new Error('El archivo debe tener un tamaño entre 1 byte y 20 MB.');
+    }
+
+    const extension = fileExtension(file.name);
+    if (!DOCUMENT_EXTENSIONS.has(extension) || (file.type && !DOCUMENT_MIME_TYPES.has(file.type))) {
+      throw new Error('Sólo se permiten archivos PDF, DOCX o XLSX.');
+    }
+    if (!title?.trim() || !category?.trim()) {
+      throw new Error('Título y categoría son obligatorios.');
+    }
+
+    const objectId = crypto.randomUUID();
+    const storagePath = `publicados/${new Date().getUTCFullYear()}/${objectId}-${safeStorageFileName(file.name)}`;
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKETS.documentos)
+      .upload(storagePath, file, { contentType: file.type || undefined, upsert: false });
+
+    if (uploadError) throw uploadError;
+
+    const { data: publicUrlData } = supabase.storage
+      .from(BUCKETS.documentos)
+      .getPublicUrl(storagePath);
+
+    const { data, error } = await supabase
+      .from('documentos')
+      .insert({
+        titulo: title.trim(),
+        categoria: category.trim(),
+        descripcion: description?.trim() || null,
+        url: publicUrlData.publicUrl,
+        fecha: new Date().toISOString().slice(0, 10),
+        version: version?.trim() || 'v1.0',
+        archivo_nombre: file.name,
+        archivo_tipo: file.type || `application/${extension}`,
+        archivo_bytes: file.size,
+        storage_path: storagePath,
+        publicado: true
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      await supabase.storage.from(BUCKETS.documentos).remove([storagePath]);
+      throw error;
+    }
+
+    const document = normalizeDocument(data);
+    setDocumentsList((previous) => [document, ...previous]);
+    addSecurityLog(`PUBLISH_DOCUMENT_${document.id}`, currentUser?.email, 'INFO');
+    return document;
   };
 
-  const deleteDocument = async (id) => {
-    setDocumentsList(prev => prev.filter(d => d.id !== id));
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('documentos').delete().eq('id', id);
-      } catch (err) { console.error('Error deleteDocument Supabase:', err); }
+  const setDocumentPublication = async (id, published) => {
+    if (!isSupabaseReady()) {
+      throw new Error('La publicación documental requiere una conexión segura a Supabase.');
     }
+
+    const publicationPatch = published
+      ? { publicado: true, archivado_at: null, archivado_por: null }
+      : { publicado: false };
+    const { data, error } = await supabase
+      .from('documentos')
+      .update(publicationPatch)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    const document = normalizeDocument(data);
+    setDocumentsList((previous) => previous.map((item) => item.id === id ? document : item));
+    addSecurityLog(`${published ? 'RESTORE' : 'ARCHIVE'}_DOCUMENT_${id}`, currentUser?.email, published ? 'INFO' : 'WARN');
+    return document;
   };
+
+  const archiveDocument = (id) => setDocumentPublication(id, false);
+  const restoreDocument = (id) => setDocumentPublication(id, true);
+  const deleteDocument = archiveDocument;
 
   const updateVolunteerCert = async (volId, courseId) => {
     let newState = {};
@@ -1768,6 +1851,8 @@ export const AuthProvider = ({ children }) => {
       documentsList,
       addDocument,
       deleteDocument,
+      archiveDocument,
+      restoreDocument,
       sociosList,
       updateSocioCuota,
       voluntariosList,

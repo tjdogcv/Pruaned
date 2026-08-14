@@ -136,6 +136,28 @@ h1, h2, h3, h4, h5, h6 {
   outline-offset: 1px;
 }
 
+.document-input {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid #334155;
+  border-radius: 0.75rem;
+  background: #020617;
+  color: #FFFFFF;
+  padding: 0.625rem 0.75rem;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.document-input::placeholder {
+  color: #64748B;
+}
+
+.document-input:focus {
+  border-color: #6EE7B7;
+  outline: 2px solid rgba(110, 231, 183, 0.35);
+  outline-offset: 1px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
