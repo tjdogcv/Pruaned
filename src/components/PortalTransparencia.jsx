@@ -26,6 +26,7 @@ export const PortalTransparencia = () => {
     sociosList,
     canManageFinances,
     financialCategories = [],
+    financialAccounts = [],
     balancesList = [],
     addBalance = () => {},
     deleteBalance = () => {}
@@ -40,7 +41,7 @@ export const PortalTransparencia = () => {
     donante: '',
     rutODocumentoDonante: '',
     monto: '',
-    banco: 'BancoEstado (Cta. Corriente PRUANED A.G.)',
+    cuentaId: '',
     numeroComprobante: '',
     categoria: ''
   });
@@ -48,12 +49,19 @@ export const PortalTransparencia = () => {
   const donationIncomeCategories = financialCategories.filter(category => (
     category.tipo === 'donacion_ingreso' && category.activo
   ));
+  const publicAccounts = financialAccounts.filter(account => account.activa && account.publicada);
 
   useEffect(() => {
     if (!newDonacion.categoria && donationIncomeCategories[0]) {
       setNewDonacion(previous => ({ ...previous, categoria: donationIncomeCategories[0].nombre }));
     }
   }, [donationIncomeCategories, newDonacion.categoria]);
+
+  useEffect(() => {
+    if (!newDonacion.cuentaId && publicAccounts[0]) {
+      setNewDonacion(previous => ({ ...previous, cuentaId: publicAccounts[0].id }));
+    }
+  }, [publicAccounts, newDonacion.cuentaId]);
 
   // Financial Calculations
   const totalDonaciones = donacionesList.reduce((acc, don) => acc + Number(don.monto || 0), 0);
@@ -81,7 +89,8 @@ export const PortalTransparencia = () => {
 
   const handleAddDonacionSubmit = async (e) => {
     e.preventDefault();
-    if (newDonacion.monto && newDonacion.categoria) {
+    const selectedAccount = publicAccounts.find(account => account.id === newDonacion.cuentaId);
+    if (newDonacion.monto && newDonacion.categoria && selectedAccount) {
       const finalDonante = newDonacion.donante.trim() || 'Aporte Anónimo / Depósito Directo por Caja';
       const finalRut = newDonacion.rutODocumentoDonante.trim() || 'No Especificado';
       const finalComprobante = newDonacion.numeroComprobante.trim() || `DEP-${Date.now().toString().slice(-6)}`;
@@ -91,7 +100,8 @@ export const PortalTransparencia = () => {
           donante: finalDonante,
           rutODocumentoDonante: finalRut,
           monto: Number(newDonacion.monto),
-          banco: newDonacion.banco,
+          cuentaId: selectedAccount.id,
+          banco: `${selectedAccount.nombre} · ${selectedAccount.banco} · ${selectedAccount.numeroCuenta}`,
           numeroComprobante: finalComprobante,
           categoria: newDonacion.categoria,
           fecha: new Date().toISOString().split('T')[0],
@@ -103,7 +113,7 @@ export const PortalTransparencia = () => {
           donante: '',
           rutODocumentoDonante: '',
           monto: '',
-          banco: 'BancoEstado (Cta. Corriente PRUANED A.G.)',
+          cuentaId: publicAccounts[0]?.id || '',
           numeroComprobante: '',
           categoria: donationIncomeCategories[0]?.nombre || ''
         });
@@ -143,11 +153,33 @@ export const PortalTransparencia = () => {
           )}
         </div>
 
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-white p-2 text-emerald-700 shadow-sm"><Building className="h-5 w-5" /></div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700">Datos para aportar</p>
+              <h3 className="mt-1 font-['Outfit'] text-lg font-extrabold text-slate-900">Cuentas oficiales publicadas</h3>
+              <p className="mt-1 text-xs text-slate-600">Usa sólo las cuentas institucionales que aparecen aquí. El mismo listado es el que utiliza el registro interno de donaciones.</p>
+            </div>
+          </div>
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {publicAccounts.map(account => (
+              <article key={account.id} className="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <p className="font-bold text-slate-900">{account.nombre}</p>
+                <p className="mt-2 text-xs font-semibold text-slate-700">{account.banco} · {account.tipoCuenta}</p>
+                <p className="mt-1 break-all font-mono text-sm font-extrabold text-emerald-800">{account.numeroCuenta}</p>
+                <p className="mt-2 text-[11px] text-slate-500">Titular: {account.titular}</p>
+              </article>
+            ))}
+            {!publicAccounts.length && <p className="rounded-xl border border-dashed border-emerald-200 bg-white px-4 py-6 text-center text-xs italic text-slate-600 md:col-span-2 xl:col-span-3">Las cuentas para aportes se publicarán aquí una vez que Tesorería las registre.</p>}
+          </div>
+        </section>
+
         {/* Info Banner for Flexible Data Entry */}
         <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl flex items-center gap-3 text-xs text-blue-950 shadow-sm">
           <Info className="w-5 h-5 text-blue-700 flex-shrink-0" />
           <p>
-            <strong>Flexibilidad Contable:</strong> Si un depósito bancario no incluye el RUT, el nombre del donante o el destino específico, el sistema asigna automáticamente las etiquetas <i>"Aporte Anónimo / Depósito por Caja"</i> y <i>"Fondo General"</i>. Lo fundamental para cuadrar la caja es ingresar el <strong>Monto ($ CLP)</strong>.
+            <strong>Registro centralizado:</strong> Las cuentas publicadas, categorías y aportes se comparten con Finanzas. Si un depósito no incluye nombre o RUT, el sistema lo registra como <i>“Aporte anónimo / depósito directo”</i>; siempre selecciona la cuenta oficial que recibió el aporte.
           </p>
         </div>
 
@@ -423,13 +455,14 @@ export const PortalTransparencia = () => {
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Cuenta Bancaria Destino</label>
                   <select
-                    value={newDonacion.banco}
-                    onChange={(e) => setNewDonacion({...newDonacion, banco: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
+                    required
+                    disabled={!publicAccounts.length}
+                    value={newDonacion.cuentaId}
+                    onChange={(e) => setNewDonacion({...newDonacion, cuentaId: e.target.value})}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <option value="BancoEstado (Cta. Corriente PRUANED A.G.)">BancoEstado (Cta. Corriente Oficial)</option>
-                    <option value="Banco de Chile (Cta. Vista PRUANED)">Banco de Chile (Cta. Vista)</option>
-                    <option value="Itaú (Cta. Dólares Internacional)">Itaú (Cta. Dólares Internacional)</option>
+                    {!publicAccounts.length && <option value="">No hay cuentas públicas disponibles</option>}
+                    {publicAccounts.map(account => <option key={account.id} value={account.id}>{account.nombre} · {account.banco} · {account.numeroCuenta}</option>)}
                   </select>
                 </div>
 
@@ -457,7 +490,8 @@ export const PortalTransparencia = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow flex items-center gap-1"
+                    disabled={!publicAccounts.length || !donationIncomeCategories.length}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 text-white font-bold rounded-xl text-xs shadow flex items-center gap-1"
                   >
                     <CheckCircle2 className="w-4 h-4" /> Registrar Donación
                   </button>

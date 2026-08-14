@@ -21,10 +21,13 @@ export const FondoDonacionesPanel = () => {
     donacionesList = [],
     expensesList = [],
     financialCategories = [],
+    financialAccounts = [],
     addDonacion,
     deleteDonacion,
     addFinancialCategory,
-    archiveFinancialCategory
+    archiveFinancialCategory,
+    addFinancialAccount,
+    removeFinancialAccount
   } = useAuth();
 
   const incomeCategories = useMemo(
@@ -35,20 +38,32 @@ export const FondoDonacionesPanel = () => {
     () => financialCategories.filter(category => category.tipo === EXPENSE_CATEGORY && category.activo),
     [financialCategories]
   );
+  const activeAccounts = useMemo(
+    () => financialAccounts.filter(account => account.activa && account.publicada),
+    [financialAccounts]
+  );
 
   const [newDonation, setNewDonation] = useState({
     fecha: new Date().toISOString().slice(0, 10),
     donante: '',
     rutDonante: '',
     numeroComprobante: '',
-    banco: 'BancoEstado (Cuenta oficial PRUANED A.G.)',
+    cuentaId: '',
     monto: '',
     categoria: ''
   });
   const [newCategory, setNewCategory] = useState('');
+  const [newAccount, setNewAccount] = useState({
+    nombre: '',
+    banco: '',
+    tipoCuenta: 'Cuenta corriente',
+    numeroCuenta: '',
+    titular: 'PRUANED A.G.'
+  });
   const [categoryType, setCategoryType] = useState(INCOME_CATEGORY);
   const [isSavingDonation, setIsSavingDonation] = useState(false);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
   const [feedback, setFeedback] = useState('');
 
   useEffect(() => {
@@ -56,6 +71,12 @@ export const FondoDonacionesPanel = () => {
       setNewDonation(previous => ({ ...previous, categoria: incomeCategories[0].nombre }));
     }
   }, [incomeCategories, newDonation.categoria]);
+
+  useEffect(() => {
+    if (!newDonation.cuentaId && activeAccounts[0]) {
+      setNewDonation(previous => ({ ...previous, cuentaId: activeAccounts[0].id }));
+    }
+  }, [activeAccounts, newDonation.cuentaId]);
 
   if (!canManageFinances) return null;
 
@@ -68,8 +89,9 @@ export const FondoDonacionesPanel = () => {
   const handleDonationSubmit = async (event) => {
     event.preventDefault();
     setFeedback('');
-    if (!newDonation.categoria) {
-      setFeedback('Primero crea o activa una categoría para el ingreso de donación.');
+    const selectedAccount = activeAccounts.find(account => account.id === newDonation.cuentaId);
+    if (!newDonation.categoria || !selectedAccount) {
+      setFeedback('Primero crea una categoría y registra una cuenta pública para el ingreso de donación.');
       return;
     }
 
@@ -79,6 +101,8 @@ export const FondoDonacionesPanel = () => {
         ...newDonation,
         donante: newDonation.donante.trim() || 'Aporte anónimo / depósito directo',
         monto: Number(newDonation.monto),
+        cuentaId: selectedAccount.id,
+        banco: `${selectedAccount.nombre} · ${selectedAccount.banco} · ${selectedAccount.numeroCuenta}`,
         destinoAporte: newDonation.categoria,
         estado: 'Confirmada',
         publico: true
@@ -121,6 +145,40 @@ export const FondoDonacionesPanel = () => {
       setFeedback('Categoría desactivada.');
     } catch (error) {
       setFeedback(error.message || 'No fue posible desactivar la categoría.');
+    }
+  };
+
+  const handleAccountSubmit = async (event) => {
+    event.preventDefault();
+    setFeedback('');
+    try {
+      setIsSavingAccount(true);
+      const account = await addFinancialAccount(newAccount);
+      setNewDonation(previous => ({ ...previous, cuentaId: account.id }));
+      setNewAccount({
+        nombre: '',
+        banco: '',
+        tipoCuenta: 'Cuenta corriente',
+        numeroCuenta: '',
+        titular: 'PRUANED A.G.'
+      });
+      setFeedback('Cuenta registrada y publicada en Transparencia.');
+    } catch (error) {
+      setFeedback(error.message || 'No fue posible registrar la cuenta.');
+    } finally {
+      setIsSavingAccount(false);
+    }
+  };
+
+  const handleRemoveAccount = async (account) => {
+    if (!window.confirm(`¿Retirar “${account.nombre}” de las cuentas públicas? Las donaciones históricas conservarán su comprobante.`)) return;
+    setFeedback('');
+    try {
+      await removeFinancialAccount(account.id);
+      setNewDonation(previous => ({ ...previous, cuentaId: '' }));
+      setFeedback('Cuenta retirada de la publicación y de los nuevos registros.');
+    } catch (error) {
+      setFeedback(error.message || 'No fue posible retirar la cuenta.');
     }
   };
 
@@ -208,10 +266,13 @@ export const FondoDonacionesPanel = () => {
             <label className="block font-bold text-slate-700">N° comprobante
               <input type="text" required placeholder="Ej: TRF-992014" value={newDonation.numeroComprobante} onChange={(event) => setNewDonation({ ...newDonation, numeroComprobante: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 font-mono text-slate-900" />
             </label>
-            <label className="block font-bold text-slate-700 sm:col-span-2">Cuenta receptora
-              <input type="text" required value={newDonation.banco} onChange={(event) => setNewDonation({ ...newDonation, banco: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900" />
+            <label className="block font-bold text-slate-700 sm:col-span-2">Cuenta receptora pública
+              <select required disabled={!activeAccounts.length} value={newDonation.cuentaId} onChange={(event) => setNewDonation({ ...newDonation, cuentaId: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900 disabled:cursor-not-allowed disabled:opacity-60">
+                {!activeAccounts.length && <option value="">Registra una cuenta pública para continuar</option>}
+                {activeAccounts.map(account => <option key={account.id} value={account.id}>{account.nombre} · {account.banco} · {account.numeroCuenta}</option>)}
+              </select>
             </label>
-            <button type="submit" disabled={isSavingDonation || !incomeCategories.length} className="sm:col-span-2 mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60">
+            <button type="submit" disabled={isSavingDonation || !incomeCategories.length || !activeAccounts.length} className="sm:col-span-2 mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60">
               <PlusCircle className="h-4 w-4" /> {isSavingDonation ? 'Registrando…' : 'Registrar donación'}
             </button>
           </form>
@@ -255,6 +316,53 @@ export const FondoDonacionesPanel = () => {
             {!activeCategories.length && <li className="px-3 py-5 text-center text-xs italic text-slate-500">No hay categorías activas todavía.</li>}
           </ul>
         </aside>
+      </section>
+
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <form onSubmit={handleAccountSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-5">
+          <div className="flex items-start gap-3 border-b border-slate-100 pb-4">
+            <div className="rounded-xl bg-amber-100 p-2 text-amber-800"><DollarSign className="h-5 w-5" /></div>
+            <div>
+              <h4 className="font-['Outfit'] text-base font-bold text-slate-900">Publicar cuenta receptora</h4>
+              <p className="text-xs text-slate-500">Estos datos serán visibles en Transparencia y seleccionables en ambos registros.</p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+            <label className="block font-bold text-slate-700 sm:col-span-2">Nombre público
+              <input required value={newAccount.nombre} onChange={(event) => setNewAccount({ ...newAccount, nombre: event.target.value })} placeholder="Ej: Cuenta de donaciones PRUANED" className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900" />
+            </label>
+            <label className="block font-bold text-slate-700">Banco
+              <input required value={newAccount.banco} onChange={(event) => setNewAccount({ ...newAccount, banco: event.target.value })} placeholder="Ej: BancoEstado" className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900" />
+            </label>
+            <label className="block font-bold text-slate-700">Tipo de cuenta
+              <select value={newAccount.tipoCuenta} onChange={(event) => setNewAccount({ ...newAccount, tipoCuenta: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900"><option>Cuenta corriente</option><option>Cuenta vista</option><option>Cuenta de ahorro</option><option>Cuenta digital</option></select>
+            </label>
+            <label className="block font-bold text-slate-700">Número de cuenta
+              <input required value={newAccount.numeroCuenta} onChange={(event) => setNewAccount({ ...newAccount, numeroCuenta: event.target.value })} placeholder="Número visible al público" className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 font-mono text-slate-900" />
+            </label>
+            <label className="block font-bold text-slate-700">Titular
+              <input required value={newAccount.titular} onChange={(event) => setNewAccount({ ...newAccount, titular: event.target.value })} placeholder="PRUANED A.G." className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900" />
+            </label>
+            <button type="submit" disabled={isSavingAccount} className="sm:col-span-2 mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 font-bold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60"><PlusCircle className="h-4 w-4" /> {isSavingAccount ? 'Publicando…' : 'Registrar y publicar cuenta'}</button>
+          </div>
+        </form>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-7">
+          <div className="flex items-start gap-3 border-b border-slate-100 pb-4">
+            <div className="rounded-xl bg-emerald-100 p-2 text-emerald-700"><Receipt className="h-5 w-5" /></div>
+            <div><h4 className="font-['Outfit'] text-base font-bold text-slate-900">Cuentas públicas activas</h4><p className="text-xs text-slate-500">Retirar una cuenta la oculta de Transparencia y de nuevos aportes, sin borrar su historial.</p></div>
+          </div>
+          <ul className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-100">
+            {activeAccounts.map(account => (
+              <li key={account.id} className="flex flex-col gap-2 px-4 py-3 text-xs sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1"><p className="font-bold text-slate-800">{account.nombre}</p><p className="mt-0.5 text-slate-500">{account.banco} · {account.tipoCuenta} · <span className="font-mono">{account.numeroCuenta}</span> · {account.titular}</p></div>
+                <span className="w-fit rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800">Pública</span>
+                <button type="button" onClick={() => handleRemoveAccount(account)} className="inline-flex w-fit items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /> Retirar</button>
+              </li>
+            ))}
+            {!activeAccounts.length && <li className="px-4 py-8 text-center text-xs italic text-slate-500">Aún no hay cuentas públicas. Registra la primera para habilitar donaciones.</li>}
+          </ul>
+        </section>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

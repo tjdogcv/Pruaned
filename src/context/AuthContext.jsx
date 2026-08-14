@@ -168,6 +168,7 @@ export const AuthProvider = ({ children }) => {
   const [financialCategories, setFinancialCategories] = useState(() => (
     supabaseReady ? [] : DEFAULT_FINANCIAL_CATEGORIES
   ));
+  const [financialAccounts, setFinancialAccounts] = useState([]);
   const [cobrosList, setCobrosList] = useState([]);
   const [balancesList, setBalancesList] = useState([]);
 
@@ -221,7 +222,7 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseReady()) {
       const fetchSupabaseData = async () => {
         try {
-          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, financialCategoriesRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes] = await Promise.all([
+          const [sociosRes, volRes, newsRes, docsRes, donRes, cargosRes, egresosRes, financialCategoriesRes, financialAccountsRes, cobrosRes, balancesRes, postulacionesRes, paramsRes, cursosRes, logsRes] = await Promise.all([
             supabase.from('socios').select('*'),
             supabase.from('voluntarios').select('*'),
             supabase.from('noticias').select('*'),
@@ -230,6 +231,7 @@ export const AuthProvider = ({ children }) => {
             supabase.from('directorio_cargos').select('*').eq('id', 1).single(),
             supabase.from('egresos').select('*'),
             supabase.from('categorias_financieras').select('*').order('tipo').order('nombre'),
+            supabase.from('cuentas_financieras').select('*').order('nombre'),
             supabase.from('cobros').select('*'),
             supabase.from('balances_anuales').select('*'),
             supabase.from('postulaciones').select('*').order('created_at', { ascending: false }),
@@ -275,6 +277,7 @@ export const AuthProvider = ({ children }) => {
           else if (egresosRes.data && egresosRes.data.length === 0) setExpensesList([]);
 
           if (financialCategoriesRes.data) setFinancialCategories(snakeToCamel(financialCategoriesRes.data));
+          if (financialAccountsRes.data) setFinancialAccounts(snakeToCamel(financialAccountsRes.data));
 
           if (cobrosRes.data && cobrosRes.data.length > 0) setCobrosList(snakeToCamel(cobrosRes.data));
           else if (cobrosRes.data && cobrosRes.data.length === 0) setCobrosList([]);
@@ -935,6 +938,9 @@ export const AuthProvider = ({ children }) => {
     if (!Number.isFinite(monto) || monto <= 0) {
       throw new Error('El monto de la donación debe ser mayor que cero.');
     }
+    if (!donacionData.cuentaId && !donacionData.cuenta_id) {
+      throw new Error('Selecciona una cuenta pública receptora antes de registrar la donación.');
+    }
 
     let itemWithId;
     if (isSupabaseReady()) {
@@ -944,6 +950,7 @@ export const AuthProvider = ({ children }) => {
         rut_donante: donacionData.rutDonante || donacionData.rutODocumentoDonante || donacionData.rut_donante || null,
         monto,
         banco: donacionData.banco || null,
+        cuenta_id: donacionData.cuentaId || donacionData.cuenta_id || null,
         numero_comprobante: donacionData.numeroComprobante || donacionData.numero_comprobante || null,
         destino_aporte: donacionData.categoria || donacionData.destinoAporte || 'Aporte libre',
         categoria: donacionData.categoria || donacionData.destinoAporte || 'Aporte libre',
@@ -963,6 +970,7 @@ export const AuthProvider = ({ children }) => {
         rutDonante: data.rut_donante,
         rutODocumentoDonante: data.rut_donante,
         banco: data.banco,
+        cuentaId: data.cuenta_id,
         numeroComprobante: data.numero_comprobante || data.n_comprobante,
         destinoAporte: data.destino_aporte,
         categoria: data.categoria || data.destino_aporte
@@ -1269,6 +1277,73 @@ export const AuthProvider = ({ children }) => {
       category.id === id ? { ...category, activo: false } : category
     )));
     addSecurityLog('ARCHIVE_FINANCIAL_CATEGORY', currentUser?.email, 'WARN');
+  };
+
+  const addFinancialAccount = async (accountData) => {
+    const nombre = accountData.nombre?.trim().replace(/\s+/g, ' ');
+    const banco = accountData.banco?.trim().replace(/\s+/g, ' ');
+    const tipoCuenta = accountData.tipoCuenta?.trim();
+    const numeroCuenta = accountData.numeroCuenta?.trim().replace(/\s+/g, ' ');
+    const titular = accountData.titular?.trim().replace(/\s+/g, ' ');
+
+    if (!nombre || !banco || !tipoCuenta || !numeroCuenta || !titular) {
+      throw new Error('Completa nombre público, banco, tipo, número y titular de la cuenta.');
+    }
+
+    let account;
+    if (isSupabaseReady()) {
+      const { data, error } = await supabase
+        .from('cuentas_financieras')
+        .insert({
+          nombre,
+          banco,
+          tipo_cuenta: tipoCuenta,
+          numero_cuenta: numeroCuenta,
+          titular,
+          publicada: true,
+          activa: true
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      account = {
+        id: data.id,
+        nombre: data.nombre,
+        banco: data.banco,
+        tipoCuenta: data.tipo_cuenta,
+        numeroCuenta: data.numero_cuenta,
+        titular: data.titular,
+        publicada: data.publicada,
+        activa: data.activa
+      };
+    } else {
+      account = {
+        id: `offline-financial-account-${Date.now()}`,
+        nombre,
+        banco,
+        tipoCuenta,
+        numeroCuenta,
+        titular,
+        publicada: true,
+        activa: true
+      };
+    }
+
+    setFinancialAccounts(previous => [...previous, account].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
+    addSecurityLog('ADD_PUBLIC_FINANCIAL_ACCOUNT', currentUser?.email, 'INFO');
+    return account;
+  };
+
+  const removeFinancialAccount = async (id) => {
+    if (isSupabaseReady()) {
+      const { error } = await supabase
+        .from('cuentas_financieras')
+        .update({ activa: false, publicada: false })
+        .eq('id', id);
+      if (error) throw error;
+    }
+    setFinancialAccounts(previous => previous.filter(account => account.id !== id));
+    addSecurityLog('REMOVE_PUBLIC_FINANCIAL_ACCOUNT', currentUser?.email, 'WARN');
   };
 
   const addCobrosBatch = async (cobrosArray) => {
@@ -1608,6 +1683,9 @@ export const AuthProvider = ({ children }) => {
       financialCategories,
       addFinancialCategory,
       archiveFinancialCategory,
+      financialAccounts,
+      addFinancialAccount,
+      removeFinancialAccount,
       cobrosList,
       setCobrosList,
       addCobrosBatch,
