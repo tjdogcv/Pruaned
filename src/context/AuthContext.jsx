@@ -62,6 +62,19 @@ const safeStorageFileName = (fileName) => {
   return normalized.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'documento';
 };
 
+const normalizeAuditLog = (log) => {
+  const action = log.event || log.accion || log.action || '';
+  return {
+    ...log,
+    date: log.date || log.fecha || log.createdAt || '',
+    user: log.user || log.usuario || 'Sistema PRUANED',
+    event: action || 'SIN_ACCIÓN',
+    label: log.label || log.accion || log.event || log.action || 'Sin acción registrada',
+    severity: String(log.severity || log.severidad || 'INFO').toUpperCase(),
+    ip: log.ip || log.ipOrigen || log.ip_origen || '—'
+  };
+};
+
 const DEFAULT_FINANCIAL_CATEGORIES = [
   { id: 'offline-donacion-ingreso-libre', tipo: 'donacion_ingreso', nombre: 'Aporte libre', activo: true },
   { id: 'offline-donacion-ingreso-campana', tipo: 'donacion_ingreso', nombre: 'Campaña de recaudación', activo: true },
@@ -384,7 +397,7 @@ export const AuthProvider = ({ children }) => {
             });
           }
           if (cursosRes && cursosRes.data) setCoursesList(snakeToCamel(cursosRes.data));
-          if (logsRes && logsRes.data && logsRes.data.length > 0) setSecurityLogs(snakeToCamel(logsRes.data));
+          if (logsRes && logsRes.data && logsRes.data.length > 0) setSecurityLogs(snakeToCamel(logsRes.data).map(normalizeAuditLog));
           if (documentCategoriesRes?.data) setDocCategories(documentCategoriesRes.data.map((category) => category.name));
 
         } catch (error) {
@@ -486,7 +499,7 @@ export const AuthProvider = ({ children }) => {
     return () => { cancelled = true; };
   }, [supabaseReady, currentUser?.email, lmsReloadKey]);
 
-  const [securityLogs, setSecurityLogs] = useState(INITIAL_SECURITY_LOGS);
+  const [securityLogs, setSecurityLogs] = useState(() => INITIAL_SECURITY_LOGS.map(normalizeAuditLog));
 
   const addSecurityLog = (eventType, userEmail, severity = "INFO") => {
     // Generar el log y actualizar UI localmente (pasando 'prev')

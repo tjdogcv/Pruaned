@@ -219,7 +219,7 @@ const AuditoriaPanel = ({ securityLogs = [] }) => {
         {filteredLogs.length > 0 && (
           <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
             <span>Mostrando {filteredLogs.length} evento{filteredLogs.length !== 1 ? 's' : ''}</span>
-            <span>Los registros se almacenan localmente — se resetean al limpiar caché del navegador.</span>
+            <span>Los registros se sincronizan con el historial de auditoría institucional.</span>
           </div>
         )}
       </div>
