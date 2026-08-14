@@ -10,16 +10,16 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
         
         {/* Top Official Badge */}
         <div className="flex justify-center lg:justify-start mb-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-950 border border-blue-800 text-blue-300 text-xs font-bold shadow-sm">
+          <div className="inline-flex min-w-0 max-w-full items-center gap-2 px-3.5 py-1 rounded-full bg-blue-950 border border-blue-800 text-blue-300 text-xs font-bold shadow-sm">
             <Award className="w-4 h-4 text-blue-400" />
-            <span>Asociación Gremial Oficial • {INSTITUTIONAL_INFO.legalId}</span>
+            <span className="min-w-0 break-words">Asociación Gremial Oficial • {INSTITUTIONAL_INFO.legalId}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           
           {/* Left Column: Hero Text */}
-          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+          <div className="min-w-0 lg:col-span-7 space-y-6 text-center lg:text-left">
             
             <div className="space-y-3">
               <h1 className="text-3xl sm:text-5xl lg:text-5xl font-extrabold font-['Outfit'] leading-tight tracking-tight text-white">
@@ -58,56 +58,62 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
 
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-800 text-left">
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div className="min-w-0 bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <div className="text-xl font-extrabold text-white font-['Outfit']">8</div>
-                <div className="text-[11px] text-slate-400 font-medium">Direcciones Técnicas</div>
+                <div className="break-words text-[11px] text-slate-400 font-medium">Direcciones Técnicas</div>
               </div>
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div className="min-w-0 bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <div className="text-xl font-extrabold text-emerald-400 font-['Outfit']">One Health</div>
-                <div className="text-[11px] text-slate-400 font-medium">Enfoque Transversal</div>
+                <div className="break-words text-[11px] text-slate-400 font-medium">Enfoque Transversal</div>
               </div>
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div className="min-w-0 bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <div className="text-xl font-extrabold text-blue-400 font-['Outfit']">100% QR</div>
-                <div className="text-[11px] text-slate-400 font-medium">Certificados Oficiales</div>
+                <div className="break-words text-[11px] text-slate-400 font-medium">Certificados Oficiales</div>
               </div>
             </div>
 
           </div>
 
           {/* Right Column: Controlled Size Logo Card */}
-          <div className="lg:col-span-5 flex justify-center">
-            <div className="bg-white text-slate-900 p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-sm space-y-4">
+          <div className="min-w-0 lg:col-span-5 flex justify-center">
+            <div className="min-w-0 bg-white text-slate-900 p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-sm space-y-4">
               
-              {/* Crest Logo Box with explicit height constraint */}
-              <div className="flex justify-center bg-slate-50 p-4 rounded-xl border border-slate-100 h-36">
-                <PRUANEDLogo className="h-28 w-auto" showText={true} />
+              {/* Crest logo keeps its descriptor within the available card width. */}
+              <div className="flex min-h-36 w-full min-w-0 justify-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <PRUANEDLogo
+                  className="w-full min-w-0 max-w-full flex-col justify-center gap-1.5 text-center sm:flex-row sm:gap-3.5 sm:text-left"
+                  imageClassName="h-16 sm:h-20"
+                  textClassName="items-center sm:items-start"
+                  descriptorClassName="whitespace-normal break-words text-center sm:text-left"
+                  showText={true}
+                />
               </div>
 
               {/* 4 Quadrants Summary */}
               <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold">
-                <div className="p-2 bg-red-50 text-red-800 rounded-lg border border-red-200 flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-red-600 flex-shrink-0" /> Incendios & Rescate
+                <div className="min-w-0 p-2 bg-red-50 text-red-800 rounded-lg border border-red-200 flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-red-600 flex-shrink-0" /> <span className="min-w-0 break-words">Incendios & Rescate</span>
                 </div>
-                <div className="p-2 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center gap-1.5">
-                  <Heart className="w-3.5 h-3.5 text-green-600 flex-shrink-0" /> Mascotas & Albergues
+                <div className="min-w-0 p-2 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center gap-1.5">
+                  <Heart className="w-3.5 h-3.5 text-green-600 flex-shrink-0" /> <span className="min-w-0 break-words">Mascotas & Albergues</span>
                 </div>
-                <div className="p-2 bg-amber-50 text-amber-800 rounded-lg border border-amber-200 flex items-center gap-1.5">
-                  <Wheat className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" /> Ganado & Pecuario
+                <div className="min-w-0 p-2 bg-amber-50 text-amber-800 rounded-lg border border-amber-200 flex items-center gap-1.5">
+                  <Wheat className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" /> <span className="min-w-0 break-words">Ganado & Pecuario</span>
                 </div>
-                <div className="p-2 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" /> Fauna & Inundaciones
+                <div className="min-w-0 p-2 bg-sky-50 text-sky-800 rounded-lg border border-sky-200 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" /> <span className="min-w-0 break-words">Fauna & Inundaciones</span>
                 </div>
               </div>
 
               {/* Legal Address Notice */}
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[11px] text-slate-600 space-y-0.5">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Domicilio Legal:</span>
-                  <span className="font-bold text-slate-900">San Fabián de Alico, Ñuble</span>
+                <div className="flex min-w-0 justify-between gap-2">
+                  <span className="shrink-0 text-slate-400">Domicilio Legal:</span>
+                  <span className="min-w-0 break-words text-right font-bold text-slate-900">San Fabián de Alico, Ñuble</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Correo Oficial:</span>
-                  <span className="font-bold text-blue-900">ag.pruaned@gmail.com</span>
+                <div className="flex min-w-0 justify-between gap-2">
+                  <span className="shrink-0 text-slate-400">Correo Oficial:</span>
+                  <span className="min-w-0 break-all text-right font-bold text-blue-900">ag.pruaned@gmail.com</span>
                 </div>
               </div>
 

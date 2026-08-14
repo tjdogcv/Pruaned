@@ -50,14 +50,14 @@ export const Navbar = ({ onOpenAuth }) => {
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white font-['Plus_Jakarta_Sans']">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between gap-3 h-20">
           
           {/* Logo Brand */}
           <div 
-            className="flex items-center cursor-pointer group bg-white/95 px-3 py-1.5 rounded-xl border border-slate-700" 
+            className="flex min-w-0 max-w-[calc(100%-3.5rem)] shrink items-center cursor-pointer group bg-white/95 px-3 py-1.5 rounded-xl border border-slate-700"
             onClick={handleLogoClick}
           >
-            <PRUANEDLogo className="h-9 w-auto" showText={true} />
+            <PRUANEDLogo className="h-9 min-w-0 max-w-full" showText={true} />
           </div>
 
           {/* Desktop Nav Items */}
