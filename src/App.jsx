@@ -22,6 +22,7 @@ import VoluntariadoLMS from './pages/intranet/VoluntariadoLMS';
 import VoluntariadoGestion from './pages/intranet/VoluntariadoGestion';
 import LmsEditor from './pages/intranet/LmsEditor';
 import DocumentosCMS from './pages/intranet/DocumentosCMS';
+import DocumentosSocios from './pages/intranet/DocumentosSocios';
 import AuditoriaLogs from './pages/intranet/AuditoriaLogs';
 
 function PublicLayout({ children, onOpenAuth }) {
@@ -128,6 +129,7 @@ function AppRoutes() {
         <Route path="voluntarios" element={<VoluntariadoLMS />} />
         <Route path="voluntarios/gestion" element={<VoluntariadoGestion />} />
         <Route path="voluntarios/gestion/aula" element={<LmsEditor />} />
+        <Route path="documentos" element={<DocumentosSocios />} />
         <Route path="admin" element={<DocumentosCMS />} />
         <Route path="auditoria" element={<AuditoriaLogs />} />
         <Route path="seguridad" element={<SecurityDashboard />} />

@@ -50,6 +50,7 @@ const normalizeDocument = (document) => ({
   version: document.version || 'v1.0',
   size: document.size || formatDocumentSize(document.archivoBytes || document.archivo_bytes),
   published: document.published ?? document.publicado ?? true,
+  visibility: document.visibility || document.visibilidad || 'publico',
   fileName: document.fileName || document.archivoNombre || document.archivo_nombre || '',
   fileType: document.fileType || document.archivoTipo || document.archivo_tipo || '',
   storagePath: document.storagePath || document.storage_path || ''
@@ -1550,7 +1551,7 @@ export const AuthProvider = ({ children }) => {
     setDocCategories((previous) => previous.filter((category) => category !== categoryName));
   };
 
-  const addDocument = async ({ file, title, category, description, version = 'v1.0' }) => {
+  const addDocument = async ({ file, title, category, description, version = 'v1.0', visibility = 'publico' }) => {
     if (!isSupabaseReady()) {
       throw new Error('La publicación documental requiere una conexión segura a Supabase.');
     }
@@ -1566,18 +1567,22 @@ export const AuthProvider = ({ children }) => {
     if (!title?.trim() || !category?.trim()) {
       throw new Error('Título y categoría son obligatorios.');
     }
+    if (!['publico', 'socios'].includes(visibility)) {
+      throw new Error('La visibilidad del documento no es válida.');
+    }
 
     const objectId = crypto.randomUUID();
     const storagePath = `publicados/${new Date().getUTCFullYear()}/${objectId}-${safeStorageFileName(file.name)}`;
+    const bucket = visibility === 'socios' ? BUCKETS.documentosSocios : BUCKETS.documentos;
     const { error: uploadError } = await supabase.storage
-      .from(BUCKETS.documentos)
+      .from(bucket)
       .upload(storagePath, file, { contentType: file.type || undefined, upsert: false });
 
     if (uploadError) throw uploadError;
 
-    const { data: publicUrlData } = supabase.storage
-      .from(BUCKETS.documentos)
-      .getPublicUrl(storagePath);
+    const publicUrl = visibility === 'publico'
+      ? supabase.storage.from(bucket).getPublicUrl(storagePath).data.publicUrl
+      : storagePath;
 
     const { data, error } = await supabase
       .from('documentos')
@@ -1585,9 +1590,10 @@ export const AuthProvider = ({ children }) => {
         titulo: title.trim(),
         categoria: category.trim(),
         descripcion: description?.trim() || null,
-        url: publicUrlData.publicUrl,
+        url: publicUrl,
         fecha: new Date().toISOString().slice(0, 10),
         version: version?.trim() || 'v1.0',
+        visibilidad: visibility,
         archivo_nombre: file.name,
         archivo_tipo: file.type || `application/${extension}`,
         archivo_bytes: file.size,
@@ -1598,7 +1604,7 @@ export const AuthProvider = ({ children }) => {
       .single();
 
     if (error) {
-      await supabase.storage.from(BUCKETS.documentos).remove([storagePath]);
+      await supabase.storage.from(bucket).remove([storagePath]);
       throw error;
     }
 
@@ -1606,6 +1612,16 @@ export const AuthProvider = ({ children }) => {
     setDocumentsList((previous) => [document, ...previous]);
     addSecurityLog(`PUBLISH_DOCUMENT_${document.id}`, currentUser?.email, 'INFO');
     return document;
+  };
+
+  const getDocumentDownloadUrl = async (document) => {
+    if (!document || document.visibility !== 'socios' || !document.storagePath) return document?.url || '';
+    if (!isSupabaseReady()) throw new Error('El documento exclusivo requiere una conexión segura a Supabase.');
+    const { data, error } = await supabase.storage
+      .from(BUCKETS.documentosSocios)
+      .createSignedUrl(document.storagePath, 10 * 60);
+    if (error) throw error;
+    return data.signedUrl;
   };
 
   const setDocumentPublication = async (id, published) => {
@@ -1850,6 +1866,7 @@ export const AuthProvider = ({ children }) => {
       deleteDocCategory,
       documentsList,
       addDocument,
+      getDocumentDownloadUrl,
       deleteDocument,
       archiveDocument,
       restoreDocument,

@@ -160,6 +160,7 @@ export function IntranetLayout() {
   const navItems = [
     { path: '/intranet/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'principal' },
     { path: '/intranet/voluntarios', label: 'Aula virtual', icon: GraduationCap, group: 'principal' },
+    { path: '/intranet/documentos', label: 'Documentos de socios', icon: FileText, group: 'principal', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/voluntarios/gestion/aula', label: 'Administrar aula virtual', icon: PencilRuler, group: 'principal', show: isLmsManager },
     { path: '/intranet/socios', label: 'Socios', icon: Users, group: 'gestion', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/directorio', label: 'Directorio', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },

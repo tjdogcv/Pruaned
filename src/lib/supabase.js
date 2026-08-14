@@ -46,6 +46,7 @@ export const BUCKETS = {
   perfiles:   'perfiles',
   firmas:     'firmas-oficiales',
   documentos: 'documentos-publicos',
+  documentosSocios: 'documentos-socios',
   cartasIntension: 'cartas-intencion',
 };
 

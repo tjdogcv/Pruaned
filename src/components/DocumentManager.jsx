@@ -7,16 +7,18 @@ const initialForm = (categories) => ({
   category: categories[0] || '',
   description: '',
   version: 'v1.0',
+  visibility: 'publico',
   file: null
 });
 
 export function DocumentManager() {
-  const { docCategories = [], documentsList = [], addDocument, archiveDocument, restoreDocument } = useAuth();
+  const { docCategories = [], documentsList = [], addDocument, archiveDocument, restoreDocument, getDocumentDownloadUrl } = useAuth();
   const [form, setForm] = useState(() => initialForm(docCategories));
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [busyDocumentId, setBusyDocumentId] = useState(null);
+  const [openingDocumentId, setOpeningDocumentId] = useState(null);
 
   const documents = useMemo(
     () => [...documentsList].sort((first, second) => String(second.date || '').localeCompare(String(first.date || ''))),
@@ -38,12 +40,26 @@ export function DocumentManager() {
     setIsSaving(true);
     try {
       const document = await addDocument(form);
-      setNotice(`“${document.title}” fue publicado en el repositorio público.`);
+      setNotice(`“${document.title}” fue publicado para ${document.visibility === 'socios' ? 'socios' : 'todo público'}.`);
       resetForm();
     } catch (requestError) {
       setError(requestError.message || 'No fue posible publicar el documento.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const openDocument = async (document) => {
+    setError('');
+    setOpeningDocumentId(document.id);
+    try {
+      const url = await getDocumentDownloadUrl(document);
+      if (!url) throw new Error('El archivo no está disponible.');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (requestError) {
+      setError(requestError.message || 'No fue posible abrir el documento.');
+    } finally {
+      setOpeningDocumentId(null);
     }
   };
 
@@ -70,9 +86,9 @@ export function DocumentManager() {
     <section className="space-y-7 animate-fade-in">
       <div className="flex flex-col gap-3 border-b border-slate-700 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">Repositorio público</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">Repositorio institucional</p>
           <h3 className="mt-2 font-['Outfit'] text-2xl font-extrabold text-white">Documentos publicados</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Publica actas, estatutos, reglamentos, informes y archivos institucionales. Los documentos retirados conservan su registro y pueden restaurarse.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Publica documentos abiertos o exclusivos para socios. Los documentos retirados conservan su registro y pueden restaurarse.</p>
         </div>
         <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-200">
           <FileText className="h-4 w-4" aria-hidden="true" /> {publishedCount} publicados
@@ -102,6 +118,12 @@ export function DocumentManager() {
             <Field label="Versión">
               <input value={form.version} onChange={(event) => setForm((current) => ({ ...current, version: event.target.value }))} className="document-input" placeholder="v1.0" />
             </Field>
+            <Field label="Visibilidad" required>
+              <select required value={form.visibility} onChange={(event) => setForm((current) => ({ ...current, visibility: event.target.value }))} className="document-input">
+                <option value="publico">Público</option>
+                <option value="socios">Sólo socios</option>
+              </select>
+            </Field>
             <Field label="Descripción" className="sm:col-span-2">
               <textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} className="document-input resize-y" rows="3" placeholder="Indica el contenido y vigencia del documento." />
             </Field>
@@ -123,7 +145,8 @@ export function DocumentManager() {
           <h4 className="font-['Outfit'] text-lg font-extrabold text-white">Reglas de publicación</h4>
           <ul className="mt-4 space-y-3 leading-6 text-slate-400">
             <li>Usa una versión y descripción que permitan identificar el documento vigente.</li>
-            <li>Retirar un documento lo oculta del portal sin borrar el historial.</li>
+            <li>“Sólo socios” se almacena en un repositorio privado y no se muestra en el portal público.</li>
+            <li>Retirar un documento lo oculta de sus listados sin borrar el historial.</li>
             <li>Para crear categorías nuevas, utiliza la pestaña “Categorías de Documentos”.</li>
           </ul>
         </aside>
@@ -134,12 +157,12 @@ export function DocumentManager() {
         {documents.length ? documents.map((document) => (
           <article key={document.id} className="flex flex-col gap-4 rounded-2xl border border-slate-700 bg-slate-800/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-blue-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-200">{document.category}</span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${document.published ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-600/50 text-slate-300'}`}>{document.published ? 'Publicado' : 'Retirado'}</span></div>
+              <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-blue-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-200">{document.category}</span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${document.visibility === 'socios' ? 'bg-amber-400/10 text-amber-200' : 'bg-sky-400/10 text-sky-200'}`}>{document.visibility === 'socios' ? 'Sólo socios' : 'Público'}</span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${document.published ? 'bg-emerald-400/10 text-emerald-200' : 'bg-slate-600/50 text-slate-300'}`}>{document.published ? 'Publicado' : 'Retirado'}</span></div>
               <h5 className="mt-2 truncate font-bold text-white">{document.title}</h5>
               <p className="mt-1 text-xs text-slate-400">{document.version} · {document.size} · {document.date || 'Sin fecha'}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {document.url && <a href={document.url} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-600 px-3 text-xs font-bold text-slate-200 hover:bg-slate-700"><ExternalLink className="h-4 w-4" aria-hidden="true" />Abrir</a>}
+              <button type="button" disabled={openingDocumentId === document.id} onClick={() => openDocument(document)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-600 px-3 text-xs font-bold text-slate-200 hover:bg-slate-700 disabled:cursor-wait disabled:opacity-60"><ExternalLink className="h-4 w-4" aria-hidden="true" />{openingDocumentId === document.id ? 'Abriendo…' : 'Abrir'}</button>
               <button type="button" disabled={busyDocumentId === document.id} onClick={() => togglePublication(document)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-600 px-3 text-xs font-bold text-slate-200 hover:bg-slate-700 disabled:cursor-wait disabled:opacity-60">
                 {busyDocumentId === document.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : document.published ? <Archive className="h-4 w-4" aria-hidden="true" /> : <RotateCcw className="h-4 w-4" aria-hidden="true" />}
                 {document.published ? 'Retirar' : 'Restaurar'}
