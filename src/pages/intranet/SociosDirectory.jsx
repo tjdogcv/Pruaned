@@ -549,6 +549,23 @@ export default function SociosDirectory({ initialTab, section = 'socios' }) {
     }
   };
 
+  const handleExportarDatosARCO = () => {
+    const dataARCO = {
+      timestamp_descarga: new Date().toISOString(),
+      entidad: 'PRUANED A.G.',
+      derechos_arco: 'Derecho de Acceso y Portabilidad (Ley 19.628)',
+      socio: currentSocio
+    };
+    const blob = new Blob([JSON.stringify(dataARCO, null, 2)], { type: 'application/json' });
+    const el = document.createElement('a');
+    el.href = URL.createObjectURL(blob);
+    el.download = `PRUANED_Datos_ARCO_${currentSocio.rut}.json`;
+    document.body.appendChild(el);
+    el.click();
+    document.body.removeChild(el);
+    alert('Se ha descargado un archivo JSON con toda tu información en cumplimiento de la Ley 19.628.');
+  };
+
   const handleSaveMiCuentaSubmit = (e) => {
     e.preventDefault();
     updateSocioPerfil(currentSocio.id, {
@@ -884,6 +901,31 @@ export default function SociosDirectory({ initialTab, section = 'socios' }) {
                 </div>
 
               </form>
+              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                  <div>
+                    <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 font-bold text-[10px] rounded-full uppercase">
+                      Ley 19.628
+                    </span>
+                    <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
+                      <Scale className="w-5 h-5 text-emerald-600" />
+                      Derechos ARCO y Privacidad
+                    </h3>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600">
+                  En cumplimiento de la Ley sobre Protección de la Vida Privada (Ley 19.628) y la nueva Ley de Datos de Chile, tienes derecho a solicitar una copia de toda la información personal y financiera que PRUANED almacena sobre ti (Derecho de Acceso y Portabilidad).
+                </p>
+                <div className="flex justify-start pt-2">
+                  <button
+                    type="button"
+                    onClick={handleExportarDatosARCO}
+                    className="px-6 py-3 bg-slate-800 hover:bg-slate-900 text-white font-extrabold rounded-xl text-xs shadow flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4 text-emerald-400" /> Descargar mis datos (Formato JSON)
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
