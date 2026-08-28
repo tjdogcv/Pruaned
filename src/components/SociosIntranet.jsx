@@ -349,6 +349,7 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
     updateSocioCategoria,
     updateSocioCuotaIncorporacion,
     financialSettings, 
+    updateFinancialSettings,
     expensesList, 
     addExpense, 
     deleteExpense, 
