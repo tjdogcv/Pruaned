@@ -12,6 +12,9 @@ import { supabase, isSupabaseReady } from '../lib/supabase';
 import { attachCourseModules, normalizeAudience } from '../lib/lmsProgress';
 import {
   clearLegacySession,
+  loadLegacySession,
+  LEGACY_SESSION_KEY,
+  LEGACY_SESSION_DURATION_MS,
   createRestorationEpoch,
   getSignedOutAuthState,
   validateSupabaseSession
@@ -33,9 +36,9 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const supabaseReady = isSupabaseReady();
-  const persistedSession = null;
-  const [currentUser, setCurrentUser] = useState(null);
-  const [is2FAVerified, setIs2FAVerified] = useState(false);
+  const persistedSession = supabaseReady ? null : loadLegacySession(localStorage);
+  const [currentUser, setCurrentUser] = useState(persistedSession?.user || null);
+  const [is2FAVerified, setIs2FAVerified] = useState(!!persistedSession);
   const [isAuthRestoring, setIsAuthRestoring] = useState(supabaseReady);
   const [activeTab, setActiveTab] = useState('home');
 
@@ -495,7 +498,11 @@ export const AuthProvider = ({ children }) => {
     setIs2FAVerified(true);
     setIsAuthRestoring(false);
     addSecurityLog(`AUTH_SUCCESS_SERVER_RESOLVED_ROLE_${userObj.role.toUpperCase()}`, userObj.email, "INFO");
-    clearLegacySession(localStorage);
+    if (!supabaseReady) {
+      localStorage.setItem(LEGACY_SESSION_KEY, JSON.stringify({ user: userObj, expiresAt: Date.now() + LEGACY_SESSION_DURATION_MS }));
+    } else {
+      clearLegacySession(localStorage);
+    }
 
     if (userObj.role === 'master' || userObj.role === 'directiva' || userObj.role === 'socio') {
       return 'socios';
