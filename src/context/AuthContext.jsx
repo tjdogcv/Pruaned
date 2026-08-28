@@ -424,7 +424,7 @@ export const AuthProvider = ({ children }) => {
 
   const resetInactivityTimer = React.useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-    if (!supabaseReady && currentUser) {
+    if (currentUser && localStorage.getItem('pruaned_trusted_device') !== 'true') {
       inactivityTimerRef.current = setTimeout(() => {
         logout();
       }, INACTIVITY_LIMIT_MS);
@@ -432,7 +432,7 @@ export const AuthProvider = ({ children }) => {
   }, [currentUser, supabaseReady]);
 
   useEffect(() => {
-    if (!currentUser || supabaseReady) return undefined;
+    if (!currentUser) return undefined;
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
     events.forEach(e => window.addEventListener(e, resetInactivityTimer));
     resetInactivityTimer();
@@ -440,7 +440,7 @@ export const AuthProvider = ({ children }) => {
       events.forEach(e => window.removeEventListener(e, resetInactivityTimer));
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     };
-  }, [currentUser, resetInactivityTimer, supabaseReady]);
+  }, [currentUser, resetInactivityTimer]);
 
   // AUTHENTICATION
   const loginStep1_RequestOTP = async (emailInput, passwordInput) => {

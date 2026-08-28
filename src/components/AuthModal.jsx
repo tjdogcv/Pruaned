@@ -18,6 +18,7 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [trustedDevice, setTrustedDevice] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -94,6 +95,13 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
 
     try {
       if (mode === 'login') {
+        if (typeof window !== 'undefined') {
+          if (trustedDevice) {
+            window.localStorage.setItem('pruaned_trusted_device', 'true');
+          } else {
+            window.localStorage.removeItem('pruaned_trusted_device');
+          }
+        }
         // Paso 1: Validar contraseña y solicitar OTP
         await loginStep1_RequestOTP(cleanEmail, password);
         if (isSupabaseReady()) {
@@ -289,7 +297,16 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
               )}
 
               {mode === 'login' && (
-                <div className="mt-2 text-right">
+                <div className="mt-4 flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer hover:text-white transition">
+                    <input
+                      type="checkbox"
+                      checked={trustedDevice}
+                      onChange={(e) => setTrustedDevice(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
+                    />
+                    Mantener sesión iniciada
+                  </label>
                   <button
                     type="button"
                     onClick={() => { setMode('forgot_password'); setErrorMsg(''); setSuccessMsg(''); }}

@@ -22,6 +22,31 @@ if (import.meta.env.DEV && (!supabaseUrl || supabaseUrl === 'PENDING')) {
   );
 }
 
+const customStorageAdapter = {
+  getItem: (key) => {
+    if (typeof window === 'undefined') return null;
+    const trusted = window.localStorage.getItem('pruaned_trusted_device') === 'true';
+    if (trusted) {
+      return window.localStorage.getItem(key) || window.sessionStorage.getItem(key);
+    }
+    return window.sessionStorage.getItem(key) || window.localStorage.getItem(key);
+  },
+  setItem: (key, value) => {
+    if (typeof window === 'undefined') return;
+    const trusted = window.localStorage.getItem('pruaned_trusted_device') === 'true';
+    if (trusted) {
+      window.localStorage.setItem(key, value);
+    } else {
+      window.sessionStorage.setItem(key, value);
+    }
+  },
+  removeItem: (key) => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(key);
+    window.sessionStorage.removeItem(key);
+  }
+};
+
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key',
@@ -30,7 +55,7 @@ export const supabase = createClient(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+      storage: customStorageAdapter,
     },
   }
 );
