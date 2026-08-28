@@ -1,362 +1,76 @@
 import React, { useState } from 'react';
+import { CheckCircle2, ExternalLink, Scale, ShieldCheck, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { PRUANEDLogo } from '../assets/PRUANEDLogo';
-import { INSTITUTIONAL_INFO } from '../data/initialData';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
 import { sendPostulacionEmail } from '../lib/emailConfig';
-import { 
-  ShieldCheck, 
-  UserPlus, 
-  FileText, 
-  CheckCircle2, 
-  Download, 
-  ExternalLink,
-  ChevronRight,
-  BookOpen,
-  Award,
-  Heart,
-  Upload,
-  AlertCircle,
-  HelpCircle,
-  Building,
-  Scale
-} from 'lucide-react';
 
-export const PostulacionSocio = ({ onNavigate }) => {
+const OPTIONS = {
+  formacionCertificada: ['Manejo animal', 'Rescate técnico animal', 'Primeros auxilios humanos', 'Primeros auxilios veterinarios', 'Gestión del riesgo / emergencias', 'Otra'],
+  tiempoDisponible: ['Menos de 4 horas', '4–8 horas', '8–12 horas', 'Más de 12 horas'],
+  areasParticipacion: ['Capacitaciones', 'Actividades comunitarias', 'Activación en emergencias', 'Apoyo administrativo', 'Difusión y comunicaciones', 'Otra'],
+  habilidadesEquipo: ['Comunicación clara', 'Empatía y escucha activa', 'Liderazgo', 'Resolución de conflictos', 'Trabajo bajo presión', 'Organización y planificación', 'Adaptabilidad', 'Otra'],
+  manejoEstres: ['Mantengo la calma', 'Necesito estabilizarme primero', 'Prefiero tareas estructuradas', 'Prefiero evitar situaciones de alta presión', 'A veces me bloqueo', 'Otra'],
+  comodidadProcedimientos: ['Completamente cómodo/a', 'Cómodo/a con apoyo', 'Prefiero roles sin protocolos estrictos'],
+  rolesEmergencia: ['Operativo terreno', 'Logística', 'Coordinación', 'Apoyo técnico', 'Comunicaciones', 'Bienestar animal / registro', 'Evaluación rápida', 'Otro'],
+  interesesRecuperacion: ['Seguimiento de animales atendidos', 'Gestión de donaciones', 'Evaluación de daños y pérdidas', 'Apoyo psicosocial comunitario básico', 'Registros y bases de datos', 'No me interesa esta fase'],
+  rolesNoOperativos: ['Registro y bases de datos', 'Logística sin desplazamiento', 'Difusión/comunicaciones', 'Gestión administrativa', 'Apoyo comunitario local'],
+  animalesComodos: ['Perros', 'Gatos', 'Animales de granja', 'Equinos', 'Fauna silvestre', 'Aves', 'Sin preferencia', 'Prefiero evitar ciertas especies'],
+  reaccionConflictos: ['Busco mediar', 'Prefiero seguir indicaciones', 'Prefiero evitar conflictos', 'Puedo gestionarlos si es necesario', 'Otro'],
+  conocimientoNormativo: ['Ley 21.020', 'Protocolos SAG', 'Normas SENAPRED', 'Reglamentos municipales', 'No tengo conocimiento'],
+  funcionesSinAnimales: ['Logística', 'Centro de acopio', 'Comunicaciones oficiales', 'Registro de fichas', 'Coordinación administrativa', 'No me siento cómodo/a'],
+  comodidadFamilias: ['Muy cómodo/a', 'Con apoyo', 'Prefiero roles técnicos', 'Prefiero evitar interacción directa'],
+  accionCritica: ['Mantengo la calma y aporto soluciones', 'Necesito orientación', 'Prefiero instrucciones claras', 'Prefiero roles sin presión'],
+};
+
+const REQUIRED_MULTISELECTS = ['formacionCertificada', 'areasParticipacion', 'habilidadesEquipo', 'rolesEmergencia', 'interesesRecuperacion', 'rolesNoOperativos', 'animalesComodos', 'conocimientoNormativo', 'funcionesSinAnimales'];
+const REQUIRED_RADIOS = ['aceptaEstatutos', 'haParticipadoOrgs', 'tiempoDisponible', 'experienciasComplejas', 'necesitaApoyoBienestar', 'declaracionVeracidad', 'autorizacionDatos', 'aceptaLeyDatos', 'manejoEstres', 'participacionDiagnosticoRiesgo', 'experienciaAmenazas', 'participacionPlanes', 'comodidadProcedimientos', 'participacionSimulacros', 'trabajoSCI', 'experienciaRecuperacion', 'transportePropio', 'desplazamientoFueraComuna', 'liderazgoEquipos', 'reaccionConflictos', 'trabajoInstituciones', 'manejoProtocolos', 'dispuestoCapacitarse', 'experienciaRegistros', 'trabajoComunidadesRurales', 'comodidadFamilias', 'accionCritica'];
+const initialFormData = {
+  aceptaEstatutos: '', nombreCompleto: '', rut: '', fechaNacimiento: '', domicilio: '', comuna: '', telefono: '', email: '', redesSociales: '', profesion: '', nivelEstudios: '', experienciaPrevia: '', formacionCertificada: [], razonesIntegracion: '', aporteEsperado: '', haParticipadoOrgs: '', tiempoDisponible: '', areasParticipacion: [], experienciasComplejas: '', descripcionExperiencias: '', necesitaApoyoBienestar: '', tipoApoyoUtil: '', cartaIntencion: '', cartaIntencionArchivo: null, declaracionVeracidad: '', autorizacionDatos: '', aceptaLeyDatos: '', habilidadesEquipo: [], manejoEstres: '', participacionDiagnosticoRiesgo: '', descripcionDiagnosticoRiesgo: '', experienciaAmenazas: '', descripcionAmenazas: '', participacionPlanes: '', tipoPlan: '', comodidadProcedimientos: '', participacionSimulacros: '', rolSimulacros: '', trabajoSCI: '', rolSCI: '', rolesEmergencia: [], experienciaRecuperacion: '', descripcionRecuperacion: '', interesesRecuperacion: [], transportePropio: '', desplazamientoFueraComuna: '', rolesNoOperativos: [], animalesComodos: [], especiesEvitar: '', liderazgoEquipos: '', experienciaLiderazgo: '', reaccionConflictos: '', trabajoInstituciones: '', institucionesContexto: '', manejoProtocolos: '', conocimientoNormativo: [], dispuestoCapacitarse: '', experienciaRegistros: '', funcionesSinAnimales: [], trabajoComunidadesRurales: '', experienciaComunidades: '', comodidadFamilias: '', accionCritica: '', bienestarAnimalEmergencias: '', trabajoEticoDesastres: '', limitesProfesionales: '', areaValorPRUANED: '',
+};
+
+const TextQuestion = ({ name, label, value, onChange, required = false }) => <label className="block text-xs font-bold text-slate-700">{label}{required && ' *'}<textarea required={required} value={value} onChange={(event) => onChange(name, event.target.value)} rows="3" className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 font-normal text-slate-900" /></label>;
+const OptionQuestion = ({ name, label, options, value, onChange, multiple = false, required = false }) => <fieldset className="rounded-2xl border border-slate-200 p-4"><legend className="px-1 text-xs font-bold text-slate-800">{label}{required && ' *'}</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{options.map((option) => <label key={option} className="flex cursor-pointer items-start gap-2 text-xs text-slate-700"><input type={multiple ? 'checkbox' : 'radio'} name={name} value={option} checked={multiple ? value.includes(option) : value === option} onChange={(event) => onChange(name, option, multiple ? event.target.checked : undefined)} className="mt-0.5 accent-emerald-600" /><span>{option}</span></label>)}</div></fieldset>;
+const SectionTitle = ({ children }) => <h4 className="border-b border-slate-200 pb-2 text-sm font-extrabold uppercase tracking-wide text-blue-950">{children}</h4>;
+
+const personalInputs = [['nombreCompleto', 'Nombre completo', 'text', true], ['rut', 'RUT', 'text', true], ['fechaNacimiento', 'Fecha de nacimiento', 'date', true], ['domicilio', 'Domicilio', 'text', true], ['comuna', 'Comuna', 'text', true], ['telefono', 'Teléfono de contacto', 'tel', true], ['email', 'Correo electrónico', 'email', true], ['redesSociales', 'Redes sociales (opcional)', 'text', false], ['profesion', 'Profesión u ocupación', 'text', true], ['nivelEstudios', 'Nivel de estudios', 'text', true]];
+const radioQuestions = [
+  ['haParticipadoOrgs', '¿Ha participado en organizaciones animalistas o de emergencia?', ['Sí', 'No']], ['experienciasComplejas', '¿Ha vivido experiencias emocionalmente complejas en emergencias?', ['Sí', 'No']], ['necesitaApoyoBienestar', '¿Considera que podría necesitar apoyo para su bienestar?', ['Sí', 'No', 'No lo sé']], ['manejoEstres', 'Manejo del estrés en emergencias', OPTIONS.manejoEstres], ['participacionDiagnosticoRiesgo', '¿Ha participado en diagnósticos de riesgo o levantamiento territorial?', ['Sí', 'No']], ['experienciaAmenazas', '¿Tiene experiencia identificando amenazas o vulnerabilidades?', ['Sí', 'No']], ['participacionPlanes', '¿Ha participado en elaboración de planes o protocolos?', ['Sí', 'No']], ['comodidadProcedimientos', 'Nivel de comodidad con procedimientos y líneas de mando', OPTIONS.comodidadProcedimientos], ['participacionSimulacros', '¿Ha participado en simulacros o entrenamientos?', ['Sí', 'No']], ['trabajoSCI', '¿Ha trabajado bajo SCI?', ['Sí', 'No']], ['experienciaRecuperacion', '¿Tiene experiencia en recuperación post-emergencia?', ['Sí', 'No']], ['transportePropio', '¿Cuenta con transporte propio?', ['Sí', 'No']], ['desplazamientoFueraComuna', '¿Puede desplazarse fuera de su comuna?', ['Sí', 'No']], ['liderazgoEquipos', '¿Tiene experiencia liderando equipos?', ['Sí', 'No']], ['reaccionConflictos', '¿Cómo reacciona ante conflictos?', OPTIONS.reaccionConflictos], ['trabajoInstituciones', '¿Ha trabajado con instituciones públicas o de emergencia?', ['Sí', 'No']], ['manejoProtocolos', 'Nivel de manejo de protocolos interinstitucionales', ['Alto', 'Medio', 'Bajo', 'Sin experiencia']], ['dispuestoCapacitarse', '¿Está dispuesto/a a capacitarse?', ['Sí', 'No', 'Según disponibilidad']], ['experienciaRegistros', '¿Tiene experiencia en registros o bases de datos?', ['Sí', 'No']], ['trabajoComunidadesRurales', '¿Ha trabajado con comunidades rurales o crianceros?', ['Sí', 'No']], ['comodidadFamilias', 'Comodidad con familias afectadas', OPTIONS.comodidadFamilias], ['accionCritica', '¿Cómo actúa en escenarios críticos?', OPTIONS.accionCritica],
+];
+const conditionalTexts = { participacionDiagnosticoRiesgo: ['descripcionDiagnosticoRiesgo', 'Describa (si aplica)'], experienciaAmenazas: ['descripcionAmenazas', 'Describa (si aplica)'], participacionPlanes: ['tipoPlan', 'Tipo de plan (si aplica)'], participacionSimulacros: ['rolSimulacros', 'Describa su rol (si aplica)'], trabajoSCI: ['rolSCI', '¿En qué rol? (si aplica)'], experienciaRecuperacion: ['descripcionRecuperacion', 'Describa (si aplica)'], liderazgoEquipos: ['experienciaLiderazgo', 'Describa su experiencia (si aplica)'], trabajoInstituciones: ['institucionesContexto', '¿Con cuáles y en qué contexto? (si aplica)'], trabajoComunidadesRurales: ['experienciaComunidades', 'Describa su experiencia (si aplica)'] };
+
+export const PostulacionSocio = () => {
   const { addPostulacion } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
-
-  // Form State
-  const [formData, setFormData] = useState({
-    nombreCompleto: '',
-    rut: '',
-    fechaNacimiento: '',
-    email: '',
-    telefono: '',
-    domicilio: '',
-    comuna: '',
-    profesion: '',
-    nivelEstudios: 'Educación Superior Completa',
-    experienciaPrevia: '',
-    formacionCertificada: [],
-    razonesIntegracion: '',
-    aporteEsperado: '',
-    haParticipadoOrgs: 'No',
-    tiempoDisponible: '4–8 horas mensuales',
-    areasParticipacion: [],
-    experienciasComplejas: 'No',
-    descripcionExperiencias: '',
-    necesitaApoyoBienestar: 'No',
-    tipoApoyoUtil: '',
-    cartaIntencionArchivo: null,
-    declaracionVeracidad: 'Sí',
-    autorizacionDatos: 'Sí',
-    aceptaEstatutos: 'Sí, acepto',
-    aceptaLeyDatos: 'Sí, acepto'
-  });
-
-  const handleOpenEstatutosPDF = (e) => {
-    if (e) e.preventDefault();
-    window.open('/Estatutos-v-3.pdf', '_blank', 'noopener,noreferrer');
+  const [formError, setFormError] = useState('');
+  const [formData, setFormData] = useState(initialFormData);
+  const updateField = (name, value, checked) => { setFormData((current) => ({ ...current, [name]: typeof checked === 'boolean' ? (checked ? [...current[name], value] : current[name].filter((item) => item !== value)) : value })); setFormError(''); };
+  const closeForm = () => { setIsModalOpen(false); setFormSubmitted(false); setFormError(''); };
+  const openEstatutos = () => window.open('/Estatutos-v-3.pdf', '_blank', 'noopener,noreferrer');
+  const handleFormSubmit = async (event) => {
+    event.preventDefault();
+    if (REQUIRED_MULTISELECTS.some((name) => !formData[name].length)) { setFormError('Seleccione al menos una alternativa en cada pregunta de selección múltiple obligatoria.'); return; }
+    if (REQUIRED_RADIOS.some((name) => !formData[name])) { setFormError('Responda todas las preguntas obligatorias de alternativa antes de enviar el formulario.'); return; }
+    if (formData.aceptaEstatutos !== 'Sí, acepto' || formData.declaracionVeracidad !== 'Sí' || formData.autorizacionDatos !== 'Sí' || formData.aceptaLeyDatos !== 'Sí, acepto') { setFormError('Debe aceptar los estatutos, declarar la veracidad y autorizar el tratamiento de sus datos para enviar la postulación.'); return; }
+    const { cartaIntencionArchivo, ...formularioCompleto } = formData;
+    const postulacionFinal = { ...formData, formularioCompleto, respuestasTecnicas: formularioCompleto, id: `POST-${Date.now().toString().slice(-6)}`, fechaEnvio: new Date().toISOString().split('T')[0], estado: 'Pendiente Revisión Directorio', cartaIntencionNombre: cartaIntencionArchivo?.name || 'Carta de intención proporcionada en formulario' };
+    const result = await addPostulacion(postulacionFinal);
+    if (!result?.ok) { setFormError(result?.error?.message || 'No fue posible registrar la postulación. Inténtelo nuevamente.'); return; }
+    sendPostulacionEmail(postulacionFinal); setFormSubmitted(true);
   };
-
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    
-    if (formData.aceptaEstatutos !== 'Sí, acepto' || formData.aceptaLeyDatos !== 'Sí, acepto') {
-      alert('Debe aceptar los Estatutos Oficiales y la Declaración de Protección de Datos Personales (Ley N° 21.719) para enviar su postulación.');
-      return;
-    }
-
-    const postulacionFinal = {
-      ...formData,
-      id: `POST-${Date.now().toString().slice(-6)}`,
-      fechaEnvio: new Date().toISOString().split('T')[0],
-      estado: 'Pendiente Revisión Directorio',
-      cartaIntencionNombre: formData.cartaIntencionArchivo ? formData.cartaIntencionArchivo.name : 'Carta_Intencion_Adjunta.pdf'
-    };
-
-    addPostulacion(postulacionFinal);
-    sendPostulacionEmail(postulacionFinal);
-    setFormSubmitted(true);
-  };
-
-  return (
-    <section className="py-12 bg-slate-50 text-slate-900 min-h-screen font-['Plus_Jakarta_Sans']">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        
-        {/* Banner Hero */}
-        <div className="bg-slate-900 text-white rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden border border-slate-800">
-          <div className="relative z-10 max-w-3xl space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider border border-emerald-500/30">
-              <UserPlus className="w-4 h-4 text-emerald-400" /> Admisión de Nuevos Socios 2025
-            </div>
-            
-            <h1 className="text-3xl sm:text-5xl font-extrabold font-['Outfit'] leading-tight">
-              Postulación a <span className="text-emerald-400">PRUANED A.G.</span>
-            </h1>
-            
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-light">
-              Forma parte de la asociación gremial referente en Chile en la gestión integral del bienestar animal en emergencias y desastres.
-            </p>
-
-            <div className="flex flex-wrap gap-4 pt-2">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm rounded-2xl shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
-              >
-                <UserPlus className="w-5 h-5" /> Postular a PRUANED A.G.
-              </button>
-
-              <button
-                onClick={handleOpenEstatutosPDF}
-                className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-2xl border border-white/20 transition-all flex items-center gap-2"
-              >
-                <ExternalLink className="w-4 h-4 text-emerald-400" /> Ver Estatutos PDF (Oficial v3)
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Misión, Visión, Objetivos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="text-xl font-extrabold text-slate-900 font-['Outfit'] flex items-center gap-2">
-              <Building className="w-5 h-5 text-blue-900" /> Misión Institucional
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Contribuir a la protección y bienestar de los animales en contextos de emergencia y desastre, fortaleciendo el trabajo profesional, ético y colaborativo de quienes actúan en este ámbito. PRUANED promueve la preparación, respuesta y recuperación efectiva, articulando conocimientos técnicos, científicos y humanitarios en beneficio de todas las especies y comunidades afectadas.
-            </p>
-          </div>
-
-          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="text-xl font-extrabold text-slate-900 font-['Outfit'] flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" /> Visión Institucional
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Ser una asociación gremial referente a nivel nacional en la gestión integral del bienestar animal en emergencias y desastres, reconocida por su compromiso profesional, su trabajo interdisciplinario y su aporte al desarrollo de políticas públicas y estrategias sostenibles de reducción del riesgo y respuesta ante crisis.
-            </p>
-          </div>
-        </div>
-
-        {/* MODAL FORMULARIO DE POSTULACIÓN DE NUEVOS SOCIOS */}
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-['Plus_Jakarta_Sans']">
-            <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-4xl w-full shadow-2xl space-y-6 relative border border-slate-200 max-h-[90vh] overflow-y-auto">
-              
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setFormSubmitted(false);
-                }}
-                className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
-              >
-                ✕
-              </button>
-
-              {formSubmitted ? (
-                <div className="py-12 text-center space-y-4">
-                  <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto" />
-                  <h3 className="text-2xl font-extrabold font-['Outfit']">
-                    ¡Postulación Recibida Exitosamente!
-                  </h3>
-                  <p className="text-xs text-slate-600 max-w-lg mx-auto leading-relaxed">
-                    Tu postulación a PRUANED A.G. ha sido registrada y puesta en conocimiento del Directorio Nacional. Evaluaremos tus antecedentes y se te notificará formalmente al correo <strong className="text-slate-900">{formData.email}</strong>.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setIsModalOpen(false);
-                      setFormSubmitted(false);
-                    }}
-                    className="px-6 py-2.5 bg-blue-900 text-white font-bold rounded-xl text-xs"
-                  >
-                    Volver a la Página Principal
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleFormSubmit} className="space-y-6">
-                  
-                  <div className="border-b border-slate-100 pb-4">
-                    <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 font-bold text-[10px] rounded-full uppercase">
-                      Proceso de Admisión Formato Oficial
-                    </span>
-                    <h3 className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1">
-                      Ficha de Postulación de Nuevos Socios
-                    </h3>
-                  </div>
-
-                  {/* Sección A: Datos Personales */}
-                  <div className="space-y-4">
-                    <h4 className="text-sm font-bold text-blue-950 font-['Outfit'] uppercase border-b border-slate-100 pb-1">
-                      Sección A: Datos Personales & Profesionales
-                    </h4>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Nombre Completo *</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.nombreCompleto}
-                          onChange={(e) => setFormData({...formData, nombreCompleto: e.target.value})}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">RUT / Cédula Identidad *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Ej: 15.482.910-K"
-                          value={formData.rut}
-                          onChange={(e) => setFormData({...formData, rut: e.target.value})}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-mono text-slate-900"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Correo Electrónico *</label>
-                        <input
-                          type="email"
-                          required
-                          value={formData.email}
-                          onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Teléfono Móvil *</label>
-                        <input
-                          type="tel"
-                          required
-                          placeholder="+56 9 1234 5678"
-                          value={formData.telefono}
-                          onChange={(e) => setFormData({...formData, telefono: e.target.value})}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Profesión / Ocupación *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Ej: Médico Veterinario / Ing. Prevención"
-                          value={formData.profesion}
-                          onChange={(e) => setFormData({...formData, profesion: e.target.value})}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Comuna / Ciudad *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Ej: San Fabián / Concepción"
-                          value={formData.comuna}
-                          onChange={(e) => setFormData({...formData, comuna: e.target.value})}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sección B: Declaraciones & Ley 21.719 */}
-                  <div className="space-y-4 pt-2 border-t border-slate-100 text-xs">
-                    <h4 className="text-sm font-bold text-blue-950 font-['Outfit'] uppercase border-b border-slate-100 pb-1">
-                      Sección B: Aceptación de Estatutos (v3) & Protección de Datos (Ley N° 21.719)
-                    </h4>
-
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-900">1. Estatutos Oficiales PRUANED A.G. (v3.0)</span>
-                        <button
-                          type="button"
-                          onClick={handleOpenEstatutosPDF}
-                          className="text-blue-900 font-bold underline flex items-center gap-1 hover:text-blue-700"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" /> Ver PDF Oficial (Estatutos-v-3.pdf)
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
-                          <input
-                            type="radio"
-                            name="aceptaEstatutos"
-                            checked={formData.aceptaEstatutos === 'Sí, acepto'}
-                            onChange={(e) => setFormData({...formData, aceptaEstatutos: e.target.value})}
-                            className="accent-emerald-600"
-                          />
-                          <span>Declaro haber leído y aceptar los Estatutos Oficiales v3</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-emerald-950">2. Resguardo Ley N° 21.719 Protección de Datos</span>
-                        <button
-                          type="button"
-                          onClick={() => setIsPrivacyModalOpen(true)}
-                          className="text-emerald-900 font-bold underline flex items-center gap-1"
-                        >
-                          <Scale className="w-3.5 h-3.5" /> Ver Política ARCO+
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer font-bold text-emerald-950">
-                          <input
-                            type="radio"
-                            name="aceptaLeyDatos"
-                            checked={formData.aceptaLeyDatos === 'Sí, acepto'}
-                            onChange={(e) => setFormData({...formData, aceptaLeyDatos: e.target.value})}
-                            className="accent-emerald-600"
-                          />
-                          <span>Acepto el tratamiento de datos personales y la política de renuncias anonimizadas</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsModalOpen(false)}
-                      className="px-5 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs"
-                    >
-                      Cancelar
-                    </button>
-
-                    <button
-                      type="submit"
-                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs shadow flex items-center gap-2"
-                    >
-                      <UserPlus className="w-4 h-4" /> Enviar Formulario al Directorio
-                    </button>
-                  </div>
-
-                </form>
-              )}
-
-            </div>
-          </div>
-        )}
-
-        {/* Modal Política de Datos */}
-        {isPrivacyModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
-            <PrivacyDataPolicy onClose={() => setIsPrivacyModalOpen(false)} />
-          </div>
-        )}
-
-      </div>
-    </section>
-  );
+  const renderRadioQuestion = ([name, label, options]) => <React.Fragment key={name}><OptionQuestion name={name} label={label} options={options} value={formData[name]} onChange={updateField} required />{conditionalTexts[name] && <TextQuestion name={conditionalTexts[name][0]} label={conditionalTexts[name][1]} value={formData[conditionalTexts[name][0]]} onChange={updateField} />}</React.Fragment>;
+  return <section className="min-h-screen bg-slate-50 py-12 font-['Plus_Jakarta_Sans'] text-slate-900"><div className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
+    <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-white shadow-2xl sm:p-12"><div className="max-w-3xl space-y-6"><span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-300"><UserPlus className="h-4 w-4" /> Admisión de nuevos socios</span><h1 className="font-['Outfit'] text-3xl font-extrabold leading-tight sm:text-5xl">Postulación a <span className="text-emerald-400">PRUANED A.G.</span></h1><p className="text-sm leading-relaxed text-slate-300 sm:text-base">Complete su postulación para integrarse a la asociación gremial dedicada al bienestar animal en emergencias y desastres.</p><div className="flex flex-wrap gap-4"><button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3.5 text-sm font-extrabold shadow-lg transition hover:bg-emerald-500"><UserPlus className="h-5 w-5" /> Completar postulación</button><button onClick={openEstatutos} className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-6 py-3.5 text-sm font-bold transition hover:bg-white/20"><ExternalLink className="h-4 w-4 text-emerald-400" /> Ver estatutos</button></div></div></div>
+    <div className="grid gap-6 md:grid-cols-2"><article className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm"><h2 className="mb-3 flex items-center gap-2 font-['Outfit'] text-xl font-extrabold"><ShieldCheck className="h-5 w-5 text-emerald-600" /> Misión</h2><p className="text-sm leading-relaxed text-slate-600">Contribuir a la protección y bienestar de los animales en contextos de emergencia y desastre, fortaleciendo el trabajo profesional, ético y colaborativo.</p></article><article className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm"><h2 className="mb-3 font-['Outfit'] text-xl font-extrabold">Visión</h2><p className="text-sm leading-relaxed text-slate-600">Ser una asociación gremial referente a nivel nacional en la gestión integral del bienestar animal en emergencias y desastres.</p></article></div>
+    {isModalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md"><div role="dialog" aria-modal="true" aria-labelledby="postulacion-title" className="relative max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8"><button onClick={closeForm} aria-label="Cerrar formulario" className="absolute right-5 top-5 rounded-full p-2 text-slate-500 hover:bg-slate-100">✕</button>
+      {formSubmitted ? <div className="space-y-4 py-12 text-center"><CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" /><h2 className="font-['Outfit'] text-2xl font-extrabold">¡Postulación recibida!</h2><p className="mx-auto max-w-lg text-sm text-slate-600">La postulación fue registrada y será revisada por el Directorio. Enviaremos la respuesta a <strong>{formData.email}</strong>.</p><button onClick={closeForm} className="rounded-xl bg-blue-900 px-6 py-2.5 text-xs font-bold text-white">Volver a la página principal</button></div> : <form onSubmit={handleFormSubmit} className="space-y-8"><header className="border-b border-slate-200 pb-4"><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase text-emerald-900">Formulario oficial de admisión</span><h2 id="postulacion-title" className="mt-2 font-['Outfit'] text-2xl font-extrabold">Ficha de postulación de nuevos socios</h2><p className="mt-2 text-xs leading-relaxed text-slate-600">Los campos marcados con * son obligatorios. La información será evaluada para fines de admisión y gestión interna.</p></header>
+        <section className="space-y-4"><SectionTitle>1. Misión, visión y estatutos</SectionTitle><div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-950"><p className="font-bold">Antes de postular, revise los estatutos, reglamento interno y código ético de PRUANED.</p><button type="button" onClick={openEstatutos} className="mt-2 inline-flex items-center gap-1 font-bold underline"><ExternalLink className="h-3.5 w-3.5" /> Abrir estatutos oficiales</button></div><OptionQuestion name="aceptaEstatutos" label="¿Acepta los estatutos, el reglamento interno y el código ético?" options={['Sí, acepto', 'No acepto']} value={formData.aceptaEstatutos} onChange={updateField} required /></section>
+        <section className="space-y-4"><SectionTitle>2. Información personal y motivación</SectionTitle><div className="grid gap-4 sm:grid-cols-2">{personalInputs.map(([name, label, type, required]) => <label key={name} className="text-xs font-bold text-slate-700">{label}{required && ' *'}<input type={type} required={required} value={formData[name]} onChange={(event) => updateField(name, event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 p-2.5 font-normal text-slate-900" /></label>)}</div><TextQuestion name="experienciaPrevia" label="Experiencia previa con animales, emergencias o voluntariado" value={formData.experienciaPrevia} onChange={updateField} required /><OptionQuestion name="formacionCertificada" label="Formación certificada" options={OPTIONS.formacionCertificada} value={formData.formacionCertificada} onChange={updateField} multiple required /><TextQuestion name="razonesIntegracion" label="Razones para integrarse a PRUANED" value={formData.razonesIntegracion} onChange={updateField} required /><TextQuestion name="aporteEsperado" label="¿Qué espera aportar a la organización?" value={formData.aporteEsperado} onChange={updateField} required />{renderRadioQuestion(radioQuestions[0])}<OptionQuestion name="tiempoDisponible" label="Tiempo mensual disponible" options={OPTIONS.tiempoDisponible} value={formData.tiempoDisponible} onChange={updateField} required /><OptionQuestion name="areasParticipacion" label="Áreas en las que desea participar" options={OPTIONS.areasParticipacion} value={formData.areasParticipacion} onChange={updateField} multiple required /></section>
+        <section className="space-y-4"><SectionTitle>Bienestar, declaración y datos personales</SectionTitle>{radioQuestions.slice(1, 3).map(renderRadioQuestion)}<TextQuestion name="descripcionExperiencias" label="Describa brevemente (si aplica)" value={formData.descripcionExperiencias} onChange={updateField} /><TextQuestion name="tipoApoyoUtil" label="¿Qué tipo de apoyo sería útil?" value={formData.tipoApoyoUtil} onChange={updateField} /><TextQuestion name="cartaIntencion" label="Carta de intención (texto o enlace)" value={formData.cartaIntencion} onChange={updateField} required /><label className="block text-xs font-bold text-slate-700">Adjuntar carta de intención (opcional)<input type="file" accept=".pdf,.doc,.docx" onChange={(event) => updateField('cartaIntencionArchivo', event.target.files?.[0] || null)} className="mt-1.5 block w-full text-xs font-normal" /></label><OptionQuestion name="declaracionVeracidad" label="Declaro que la información entregada es verídica" options={['Sí', 'No']} value={formData.declaracionVeracidad} onChange={updateField} required /><OptionQuestion name="autorizacionDatos" label="Autorizo el uso de mis datos para fines internos" options={['Sí', 'No']} value={formData.autorizacionDatos} onChange={updateField} required /><div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-emerald-950">Protección de datos personales<button type="button" onClick={() => setIsPrivacyModalOpen(true)} className="inline-flex items-center gap-1 underline"><Scale className="h-3.5 w-3.5" /> Ver política de privacidad</button></div><OptionQuestion name="aceptaLeyDatos" label="Acepto el tratamiento de datos personales conforme a la política de PRUANED" options={['Sí, acepto', 'No acepto']} value={formData.aceptaLeyDatos} onChange={updateField} required /></div></section>
+        <section className="space-y-4"><SectionTitle>3. Preguntas técnicas de gestión del riesgo de desastres</SectionTitle><OptionQuestion name="habilidadesEquipo" label="Habilidades personales para fortalecer el trabajo en equipo" options={OPTIONS.habilidadesEquipo} value={formData.habilidadesEquipo} onChange={updateField} multiple required />{radioQuestions.slice(3).map(renderRadioQuestion)}<OptionQuestion name="rolesEmergencia" label="Rol preferido durante emergencias" options={OPTIONS.rolesEmergencia} value={formData.rolesEmergencia} onChange={updateField} multiple required /><OptionQuestion name="interesesRecuperacion" label="Intereses en fase de recuperación" options={OPTIONS.interesesRecuperacion} value={formData.interesesRecuperacion} onChange={updateField} multiple required /><OptionQuestion name="rolesNoOperativos" label="Roles no operativos (si no puede desplazarse)" options={OPTIONS.rolesNoOperativos} value={formData.rolesNoOperativos} onChange={updateField} multiple required /><OptionQuestion name="animalesComodos" label="Animales con los que se siente cómodo/a" options={OPTIONS.animalesComodos} value={formData.animalesComodos} onChange={updateField} multiple required /><TextQuestion name="especiesEvitar" label="Si prefiere evitar, ¿cuáles y por qué?" value={formData.especiesEvitar} onChange={updateField} /><OptionQuestion name="conocimientoNormativo" label="Conocimiento normativo" options={OPTIONS.conocimientoNormativo} value={formData.conocimientoNormativo} onChange={updateField} multiple required /><OptionQuestion name="funcionesSinAnimales" label="¿Puede desempeñar funciones sin trato directo con animales?" options={OPTIONS.funcionesSinAnimales} value={formData.funcionesSinAnimales} onChange={updateField} multiple required /><TextQuestion name="bienestarAnimalEmergencias" label="¿Cómo entiende el bienestar animal en emergencias?" value={formData.bienestarAnimalEmergencias} onChange={updateField} required /><TextQuestion name="trabajoEticoDesastres" label="¿Qué considera indispensable para un trabajo ético en desastres?" value={formData.trabajoEticoDesastres} onChange={updateField} required /><TextQuestion name="limitesProfesionales" label="¿Cómo respeta límites personales y profesionales en equipos multidisciplinarios?" value={formData.limitesProfesionales} onChange={updateField} required /><TextQuestion name="areaValorPRUANED" label="¿En qué área sería más valioso/a para PRUANED y por qué?" value={formData.areaValorPRUANED} onChange={updateField} required /></section>
+        {formError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{formError}</p>}<div className="flex justify-end gap-3 border-t border-slate-200 pt-5"><button type="button" onClick={closeForm} className="rounded-xl bg-slate-100 px-5 py-2.5 text-xs font-bold text-slate-700">Cancelar</button><button type="submit" className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-extrabold text-white shadow hover:bg-emerald-500"><UserPlus className="h-4 w-4" /> Enviar formulario al Directorio</button></div>
+      </form>}</div></div>}
+    {isPrivacyModalOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm"><PrivacyDataPolicy onClose={() => setIsPrivacyModalOpen(false)} /></div>}
+  </div></section>;
 };

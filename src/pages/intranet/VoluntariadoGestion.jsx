@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { courseProgress } from '../../lib/lmsProgress';
+import { VoluntariadoSolicitudesGestion } from '../../components/VoluntariadoSolicitudesGestion';
 
 function rate(value, total) {
   return total ? Math.round((value / total) * 100) : 0;
@@ -110,6 +111,8 @@ export default function VoluntariadoGestion() {
           <Metric icon={GraduationCap} value={totalApproved} label="Aprobaciones vigentes" />
           <Metric icon={TrendingUp} value={`${rate(totalApproved, totalPossible)}%`} label="Aprobación agregada" />
         </div>
+
+        <VoluntariadoSolicitudesGestion />
 
         <section aria-labelledby="course-progress-title">
           <div className="mb-4 flex items-center gap-2"><BarChart3 className="h-5 w-5 text-emerald-700" aria-hidden="true" /><h3 id="course-progress-title" className="font-['Outfit'] text-lg font-extrabold">Resultados por curso</h3></div>

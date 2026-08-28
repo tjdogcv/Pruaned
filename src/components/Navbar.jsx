@@ -14,6 +14,7 @@ import {
   X, 
   Building,
   UserPlus,
+  HeartHandshake,
   ShieldCheck
 } from 'lucide-react';
 
@@ -27,6 +28,7 @@ export const Navbar = ({ onOpenAuth }) => {
     { path: '/', label: 'Inicio', icon: Shield },
     { path: '/institucional', label: 'Estatutos & Direcciones', icon: Building },
     { path: '/postulacion', label: 'Hazte Socio', icon: UserPlus },
+    { path: '/postulacion-voluntariado', label: 'Voluntariado', icon: HeartHandshake },
     { path: '/transparencia', label: 'Transparencia & Donaciones', icon: ShieldCheck },
     { path: '/noticias', label: 'Noticias', icon: Newspaper },
     { path: '/documentos', label: 'Documentos Públicos', icon: FileText },

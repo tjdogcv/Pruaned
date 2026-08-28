@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
+import { TarifarioEditor } from './TarifarioEditor';
 import { FondoDonacionesPanel } from './FondoDonacionesPanel';
 import { sendPagoEmail, sendApprovalEmail, sendRejectionEmail } from '../lib/emailConfig';
 import { 
@@ -1885,28 +1886,12 @@ export const SociosIntranet = ({ initialTab, section = 'socios' }) => {
               </form>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
-                <Settings className="w-5 h-5 text-blue-900" />
-                Tarifario de Cuotas Mensuales
-              </h3>
-              
-                <p className="text-xs leading-5 text-slate-600">Valores vigentes de referencia. La edición del tarifario se habilitará cuando el contrato financiero permita actualizar categorías sin reemplazar la configuración completa.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                  {['Socio Activo', 'Socio Adherente', 'Socio Honorario', 'Estudiante/Pasante'].map(cat => (
-                    <div key={cat}>
-                      <label className="block font-bold text-slate-700 mb-1">{cat} ($)</label>
-                      <input
-                        type="number"
-                        value={financialSettings.cuotasPorCategoria?.[cat] ?? 0}
-                        readOnly
-                        aria-readonly="true"
-                        className="w-full cursor-default rounded-xl border border-slate-200 bg-slate-100 p-2 text-slate-700"
-                      />
-                    </div>
-                  ))}
-              </div>
-            </div>
+            <TarifarioEditor 
+              financialSettings={financialSettings} 
+              onSave={updateFinancialSettings} 
+              isMasterUser={isMasterUser} 
+              canManageCategoriesAndCargos={canManageCategoriesAndCargos} 
+            />
           </div>
         )}
 

@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:auth": "node --test tests/auth-session.test.mjs",
+    "test:auth-data": "node --test tests/auth-data.test.mjs",
     "test:lms": "node --test tests/lms-progress.test.mjs"
   },
   "dependencies": {

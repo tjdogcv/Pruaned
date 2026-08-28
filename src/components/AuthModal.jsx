@@ -27,13 +27,8 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
     }
   }, [isOpen, initialMode]);
 
-  // Rate Limiting State
-  const [failedAttempts, setFailedAttempts] = useState(() => {
-    return parseInt(localStorage.getItem('pruaned_auth_attempts') || '0', 10);
-  });
-  const [lockoutUntil, setLockoutUntil] = useState(() => {
-    return parseInt(localStorage.getItem('pruaned_auth_lockout') || '0', 10);
-  });
+  // Rate limiting backend-backed: no se usa localStorage para la seguridad del bloqueo.
+  const [lockoutUntil, setLockoutUntil] = useState(0);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
   useEffect(() => {
@@ -44,14 +39,14 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
         const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
         if (remaining <= 0) {
           setLockoutRemaining(0);
-          setFailedAttempts(0);
-          localStorage.removeItem('pruaned_auth_attempts');
-          localStorage.removeItem('pruaned_auth_lockout');
+          setLockoutUntil(0);
           clearInterval(interval);
         } else {
           setLockoutRemaining(remaining);
         }
       }, 1000);
+    } else {
+      setLockoutRemaining(0);
     }
     return () => clearInterval(interval);
   }, [lockoutUntil]);
@@ -62,7 +57,7 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (lockoutRemaining > 0) {
       setErrorMsg(`Sistema bloqueado temporalmente. Inténtalo de nuevo en ${lockoutRemaining} segundos.`);
       return;
@@ -70,7 +65,21 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
 
     setErrorMsg('');
     setSuccessMsg('');
-    const cleanEmail = sanitizeInput(email);
+    const cleanEmail = sanitizeInput(email).trim().toLowerCase();
+
+    if (isSupabaseReady()) {
+      const { data, error } = await supabase.rpc('pruaned_login_lockout', {
+        p_email: cleanEmail,
+        p_ip: null
+      });
+
+      if (!error && data?.blocked) {
+        const delayMs = Number(data.retry_after_seconds || 0) * 1000;
+        setLockoutUntil(Date.now() + delayMs);
+        setErrorMsg(`Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado por ${data.retry_after_seconds} segundos.`);
+        return;
+      }
+    }
 
     if (mode !== 'login_otp' && mode !== 'update_password' && !cleanEmail.includes('@')) {
       setErrorMsg('Por favor ingrese un correo electrónico válido.');
@@ -87,10 +96,15 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
       if (mode === 'login') {
         // Paso 1: Validar contraseña y solicitar OTP
         await loginStep1_RequestOTP(cleanEmail, password);
+        if (isSupabaseReady()) {
+          await supabase.rpc('pruaned_record_login_event', {
+            p_email: cleanEmail,
+            p_event: 'otp_sent',
+            p_ip: null
+          });
+        }
         setMode('login_otp');
         setSuccessMsg('Código enviado a tu correo. Por favor revísalo e ingrésalo a continuación.');
-        setFailedAttempts(0);
-        localStorage.removeItem('pruaned_auth_attempts');
       } else if (mode === 'login_otp') {
         // Paso 2: Validar OTP y entrar
         if (!twoFactorCode || twoFactorCode.length < 6) {
@@ -98,8 +112,13 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
         }
 
         const targetTab = await loginStep2_VerifyOTP(cleanEmail, twoFactorCode);
-        setFailedAttempts(0);
-        localStorage.removeItem('pruaned_auth_attempts');
+        if (isSupabaseReady()) {
+          await supabase.rpc('pruaned_record_login_event', {
+            p_email: cleanEmail,
+            p_event: 'success',
+            p_ip: null
+          });
+        }
         onClose();
         if (targetTab === 'socios') navigate('/intranet/socios');
         else if (targetTab === 'voluntarios') navigate('/intranet/voluntarios');
@@ -134,18 +153,27 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
         setMode('login');
       }
     } catch (error) {
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      localStorage.setItem('pruaned_auth_attempts', newAttempts.toString());
+      if (isSupabaseReady()) {
+        await supabase.rpc('pruaned_record_login_event', {
+          p_email: cleanEmail,
+          p_event: 'failed',
+          p_ip: null
+        });
 
-      if (newAttempts >= 3) {
-        const lockTime = Date.now() + 5 * 60 * 1000; // 5 minutos de bloqueo
-        setLockoutUntil(lockTime);
-        localStorage.setItem('pruaned_auth_lockout', lockTime.toString());
-        setErrorMsg('Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado por 5 minutos.');
-      } else {
-        setErrorMsg(error.message || 'Error en la autenticación. Intento ' + newAttempts + ' de 3.');
+        const { data, error: lockoutError } = await supabase.rpc('pruaned_login_lockout', {
+          p_email: cleanEmail,
+          p_ip: null
+        });
+
+        if (!lockoutError && data?.blocked) {
+          const delayMs = Number(data.retry_after_seconds || 0) * 1000;
+          setLockoutUntil(Date.now() + delayMs);
+          setErrorMsg(`Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado por ${data.retry_after_seconds} segundos.`);
+          return;
+        }
       }
+
+      setErrorMsg(error.message || 'Error en la autenticación.');
     } finally {
       setIsLoading(false);
     }

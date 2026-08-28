@@ -1,228 +1,41 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
-  INITIAL_NEWS, 
-  INITIAL_DOCUMENTS, 
-  INITIAL_DOC_CATEGORIES, 
   INITIAL_SOCIOS, 
   INITIAL_VOLUNTARIOS, 
   INITIAL_COURSES,
   INITIAL_SECURITY_LOGS,
-  INITIAL_FINANCIAL_SETTINGS,
-  INITIAL_EXPENSES,
-  INITIAL_DONACIONES,
   INITIAL_DIRECTORIO_CARGOS,
   INITIAL_FIRMAS
 } from '../data/initialData';
 import { logSecurityEvent } from '../utils/security';
-import { BUCKETS, supabase, isSupabaseReady } from '../lib/supabase';
+import { supabase, isSupabaseReady } from '../lib/supabase';
 import { attachCourseModules, normalizeAudience } from '../lib/lmsProgress';
 import {
-  LEGACY_SESSION_DURATION_MS,
   clearLegacySession,
   createRestorationEpoch,
   getSignedOutAuthState,
-  loadLegacySession,
   validateSupabaseSession
 } from './authSession';
+import { resolveUserForEmail } from './authIdentity';
+import { useServerPermissions } from './authPermissions';
+import { resolvePermissions } from './authPermissionRules';
+import {
+  normalizeAuditLog,
+  normalizeDocument,
+  snakeToCamel
+} from '../lib/authData';
+import { useContentDomain } from './useContentDomain';
+import { useFinanceDomain } from './useFinanceDomain';
+import { useVolunteerApplicationsDomain } from './useVolunteerApplicationsDomain';
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
-const DOCUMENT_MAX_BYTES = 20 * 1024 * 1024;
-const DOCUMENT_MIME_TYPES = new Set([
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-]);
-const DOCUMENT_EXTENSIONS = new Set(['pdf', 'docx', 'xlsx']);
-
-const formatDocumentSize = (bytes) => {
-  const value = Number(bytes);
-  if (!Number.isFinite(value) || value < 1) return '—';
-  if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-const normalizeDocument = (document) => ({
-  ...document,
-  title: document.title || document.titulo || '',
-  category: document.category || document.categoria || 'Sin categoría',
-  description: document.description || document.descripcion || '',
-  date: document.date || document.fecha || document.fechaPublicacion || document.createdAt || '',
-  version: document.version || 'v1.0',
-  size: document.size || formatDocumentSize(document.archivoBytes || document.archivo_bytes),
-  published: document.published ?? document.publicado ?? true,
-  visibility: document.visibility || document.visibilidad || 'publico',
-  fileName: document.fileName || document.archivoNombre || document.archivo_nombre || '',
-  fileType: document.fileType || document.archivoTipo || document.archivo_tipo || '',
-  storagePath: document.storagePath || document.storage_path || ''
-});
-
-const fileExtension = (fileName = '') => fileName.split('.').pop().toLowerCase();
-const safeStorageFileName = (fileName) => {
-  const normalized = fileName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return normalized.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'documento';
-};
-
-const normalizeAuditLog = (log) => {
-  const action = log.event || log.accion || log.action || '';
-  return {
-    ...log,
-    date: log.date || log.fecha || log.createdAt || '',
-    user: log.user || log.usuario || 'Sistema PRUANED',
-    event: action || 'SIN_ACCIÓN',
-    label: log.label || log.accion || log.event || log.action || 'Sin acción registrada',
-    severity: String(log.severity || log.severidad || 'INFO').toUpperCase(),
-    ip: log.ip || log.ipOrigen || log.ip_origen || '—'
-  };
-};
-
-const DEFAULT_FINANCIAL_CATEGORIES = [
-  { id: 'offline-donacion-ingreso-libre', tipo: 'donacion_ingreso', nombre: 'Aporte libre', activo: true },
-  { id: 'offline-donacion-ingreso-campana', tipo: 'donacion_ingreso', nombre: 'Campaña de recaudación', activo: true },
-  { id: 'offline-donacion-ingreso-convenio', tipo: 'donacion_ingreso', nombre: 'Convenio o alianza', activo: true },
-  { id: 'offline-donacion-ingreso-destino', tipo: 'donacion_ingreso', nombre: 'Aporte con destino específico', activo: true },
-  { id: 'offline-donacion-egreso-insumos', tipo: 'donacion_egreso', nombre: 'Insumos médicos veterinarios', activo: true },
-  { id: 'offline-donacion-egreso-albergue', tipo: 'donacion_egreso', nombre: 'Alimentación y albergue', activo: true },
-  { id: 'offline-donacion-egreso-logistica', tipo: 'donacion_egreso', nombre: 'Logística y transporte', activo: true },
-  { id: 'offline-donacion-egreso-operativo', tipo: 'donacion_egreso', nombre: 'Operativo de emergencia', activo: true },
-  { id: 'offline-donacion-egreso-capacitacion', tipo: 'donacion_egreso', nombre: 'Capacitación y materiales', activo: true }
-];
-
-const toPublicDonation = (donation) => ({
-  id: donation.id,
-  fecha: donation.fecha,
-  monto: donation.monto ?? donation.montoClp ?? donation.monto_clp ?? 0,
-  banco: donation.banco || '',
-  cuentaId: donation.cuentaId || donation.cuenta_id || null,
-  numeroComprobante: donation.numeroComprobante || donation.numero_comprobante || donation.nComprobante || donation.n_comprobante || '',
-  categoria: donation.categoria || donation.destinoAporte || donation.destino_aporte || 'Aporte libre'
-});
-
-const normalizeChileanRut = (value) => String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
-
-const formatChileanRut = (value) => {
-  const normalized = normalizeChileanRut(value);
-  if (normalized.length < 2) return normalized;
-  const body = normalized.slice(0, -1);
-  const verifier = normalized.slice(-1);
-  return `${body.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${verifier}`;
-};
-
-const isValidChileanRut = (value) => {
-  const normalized = normalizeChileanRut(value);
-  if (!/^\d{7,8}[\dK]$/.test(normalized)) return false;
-  const body = normalized.slice(0, -1);
-  const verifier = normalized.slice(-1);
-  let sum = 0;
-  let multiplier = 2;
-  for (let index = body.length - 1; index >= 0; index -= 1) {
-    sum += Number(body[index]) * multiplier;
-    multiplier = multiplier === 7 ? 2 : multiplier + 1;
-  }
-  const remainder = 11 - (sum % 11);
-  const expected = remainder === 11 ? '0' : remainder === 10 ? 'K' : String(remainder);
-  return verifier === expected;
-};
-
 const AuthContext = createContext();
-
-const USER_DATABASE = [
-  {
-    email: "ag.pruaned@gmail.com",
-    name: "Usuario Maestro PRUANED A.G.",
-    role: "master",
-    rut: "10.102.304-5",
-    permisoGestionVoluntarios: true
-  },
-  {
-    email: "presidente.directiva@pruaned.cl",
-    name: "Dra. Camila Morales (Presidenta Directiva Nacional)",
-    role: "directiva",
-    rut: "15.482.910-K",
-    permisoGestionVoluntarios: true
-  },
-  {
-    email: "secretario.directiva@pruaned.cl",
-    name: "Lic. Javiera Araya (Secretaria Directiva Nacional)",
-    role: "directiva",
-    rut: "16.789.201-3",
-    permisoGestionVoluntarios: true
-  },
-  {
-    email: "camila.morales@pruaned.cl",
-    name: "Dra. Camila Morales Valenzuela",
-    role: "directiva",
-    rut: "15.482.910-K",
-    permisoGestionVoluntarios: true
-  },
-  {
-    email: "roberto.silva@pruaned.cl",
-    name: "Dr. Roberto Silva Fuentes",
-    role: "socio",
-    rut: "12.304.551-8",
-    permisoGestionVoluntarios: false
-  },
-  {
-    email: "felipe.henriquez@gmail.com",
-    name: "Felipe Henríquez Palma",
-    role: "voluntario",
-    rut: "18.912.440-1",
-    permisoGestionVoluntarios: false
-  },
-  {
-    email: "conny.ugarte@gmail.com",
-    name: "Constanza Ugarte Mella",
-    role: "voluntario",
-    rut: "20.123.876-5",
-    permisoGestionVoluntarios: false
-  }
-];
-
-function generateSessionToken() {
-  return 'pruaned-sess-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
-}
-
-function resolveUserForEmail(email, socios, voluntarios) {
-  const cleanEmail = email.trim().toLowerCase();
-  const foundUser = USER_DATABASE.find(user => user.email.toLowerCase() === cleanEmail);
-
-  if (foundUser) return { ...foundUser };
-
-  const foundSocio = socios.find(socio => socio.email?.toLowerCase() === cleanEmail);
-  if (foundSocio) {
-    return {
-      email: foundSocio.email,
-      name: foundSocio.nombre,
-      role: 'socio',
-      rut: foundSocio.rut,
-      permisoGestionVoluntarios: foundSocio.permisoGestionVoluntarios || false
-    };
-  }
-
-  const foundVoluntario = voluntarios.find(voluntario => voluntario.email?.toLowerCase() === cleanEmail);
-  if (foundVoluntario) {
-    return {
-      email: foundVoluntario.email,
-      name: foundVoluntario.nombre,
-      role: 'voluntario',
-      rut: foundVoluntario.rut,
-      permisoGestionVoluntarios: false
-    };
-  }
-
-  return {
-    email: cleanEmail,
-    name: cleanEmail.split('@')[0],
-    role: 'socio',
-    rut: '15.482.910-K',
-    permisoGestionVoluntarios: false
-  };
-}
 
 export const AuthProvider = ({ children }) => {
   const supabaseReady = isSupabaseReady();
-  const persistedSession = supabaseReady ? null : loadLegacySession(localStorage);
-  const [currentUser, setCurrentUser] = useState(persistedSession?.user || null);
-  const [is2FAVerified, setIs2FAVerified] = useState(!!persistedSession);
+  const persistedSession = null;
+  const [currentUser, setCurrentUser] = useState(null);
+  const [is2FAVerified, setIs2FAVerified] = useState(false);
   const [isAuthRestoring, setIsAuthRestoring] = useState(supabaseReady);
   const [activeTab, setActiveTab] = useState('home');
 
@@ -239,39 +52,6 @@ export const AuthProvider = ({ children }) => {
 
   const [directorioCargos, setDirectorioCargos] = useState(INITIAL_DIRECTORIO_CARGOS);
 
-  const [donacionesList, setDonacionesList] = useState(() => {
-    if (supabaseReady) return [];
-    const saved = localStorage.getItem('pruaned_donaciones');
-    return saved ? JSON.parse(saved) : INITIAL_DONACIONES;
-  });
-  const [publicDonationsList, setPublicDonationsList] = useState(() => (
-    supabaseReady ? [] : INITIAL_DONACIONES.map(toPublicDonation)
-  ));
-
-  const [postulacionesList, setPostulacionesList] = useState([]);
-
-  const [financialSettings, setFinancialSettings] = useState(INITIAL_FINANCIAL_SETTINGS);
-
-  const [expensesList, setExpensesList] = useState([]);
-  const [financialCategories, setFinancialCategories] = useState(() => (
-    supabaseReady ? [] : DEFAULT_FINANCIAL_CATEGORIES
-  ));
-  const [financialAccounts, setFinancialAccounts] = useState([]);
-  const [cobrosList, setCobrosList] = useState([]);
-  const [balancesList, setBalancesList] = useState([]);
-
-  const [newsList, setNewsList] = useState(() => {
-    const saved = localStorage.getItem('pruaned_news');
-    return saved ? JSON.parse(saved) : INITIAL_NEWS;
-  });
-
-  const [docCategories, setDocCategories] = useState(INITIAL_DOC_CATEGORIES);
-
-  const [documentsList, setDocumentsList] = useState(() => {
-    const saved = localStorage.getItem('pruaned_documents');
-    return (saved ? JSON.parse(saved) : INITIAL_DOCUMENTS).map(normalizeDocument);
-  });
-
   const [sociosList, setSociosList] = useState(() => {
     const saved = localStorage.getItem('pruaned_socios');
     return saved ? JSON.parse(saved) : INITIAL_SOCIOS;
@@ -281,6 +61,37 @@ export const AuthProvider = ({ children }) => {
     const saved = localStorage.getItem('pruaned_voluntarios');
     return saved ? JSON.parse(saved) : INITIAL_VOLUNTARIOS;
   });
+
+  const [securityLogs, setSecurityLogs] = useState(() => INITIAL_SECURITY_LOGS.map(normalizeAuditLog));
+  const addSecurityLog = (eventType, userEmail, severity = 'INFO') => {
+    setSecurityLogs((previous) => logSecurityEvent(previous, eventType, userEmail, severity));
+    if (isSupabaseReady()) {
+      const newLog = logSecurityEvent([], eventType, userEmail, severity)[0];
+      supabase.from('auditoria_logs').insert([{
+        fecha: newLog.date, accion: newLog.label, usuario: newLog.user, severidad: newLog.severity
+      }]).then(({ error }) => {
+        if (error) console.error('Error guardando log de auditoría:', error);
+      }).catch((error) => console.error('Error guardando log de auditoría:', error));
+    }
+  };
+
+  const contentDomain = useContentDomain({ supabaseReady, currentUser, addSecurityLog });
+  const {
+    newsList, setNewsList, addNews, deleteNews,
+    docCategories, setDocCategories, addDocCategory, deleteDocCategory,
+    documentsList, setDocumentsList, addDocument, getDocumentDownloadUrl,
+    deleteDocument, archiveDocument, restoreDocument
+  } = contentDomain;
+  const financeDomain = useFinanceDomain({ supabaseReady, currentUser, addSecurityLog, setSociosList });
+  const {
+    donacionesList, setDonacionesList, publicDonationsList, setPublicDonationsList, addDonacion, deleteDonacion,
+    financialSettings, setFinancialSettings, updateFinancialSettings,
+    expensesList, setExpensesList, addExpense, deleteExpense,
+    financialCategories, setFinancialCategories, addFinancialCategory, archiveFinancialCategory,
+    financialAccounts, setFinancialAccounts, addFinancialAccount, removeFinancialAccount, updateFinancialAccountRut,
+    cobrosList, setCobrosList, addCobrosBatch, balancesList, setBalancesList
+  } = financeDomain;
+  const [postulacionesList, setPostulacionesList] = useState([]);
 
   const sociosListRef = React.useRef(sociosList);
   const voluntariosListRef = React.useRef(voluntariosList);
@@ -305,6 +116,15 @@ export const AuthProvider = ({ children }) => {
   const [isLmsManager, setIsLmsManager] = useState(false);
   const [lmsReloadKey, setLmsReloadKey] = useState(0);
 
+  const resolveSupabaseIdentity = React.useCallback(async (email) => {
+    if (!supabaseReady) return resolveUserForEmail(email, sociosListRef.current, voluntariosListRef.current);
+    const { data, error } = await supabase.rpc('pruaned_get_my_identity');
+    if (!error && data) return snakeToCamel(data);
+    // En producción se falla cerrado: la identidad debe ser resuelta por la
+    // función autorizada del servidor, nunca por datos locales del navegador.
+    throw error || new Error('No existe una ficha activa de socio o voluntario para esta cuenta.');
+  }, [supabaseReady]);
+
   // FETCH DESDE SUPABASE SIEMPRE (RLS se encarga de filtrar qué puede ver un visitante vs un admin)
   useEffect(() => {
     if (isSupabaseReady()) {
@@ -323,25 +143,12 @@ export const AuthProvider = ({ children }) => {
             supabase.from('cuentas_financieras').select('*').order('nombre'),
             supabase.from('cobros').select('*'),
             supabase.from('balances_anuales').select('*'),
-            supabase.from('postulaciones').select('*').order('created_at', { ascending: false }),
+            supabase.rpc('pruaned_list_socio_applications'),
             supabase.from('parametros_sistema').select('*'),
             supabase.from('cursos_lms').select('id, code, title, description, hours, level, modality, audience, status, instructor, duration, difficulty, category, requirements, video_url, has_evaluation, created_at, updated_at').order('created_at', { ascending: false }),
             supabase.from('auditoria_logs').select('*').order('fecha', { ascending: false }).limit(200),
             supabase.from('document_categories').select('name').order('name')
           ]);
-
-          const snakeToCamel = (obj) => {
-            if (Array.isArray(obj)) {
-              return obj.map(v => snakeToCamel(v));
-            } else if (obj !== null && obj.constructor === Object) {
-              return Object.keys(obj).reduce((result, key) => {
-                const camelKey = key.replace(/([-_][a-z])/ig, ($1) => $1.toUpperCase().replace('-', '').replace('_', ''));
-                result[camelKey] = snakeToCamel(obj[key]);
-                return result;
-              }, {});
-            }
-            return obj;
-          };
 
           if (sociosRes.data && sociosRes.data.length > 0) {
             const mappedSocios = snakeToCamel(sociosRes.data).map(s => ({
@@ -377,8 +184,7 @@ export const AuthProvider = ({ children }) => {
           if (balancesRes.data && balancesRes.data.length > 0) setBalancesList(snakeToCamel(balancesRes.data));
           else if (balancesRes.data && balancesRes.data.length === 0) setBalancesList([]);
 
-          if (postulacionesRes.data && postulacionesRes.data.length > 0) setPostulacionesList(snakeToCamel(postulacionesRes.data));
-          else if (postulacionesRes.data && postulacionesRes.data.length === 0) setPostulacionesList([]);
+          if (Array.isArray(postulacionesRes.data)) setPostulacionesList(snakeToCamel(postulacionesRes.data));
 
           if (cargosRes.data) {
             setDirectorioCargos({
@@ -499,30 +305,6 @@ export const AuthProvider = ({ children }) => {
     return () => { cancelled = true; };
   }, [supabaseReady, currentUser?.email, lmsReloadKey]);
 
-  const [securityLogs, setSecurityLogs] = useState(() => INITIAL_SECURITY_LOGS.map(normalizeAuditLog));
-
-  const addSecurityLog = (eventType, userEmail, severity = "INFO") => {
-    // Generar el log y actualizar UI localmente (pasando 'prev')
-    setSecurityLogs(prev => logSecurityEvent(prev, eventType, userEmail, severity));
-
-    // Si Supabase está listo, también lo insertamos en la BD usando humanize 
-    if (isSupabaseReady()) {
-      // Necesitamos recrear la misma lógica de humanize, o extraer el último elemento agregado, 
-      // pero logSecurityEvent hace humanize por nosotros.
-      // logSecurityEvent(prev, eventType...) retorna un arreglo con el nuevo log en la posición 0.
-      const newLogs = logSecurityEvent([], eventType, userEmail, severity);
-      const newLog = newLogs[0];
-      supabase.from('auditoria_logs').insert([{
-        fecha: newLog.date,
-        accion: newLog.label,
-        usuario: newLog.user,
-        severidad: newLog.severity
-      }]).then(({ error }) => {
-        if (error) console.error("Error guardando log de auditoría:", error);
-      }).catch(err => console.error("Error guardando log de auditoría:", err));
-    }
-  };
-
   // Limpiar localStorage de tablas migradas a Supabase
   useEffect(() => {
     const keysToRemove = [
@@ -601,7 +383,7 @@ export const AuthProvider = ({ children }) => {
 
         if (isValidationCurrent()) {
           clearLegacySession(localStorage);
-          setCurrentUser(resolveUserForEmail(user.email, sociosListRef.current, voluntariosListRef.current));
+          setCurrentUser(await resolveSupabaseIdentity(user.email));
           setIs2FAVerified(true);
         }
       } catch {
@@ -635,7 +417,7 @@ export const AuthProvider = ({ children }) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [clearCurrentAuthentication, supabaseReady]);
+  }, [clearCurrentAuthentication, resolveSupabaseIdentity, supabaseReady]);
 
   const resetInactivityTimer = React.useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
@@ -705,25 +487,15 @@ export const AuthProvider = ({ children }) => {
 
     if (supabaseReady) enableRestoration();
 
-    const userObj = resolveUserForEmail(cleanEmail, sociosList, voluntariosList);
+    const userObj = supabaseReady
+      ? await resolveSupabaseIdentity(cleanEmail)
+      : resolveUserForEmail(cleanEmail, sociosList, voluntariosList);
 
     setCurrentUser(userObj);
     setIs2FAVerified(true);
     setIsAuthRestoring(false);
     addSecurityLog(`AUTH_SUCCESS_SERVER_RESOLVED_ROLE_${userObj.role.toUpperCase()}`, userObj.email, "INFO");
-
-    // Persistir sesión en localStorage
-    if (!supabaseReady) {
-      const session = {
-        token: generateSessionToken(),
-        user: userObj,
-        expiresAt: Date.now() + LEGACY_SESSION_DURATION_MS,
-        loginAt: new Date().toISOString()
-      };
-      localStorage.setItem('pruaned_session', JSON.stringify(session));
-    } else {
-      clearLegacySession(localStorage);
-    }
+    clearLegacySession(localStorage);
 
     if (userObj.role === 'master' || userObj.role === 'directiva' || userObj.role === 'socio') {
       return 'socios';
@@ -770,21 +542,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // RBAC PERMISSION HELPERS
-  const isMasterUser = currentUser?.email === 'ag.pruaned@gmail.com' || currentUser?.role === 'master' || currentUser?.role === 'admin';
-  const currentUserSocio = sociosList.find(s => s.email === currentUser?.email);
-  const isDirectiva = currentUser?.role === 'directiva' || isMasterUser || (currentUserSocio && [
-    directorioCargos.presidenteId, 
-    directorioCargos.vicepresidenteId, 
-    directorioCargos.secretarioId, 
-    directorioCargos.tesoreroId
-  ].includes(currentUserSocio.id));
-  const socioPermisoVoluntarios = sociosList.find(s => s.email === currentUser?.email)?.permisoGestionVoluntarios || currentUser?.permisoGestionVoluntarios || false;
+  const serverPermissions = useServerPermissions({ supabaseReady, email: currentUser?.email });
+  const {
+    isMasterUser,
+    isDirectiva,
+    canManageCategoriesAndCargos,
+    canManageVoluntarios,
+    canManageFinances,
+    canPublishCMS
+  } = resolvePermissions({
+    currentUser,
+    sociosList,
+    directorioCargos,
+    isLmsManager,
+    serverPermissions
+  });
 
-  const canManageCategoriesAndCargos = isMasterUser || isDirectiva;
-  const canManageVoluntarios = isMasterUser || isDirectiva || socioPermisoVoluntarios || isLmsManager;
-  const canManageFinances = isMasterUser || isDirectiva;
-  const canPublishCMS = isMasterUser || isDirectiva;
+  const volunteerApplicationsDomain = useVolunteerApplicationsDomain({
+    supabaseReady,
+    currentUser,
+    canManageVoluntarios,
+    setVoluntariosList,
+    setSociosList
+  });
+  const {
+    postulacionesVoluntariadoList,
+    refreshPostulacionesVoluntariado,
+    addPostulacionVoluntario,
+    updatePostulacionVoluntariadoEstado,
+    solicitarIngresoSocioDesdeVoluntariado,
+    updateSolicitudIngresoSocioDesdeVoluntariado
+  } = volunteerApplicationsDomain;
 
   // DIGITALIZACIÓN DE FIRMAS OFICIALES
   const updateFirmaOficial = async (cargoKey, firmaDataUrl) => {
@@ -1025,73 +813,6 @@ export const AuthProvider = ({ children }) => {
     addSecurityLog(`TOGGLE_VOLUNTEER_PERMISSION_${socioId}`, currentUser?.email, "INFO");
   };
 
-  const addDonacion = async (donacionData) => {
-    const monto = Number(donacionData.monto);
-    if (!Number.isFinite(monto) || monto <= 0) {
-      throw new Error('El monto de la donación debe ser mayor que cero.');
-    }
-    if (!donacionData.cuentaId && !donacionData.cuenta_id) {
-      throw new Error('Selecciona una cuenta pública receptora antes de registrar la donación.');
-    }
-
-    let itemWithId;
-    if (isSupabaseReady()) {
-      const { data, error } = await supabase.from('donaciones').insert([{
-        fecha: donacionData.fecha,
-        donante: donacionData.donante,
-        rut_donante: donacionData.rutDonante || donacionData.rutODocumentoDonante || donacionData.rut_donante || null,
-        monto,
-        banco: donacionData.banco || null,
-        cuenta_id: donacionData.cuentaId || donacionData.cuenta_id || null,
-        numero_comprobante: donacionData.numeroComprobante || donacionData.numero_comprobante || null,
-        destino_aporte: donacionData.categoria || donacionData.destinoAporte || 'Aporte libre',
-        categoria: donacionData.categoria || donacionData.destinoAporte || 'Aporte libre',
-        metodo_pago: donacionData.metodoPago || donacionData.metodo_pago || 'Transferencia',
-        codigo_transaccion: donacionData.codigoTransaccion || donacionData.codigo_transaccion || null,
-        estado: donacionData.estado || 'Confirmada',
-        publico: donacionData.publico ?? true
-      }]).select().single();
-
-      if (error) throw error;
-      itemWithId = {
-        ...donacionData,
-        id: data.id,
-        fecha: data.fecha,
-        monto: data.monto,
-        donante: data.donante,
-        rutDonante: data.rut_donante,
-        rutODocumentoDonante: data.rut_donante,
-        banco: data.banco,
-        cuentaId: data.cuenta_id,
-        numeroComprobante: data.numero_comprobante || data.n_comprobante,
-        destinoAporte: data.destino_aporte,
-        categoria: data.categoria || data.destino_aporte
-      };
-    } else {
-      itemWithId = {
-        ...donacionData,
-        id: `don-${Date.now()}`,
-        monto,
-        categoria: donacionData.categoria || donacionData.destinoAporte || 'Aporte libre'
-      };
-    }
-
-    setDonacionesList(prev => [itemWithId, ...prev]);
-    if (donacionData.publico ?? true) setPublicDonationsList(prev => [toPublicDonation(itemWithId), ...prev]);
-    addSecurityLog(`ADD_BANK_DONATION_${monto}`, currentUser?.email, "INFO");
-    return itemWithId;
-  };
-
-  const deleteDonacion = async (id) => {
-    if (isSupabaseReady()) {
-      const { error } = await supabase.from('donaciones').delete().eq('id', id);
-      if (error) throw error;
-    }
-    setDonacionesList(prev => prev.filter(d => d.id !== id));
-    setPublicDonationsList(prev => prev.filter(d => d.id !== id));
-    addSecurityLog(`DELETE_DONATION_${id}`, currentUser?.email, "WARN");
-  };
-
   const updateVoluntarioDisponibilidad = async (volId, disponibilidadData) => {
     let newState = {};
     setVoluntariosList(prev => prev.map(vol => {
@@ -1122,42 +843,57 @@ export const AuthProvider = ({ children }) => {
   };
 
   const addPostulacion = async (postulacionData) => {
-    setPostulacionesList(prev => [postulacionData, ...prev]);
     addSecurityLog(`NEW_SOCIO_APPLICATION_${postulacionData.rut}`, postulacionData.email, "INFO");
-    if (isSupabaseReady()) {
+    if (supabaseReady) {
       try {
-        await supabase.from('postulaciones').insert([{
-          id: postulacionData.id,
-          nombre_completo: postulacionData.nombreCompleto,
-          rut: postulacionData.rut,
-          email: postulacionData.email,
-          telefono: postulacionData.telefono,
-          domicilio: postulacionData.domicilio,
-          comuna: postulacionData.comuna,
-          profesion: postulacionData.profesion,
-          razones_integracion: postulacionData.razonesIntegracion,
-          aporte_esperado: postulacionData.aporteEsperado,
-          fecha_envio: postulacionData.fechaEnvio,
-          estado: postulacionData.estado
-        }]);
+        const { data, error } = await supabase.rpc('pruaned_submit_socio_application', { p_payload: postulacionData });
+        if (error) throw error;
+        const application = snakeToCamel(data);
+        setPostulacionesList(prev => [application, ...prev]);
+        return { ok: true, data: application };
       } catch (err) {
         console.error('Error guardando postulación en Supabase:', err);
+        return { ok: false, error: { code: err?.code || 'SOCIO_APPLICATION_ERROR', message: err?.message || 'No fue posible enviar la postulación.' } };
       }
     }
+    setPostulacionesList(prev => [postulacionData, ...prev]);
+    return { ok: true, data: postulacionData };
   };
 
-  const updatePostulacionEstado = async (id, nuevoEstado, categoriaAsignada = "Socio Activo") => {
+  const updatePostulacionEstado = async (id, nuevoEstado, categoriaAsignada = "Socio Activo", observacion = '') => {
     const post = postulacionesList.find(p => p.id === id);
-    setPostulacionesList(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
 
-    // Persistir en Supabase
-    if (isSupabaseReady()) {
+    // Las decisiones que crean un socio o convierten a voluntario son atómicas
+    // en Supabase. Se conserva la firma histórica que consume SociosIntranet.
+    if (supabaseReady && post) {
       try {
-        await supabase.from('postulaciones').update({ estado: nuevoEstado }).eq('id', id);
+        const decision = nuevoEstado === 'Aceptada / Incorporado' ? 'aprobar' : 'rechazar';
+        const { data, error } = await supabase.rpc('pruaned_review_socio_application', {
+          p_application_id: id,
+          p_decision: decision,
+          p_categoria: categoriaAsignada,
+          p_review_note: observacion
+        });
+        if (error) throw error;
+        const resolvedPostulacion = snakeToCamel(data?.postulacionSocio || {});
+        setPostulacionesList(prev => prev.map(item => item.id === id ? { ...item, ...resolvedPostulacion, estado: nuevoEstado } : item));
+        if (data?.socio) {
+          const socio = snakeToCamel(data.socio);
+          setSociosList(prev => [...prev.filter(item => item.id !== socio.id), socio]);
+        }
+        if (data?.voluntario) {
+          const voluntario = snakeToCamel(data.voluntario);
+          setVoluntariosList(prev => [...prev.filter(item => item.id !== voluntario.id), voluntario]);
+          await refreshPostulacionesVoluntariado();
+        }
+        return { ok: true, data };
       } catch (err) {
         console.error('Error actualizando estado postulación en Supabase:', err);
+        return { ok: false, error: { code: err?.code || 'SOCIO_APPLICATION_REVIEW_ERROR', message: err?.message || 'No fue posible resolver la postulación.' } };
       }
     }
+
+    setPostulacionesList(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
 
     if (nuevoEstado === 'Aceptada / Incorporado' && post) {
       const newSocio = {
@@ -1208,6 +944,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     }
+    return { ok: true, data: null };
   };
 
   const solicitarRenunciaSocio = async (socioId, motivoRenuncia) => {
@@ -1266,222 +1003,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateFinancialSettings = async (newCuotaMensual, newCuotaIncorporacion) => {
-    const updated = {
-      cuotaMensualActual: Number(newCuotaMensual),
-      cuotaIncorporacionActual: Number(newCuotaIncorporacion)
-    };
-    setFinancialSettings(updated);
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('parametros_sistema').upsert({ id: 'financial_settings', valor: updated });
-      } catch (err) { console.error('Error updating financial settings:', err); }
-    }
-    setSociosList(prev => prev.map(s => {
-      if (s.categoria !== 'Socio Honorario') {
-        return { ...s, montoCuotaMensual: Number(newCuotaMensual) };
-      }
-      return s;
-    }));
-  };
-
-  const addExpense = async (expenseItem) => {
-    const monto = Number(expenseItem.monto);
-    if (!Number.isFinite(monto) || monto <= 0) {
-      throw new Error('El monto del egreso debe ser mayor que cero.');
-    }
-
-    if (isSupabaseReady()) {
-      const dbItem = {
-        fecha: expenseItem.fecha,
-        tipo_documento: expenseItem.tipoDocumento,
-        numero_documento: expenseItem.numeroDocumento,
-        proveedor: expenseItem.proveedor,
-        categoria: expenseItem.categoria,
-        origen_fondo: expenseItem.origenFondo || 'Fondo Cuotas',
-        monto,
-        glosa: expenseItem.glosa
-      };
-      const { data, error } = await supabase.from('egresos').insert([dbItem]).select();
-      if (error) throw error;
-      if (data && data.length > 0) {
-        const d = data[0];
-        setExpensesList(prev => [...prev, {
-          id: d.id, fecha: d.fecha, tipoDocumento: d.tipo_documento, 
-          numeroDocumento: d.numero_documento, proveedor: d.proveedor, 
-          categoria: d.categoria, origenFondo: d.origen_fondo, 
-          monto: d.monto, glosa: d.glosa
-        }]);
-      }
-    } else {
-      const itemWithId = { ...expenseItem, monto, id: `exp-${Date.now()}` };
-      setExpensesList(prev => [...prev, itemWithId]);
-    }
-    addSecurityLog(`ADD_EXPENSE_${expenseItem.origenFondo || 'Fondo Cuotas'}_${monto}`, currentUser?.email, "INFO");
-  };
-
-  const deleteExpense = async (id) => {
-    if (isSupabaseReady()) {
-      const { error } = await supabase.from('egresos').delete().eq('id', id);
-      if (error) throw error;
-    }
-    setExpensesList(prev => prev.filter(e => e.id !== id));
-  };
-
-  const addFinancialCategory = async (tipo, nombre) => {
-    if (!['donacion_ingreso', 'donacion_egreso'].includes(tipo)) {
-      throw new Error('Tipo de categoría financiera no válido.');
-    }
-
-    const safeName = nombre.trim().replace(/\s+/g, ' ');
-    if (safeName.length < 2) throw new Error('Ingresa un nombre de categoría válido.');
-    if (financialCategories.some(category => (
-      category.tipo === tipo && category.nombre.trim().toLocaleLowerCase('es-CL') === safeName.toLocaleLowerCase('es-CL')
-    ))) {
-      throw new Error('Esa categoría ya existe.');
-    }
-
-    let category;
-    if (isSupabaseReady()) {
-      const { data, error } = await supabase
-        .from('categorias_financieras')
-        .insert({ tipo, nombre: safeName })
-        .select()
-        .single();
-      if (error) throw error;
-      category = { id: data.id, tipo: data.tipo, nombre: data.nombre, activo: data.activo };
-    } else {
-      category = { id: `offline-finance-category-${Date.now()}`, tipo, nombre: safeName, activo: true };
-    }
-
-    setFinancialCategories(prev => [...prev, category].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
-    addSecurityLog(`ADD_FINANCIAL_CATEGORY_${tipo}`, currentUser?.email, 'INFO');
-    return category;
-  };
-
-  const archiveFinancialCategory = async (id) => {
-    if (isSupabaseReady()) {
-      const { error } = await supabase
-        .from('categorias_financieras')
-        .update({ activo: false })
-        .eq('id', id);
-      if (error) throw error;
-    }
-    setFinancialCategories(prev => prev.map(category => (
-      category.id === id ? { ...category, activo: false } : category
-    )));
-    addSecurityLog('ARCHIVE_FINANCIAL_CATEGORY', currentUser?.email, 'WARN');
-  };
-
-  const addFinancialAccount = async (accountData) => {
-    const nombre = accountData.nombre?.trim().replace(/\s+/g, ' ');
-    const banco = accountData.banco?.trim().replace(/\s+/g, ' ');
-    const tipoCuenta = accountData.tipoCuenta?.trim();
-    const numeroCuenta = accountData.numeroCuenta?.trim().replace(/\s+/g, ' ');
-    const titular = accountData.titular?.trim().replace(/\s+/g, ' ');
-    const rutTitular = formatChileanRut(accountData.rutTitular);
-
-    if (!nombre || !banco || !tipoCuenta || !numeroCuenta || !titular || !rutTitular) {
-      throw new Error('Completa nombre público, banco, tipo, número, titular y RUT de la cuenta.');
-    }
-    if (!isValidChileanRut(rutTitular)) throw new Error('El RUT del titular no es válido.');
-
-    let account;
-    if (isSupabaseReady()) {
-      const { data, error } = await supabase
-        .from('cuentas_financieras')
-        .insert({
-          nombre,
-          banco,
-          tipo_cuenta: tipoCuenta,
-          numero_cuenta: numeroCuenta,
-          titular,
-          rut_titular: rutTitular,
-          publicada: true,
-          activa: true
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      account = {
-        id: data.id,
-        nombre: data.nombre,
-        banco: data.banco,
-        tipoCuenta: data.tipo_cuenta,
-        numeroCuenta: data.numero_cuenta,
-        titular: data.titular,
-        rutTitular: data.rut_titular,
-        publicada: data.publicada,
-        activa: data.activa
-      };
-    } else {
-      account = {
-        id: `offline-financial-account-${Date.now()}`,
-        nombre,
-        banco,
-        tipoCuenta,
-        numeroCuenta,
-        titular,
-        rutTitular,
-        publicada: true,
-        activa: true
-      };
-    }
-
-    setFinancialAccounts(previous => [...previous, account].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
-    addSecurityLog('ADD_PUBLIC_FINANCIAL_ACCOUNT', currentUser?.email, 'INFO');
-    return account;
-  };
-
-  const removeFinancialAccount = async (id) => {
-    if (isSupabaseReady()) {
-      const { error } = await supabase
-        .from('cuentas_financieras')
-        .update({ activa: false, publicada: false })
-        .eq('id', id);
-      if (error) throw error;
-    }
-    setFinancialAccounts(previous => previous.filter(account => account.id !== id));
-    addSecurityLog('REMOVE_PUBLIC_FINANCIAL_ACCOUNT', currentUser?.email, 'WARN');
-  };
-
-  const updateFinancialAccountRut = async (id, rawRut) => {
-    const rutTitular = formatChileanRut(rawRut);
-    if (!isValidChileanRut(rutTitular)) throw new Error('El RUT del titular no es válido.');
-    if (isSupabaseReady()) {
-      const { error } = await supabase
-        .from('cuentas_financieras')
-        .update({ rut_titular: rutTitular, publicada: true, activa: true })
-        .eq('id', id);
-      if (error) throw error;
-    }
-    setFinancialAccounts(previous => previous.map(account => (
-      account.id === id ? { ...account, rutTitular, publicada: true, activa: true } : account
-    )));
-    addSecurityLog('UPDATE_PUBLIC_FINANCIAL_ACCOUNT_RUT', currentUser?.email, 'INFO');
-  };
-
-  const addCobrosBatch = async (cobrosArray) => {
-    if (isSupabaseReady()) {
-      const dbItems = cobrosArray.map(c => ({
-        socio_id: c.socioId,
-        titulo: c.titulo,
-        monto: c.monto,
-        pagado: c.pagado || false
-      }));
-      const { data, error } = await supabase.from('cobros').insert(dbItems).select();
-      if (!error && data) {
-        const camelData = data.map(d => ({
-          id: d.id, socioId: d.socio_id, titulo: d.titulo, monto: d.monto, pagado: d.pagado, fechaCreacion: d.fecha_creacion
-        }));
-        setCobrosList(prev => [...prev, ...camelData]);
-      }
-    } else {
-      const localData = cobrosArray.map((c, i) => ({ ...c, id: `cobro-${Date.now()}-${i}` }));
-      setCobrosList(prev => [...prev, ...localData]);
-    }
-  };
-
   const updateSocioCuota = (socioId, newEstado, newComprobante = null, isSuspensionRequest = false, isCuotaIncorporacion = false) => {
     setSociosList(prev => prev.map(socio => {
       if (socio.id === socioId) {
@@ -1517,151 +1038,6 @@ export const AuthProvider = ({ children }) => {
       return socio;
     }));
   };
-
-  const addNews = async (newsItem) => {
-    const itemWithId = { ...newsItem, id: `n-${Date.now()}` };
-    setNewsList(prev => [itemWithId, ...prev]);
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('noticias').insert([{
-          id: itemWithId.id,
-          titulo: newsItem.titulo,
-          contenido: newsItem.contenido,
-          fecha_publicacion: newsItem.fechaPublicacion || newsItem.fecha_publicacion,
-          autor: newsItem.autor,
-          categoria: newsItem.categoria,
-          imagen_url: newsItem.imagenUrl || newsItem.imagen_url
-        }]);
-      } catch (err) { console.error('Error addNews Supabase:', err); }
-    }
-  };
-
-  const deleteNews = async (id) => {
-    setNewsList(prev => prev.filter(n => n.id !== id));
-    if (isSupabaseReady()) {
-      try {
-        await supabase.from('noticias').delete().eq('id', id);
-      } catch (err) { console.error('Error deleteNews Supabase:', err); }
-    }
-  };
-
-  const addDocCategory = async (categoryName) => {
-    const cat = categoryName.trim();
-    if (!cat || docCategories.some((item) => item.toLocaleLowerCase('es-CL') === cat.toLocaleLowerCase('es-CL'))) return;
-    if (!isSupabaseReady()) throw new Error('Las categorías requieren una conexión segura a Supabase.');
-    const { data, error } = await supabase.from('document_categories').insert({ name: cat }).select('name').single();
-    if (error) throw error;
-    setDocCategories((previous) => [...previous, data.name].sort((first, second) => first.localeCompare(second, 'es')));
-  };
-
-  const deleteDocCategory = async (categoryName) => {
-    if (documentsList.some((document) => document.category === categoryName)) {
-      throw new Error('No puedes eliminar una categoría que aún tiene documentos asociados.');
-    }
-    if (!isSupabaseReady()) throw new Error('Las categorías requieren una conexión segura a Supabase.');
-    const { error } = await supabase.from('document_categories').delete().eq('name', categoryName);
-    if (error) throw error;
-    setDocCategories((previous) => previous.filter((category) => category !== categoryName));
-  };
-
-  const addDocument = async ({ file, title, category, description, version = 'v1.0', visibility = 'publico' }) => {
-    if (!isSupabaseReady()) {
-      throw new Error('La publicación documental requiere una conexión segura a Supabase.');
-    }
-    if (!(file instanceof File)) throw new Error('Selecciona un archivo para publicar.');
-    if (file.size < 1 || file.size > DOCUMENT_MAX_BYTES) {
-      throw new Error('El archivo debe tener un tamaño entre 1 byte y 20 MB.');
-    }
-
-    const extension = fileExtension(file.name);
-    if (!DOCUMENT_EXTENSIONS.has(extension) || (file.type && !DOCUMENT_MIME_TYPES.has(file.type))) {
-      throw new Error('Sólo se permiten archivos PDF, DOCX o XLSX.');
-    }
-    if (!title?.trim() || !category?.trim()) {
-      throw new Error('Título y categoría son obligatorios.');
-    }
-    if (!['publico', 'socios'].includes(visibility)) {
-      throw new Error('La visibilidad del documento no es válida.');
-    }
-
-    const objectId = crypto.randomUUID();
-    const storagePath = `publicados/${new Date().getUTCFullYear()}/${objectId}-${safeStorageFileName(file.name)}`;
-    const bucket = visibility === 'socios' ? BUCKETS.documentosSocios : BUCKETS.documentos;
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(storagePath, file, { contentType: file.type || undefined, upsert: false });
-
-    if (uploadError) throw uploadError;
-
-    const publicUrl = visibility === 'publico'
-      ? supabase.storage.from(bucket).getPublicUrl(storagePath).data.publicUrl
-      : storagePath;
-
-    const { data, error } = await supabase
-      .from('documentos')
-      .insert({
-        titulo: title.trim(),
-        categoria: category.trim(),
-        descripcion: description?.trim() || null,
-        url: publicUrl,
-        fecha: new Date().toISOString().slice(0, 10),
-        version: version?.trim() || 'v1.0',
-        visibilidad: visibility,
-        archivo_nombre: file.name,
-        archivo_tipo: file.type || `application/${extension}`,
-        archivo_bytes: file.size,
-        storage_path: storagePath,
-        publicado: true
-      })
-      .select('*')
-      .single();
-
-    if (error) {
-      await supabase.storage.from(bucket).remove([storagePath]);
-      throw error;
-    }
-
-    const document = normalizeDocument(data);
-    setDocumentsList((previous) => [document, ...previous]);
-    addSecurityLog(`PUBLISH_DOCUMENT_${document.id}`, currentUser?.email, 'INFO');
-    return document;
-  };
-
-  const getDocumentDownloadUrl = async (document) => {
-    if (!document || document.visibility !== 'socios' || !document.storagePath) return document?.url || '';
-    if (!isSupabaseReady()) throw new Error('El documento exclusivo requiere una conexión segura a Supabase.');
-    const { data, error } = await supabase.storage
-      .from(BUCKETS.documentosSocios)
-      .createSignedUrl(document.storagePath, 10 * 60);
-    if (error) throw error;
-    return data.signedUrl;
-  };
-
-  const setDocumentPublication = async (id, published) => {
-    if (!isSupabaseReady()) {
-      throw new Error('La publicación documental requiere una conexión segura a Supabase.');
-    }
-
-    const publicationPatch = published
-      ? { publicado: true, archivado_at: null, archivado_por: null }
-      : { publicado: false };
-    const { data, error } = await supabase
-      .from('documentos')
-      .update(publicationPatch)
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (error) throw error;
-    const document = normalizeDocument(data);
-    setDocumentsList((previous) => previous.map((item) => item.id === id ? document : item));
-    addSecurityLog(`${published ? 'RESTORE' : 'ARCHIVE'}_DOCUMENT_${id}`, currentUser?.email, published ? 'INFO' : 'WARN');
-    return document;
-  };
-
-  const archiveDocument = (id) => setDocumentPublication(id, false);
-  const restoreDocument = (id) => setDocumentPublication(id, true);
-  const deleteDocument = archiveDocument;
 
   const updateVolunteerCert = async (volId, courseId) => {
     let newState = {};
@@ -1852,6 +1228,12 @@ export const AuthProvider = ({ children }) => {
       postulacionesList,
       addPostulacion,
       updatePostulacionEstado,
+      postulacionesVoluntariadoList,
+      refreshPostulacionesVoluntariado,
+      addPostulacionVoluntario,
+      updatePostulacionVoluntariadoEstado,
+      solicitarIngresoSocioDesdeVoluntariado,
+      updateSolicitudIngresoSocioDesdeVoluntariado,
       solicitarRenunciaSocio,
       aprobarRenunciaDirectorio,
       financialSettings,

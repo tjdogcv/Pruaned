@@ -16,14 +16,17 @@ import { PrivateRoute } from './components/PrivateRoute';
 import { IntranetLayout } from './layouts/IntranetLayout';
 import DashboardHome from './pages/intranet/DashboardHome';
 import SociosDirectory from './pages/intranet/SociosDirectory';
+import PostulacionesSocios from './pages/intranet/PostulacionesSocios';
 import DirectorioNacional from './pages/intranet/DirectorioNacional';
 import FinanzasPanel from './pages/intranet/FinanzasPanel';
 import VoluntariadoLMS from './pages/intranet/VoluntariadoLMS';
 import VoluntariadoGestion from './pages/intranet/VoluntariadoGestion';
+import VoluntariadoPortal from './pages/intranet/VoluntariadoPortal';
 import LmsEditor from './pages/intranet/LmsEditor';
 import DocumentosCMS from './pages/intranet/DocumentosCMS';
 import DocumentosSocios from './pages/intranet/DocumentosSocios';
 import AuditoriaLogs from './pages/intranet/AuditoriaLogs';
+import { PostulacionVoluntariado } from './components/PostulacionVoluntariado';
 
 function PublicLayout({ children, onOpenAuth }) {
   return (
@@ -112,6 +115,7 @@ function AppRoutes() {
       <Route path="/documentos" element={<PublicPageWrapper component={DocumentsSection} />} />
       <Route path="/transparencia" element={<PublicPageWrapper component={PortalTransparencia} />} />
       <Route path="/postulacion" element={<PublicPageWrapper component={PostulacionSocio} />} />
+      <Route path="/postulacion-voluntariado" element={<PublicPageWrapper component={PostulacionVoluntariado} />} />
       <Route path="/verificar" element={<PublicPageWrapper component={CertificateVerify} />} />
       <Route path="/verificar/:hash" element={<PublicPageWrapper component={CertificateVerify} />} />
 
@@ -124,9 +128,12 @@ function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardHome />} />
         <Route path="socios" element={<SociosDirectory />} />
+        <Route path="postulaciones-socios" element={<PostulacionesSocios />} />
         <Route path="directorio" element={<DirectorioNacional />} />
         <Route path="finanzas" element={<FinanzasPanel />} />
-        <Route path="voluntarios" element={<VoluntariadoLMS />} />
+        <Route path="voluntarios" element={<VoluntariadoPortal />} />
+        <Route path="voluntarios/aula" element={<VoluntariadoLMS />} />
+        <Route path="voluntariado/solicitud-socio" element={<VoluntariadoPortal />} />
         <Route path="voluntarios/gestion" element={<VoluntariadoGestion />} />
         <Route path="voluntarios/gestion/aula" element={<LmsEditor />} />
         <Route path="documentos" element={<DocumentosSocios />} />

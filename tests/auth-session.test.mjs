@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 import {
   LEGACY_SESSION_KEY,
@@ -86,6 +87,29 @@ test('una sesión local devuelta por getSession no concede acceso si getUser fal
     getPrivateRouteState({ isAuthRestoring: false, currentUser: null, is2FAVerified: validation.isValid }),
     'unauthorized'
   );
+});
+
+test('el contexto de autenticación no contiene un usuario maestro hardcodeado', () => {
+  const source = fs.readFileSync(new URL('../src/context/AuthContext.jsx', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(source, /const\s+USER_DATABASE\s*=\s*\[/);
+  assert.doesNotMatch(source, /ag\.pruaned@gmail\.com/);
+});
+
+test('la sesión no se persiste en localStorage y Supabase manda a memoria de sesión', () => {
+  const authContext = fs.readFileSync(new URL('../src/context/AuthContext.jsx', import.meta.url), 'utf8');
+  const supabaseClient = fs.readFileSync(new URL('../src/lib/supabase.js', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(authContext, /localStorage\.setItem\(['"]pruaned_session['"]/);
+  assert.doesNotMatch(authContext, /localStorage\.setItem\(['"]pruaned_auth_attempts['"]/);
+  assert.match(supabaseClient, /persistSession:\s*false/);
+});
+
+test('las mutaciones de noticias y categorías deben validar permisos vía RPC del backend', () => {
+  const source = fs.readFileSync(new URL('../src/context/useContentDomain.js', import.meta.url), 'utf8');
+
+  assert.match(source, /pruaned_can_publish_cms/);
+  assert.match(source, /pruaned_can_manage_categories/);
 });
 
 test('sesión ausente, expirada o revocada simulada falla cerrada', () => {

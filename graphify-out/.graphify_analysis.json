@@ -1,0 +1,553 @@
+{
+  "communities": {
+    "0": [
+      "src_app",
+      "src_app_app",
+      "src_app_approutes",
+      "src_app_homepage",
+      "src_app_publiclayout",
+      "src_app_publicpagewrapper",
+      "src_assets_pruanedlogo",
+      "src_assets_pruanedlogo_pruanedlogo",
+      "src_components_admincms",
+      "src_components_admincms_admincms",
+      "src_components_certificatemodal",
+      "src_components_certificatemodal_certificatemodal",
+      "src_components_certificateverify",
+      "src_components_certificateverify_certificateverify",
+      "src_components_documentmanager",
+      "src_components_documentmanager_documentmanager",
+      "src_components_documentmanager_field",
+      "src_components_documentmanager_initialform",
+      "src_components_documentssection",
+      "src_components_documentssection_documentssection",
+      "src_components_footer",
+      "src_components_footer_footer",
+      "src_components_hero",
+      "src_components_hero_hero",
+      "src_components_institutional",
+      "src_components_institutional_institutional",
+      "src_components_intranetnavbar",
+      "src_components_intranetnavbar_intranetnavbar",
+      "src_components_navbar",
+      "src_components_navbar_navbar",
+      "src_components_newssection",
+      "src_components_newssection_newssection",
+      "src_components_portaltransparencia",
+      "src_components_portaltransparencia_portaltransparencia",
+      "src_components_postulacionsocio",
+      "src_components_postulacionsocio_postulacionsocio",
+      "src_components_privacydatapolicy",
+      "src_components_privacydatapolicy_privacydatapolicy",
+      "src_components_securitydashboard",
+      "src_components_securitydashboard_securitydashboard",
+      "src_components_voluntariosintranet",
+      "src_components_voluntariosintranet_voluntariosintranet",
+      "src_context_authcontext_useauth",
+      "src_data_initialdata_initial_technical_directions",
+      "src_data_initialdata_institutional_info",
+      "src_layouts_intranetlayout",
+      "src_layouts_intranetlayout_initialsfor",
+      "src_layouts_intranetlayout_intranetlayout",
+      "src_layouts_intranetlayout_safeavatarurl",
+      "src_layouts_intranetlayout_sidebarcontent",
+      "src_lib_emailconfig_sendpostulacionemail",
+      "src_main",
+      "src_pages_intranet_dashboardhome",
+      "src_pages_intranet_dashboardhome_currency",
+      "src_pages_intranet_dashboardhome_dashboardhome",
+      "src_pages_intranet_documentoscms",
+      "src_pages_intranet_documentoscms_documentoscms",
+      "src_pages_intranet_documentossocios",
+      "src_pages_intranet_documentossocios_documentossocios",
+      "src_pages_intranet_voluntariadolms",
+      "src_pages_intranet_voluntariadolms_voluntariadolms",
+      "src_utils_security_generatecertificatehash"
+    ],
+    "1": [
+      "src_components_privateroute",
+      "src_components_privateroute_privateroute",
+      "src_context_authcontext",
+      "src_context_authcontext_authcontext",
+      "src_context_authcontext_authprovider",
+      "src_context_authcontext_default_financial_categories",
+      "src_context_authcontext_document_extensions",
+      "src_context_authcontext_document_mime_types",
+      "src_context_authcontext_fileextension",
+      "src_context_authcontext_formatchileanrut",
+      "src_context_authcontext_formatdocumentsize",
+      "src_context_authcontext_generatesessiontoken",
+      "src_context_authcontext_isvalidchileanrut",
+      "src_context_authcontext_normalizeauditlog",
+      "src_context_authcontext_normalizechileanrut",
+      "src_context_authcontext_normalizedocument",
+      "src_context_authcontext_resolveuserforemail",
+      "src_context_authcontext_safestoragefilename",
+      "src_context_authcontext_topublicdonation",
+      "src_context_authsession",
+      "src_context_authsession_clearlegacysession",
+      "src_context_authsession_createrestorationepoch",
+      "src_context_authsession_getprivateroutestate",
+      "src_context_authsession_getsignedoutauthstate",
+      "src_context_authsession_loadlegacysession",
+      "src_context_authsession_validatesupabasesession",
+      "src_data_initialdata",
+      "src_data_initialdata_initial_courses",
+      "src_data_initialdata_initial_directorio_cargos",
+      "src_data_initialdata_initial_doc_categories",
+      "src_data_initialdata_initial_documents",
+      "src_data_initialdata_initial_donaciones",
+      "src_data_initialdata_initial_expenses",
+      "src_data_initialdata_initial_financial_settings",
+      "src_data_initialdata_initial_firmas",
+      "src_data_initialdata_initial_news",
+      "src_data_initialdata_initial_security_logs",
+      "src_data_initialdata_initial_socios",
+      "src_data_initialdata_initial_voluntarios",
+      "tests_auth_session_test",
+      "tests_auth_session_test_createstorage",
+      "tests_auth_session_test_currentsession",
+      "tests_auth_session_test_deferred"
+    ],
+    "2": [
+      "src_lib_lmsprogress",
+      "src_lib_lmsprogress_assessmentlabel",
+      "src_lib_lmsprogress_attachcoursemodules",
+      "src_lib_lmsprogress_courseprogress",
+      "src_lib_lmsprogress_getcoursevideoembedurl",
+      "src_lib_lmsprogress_normalizeaudience",
+      "src_lib_lmsprogress_resultforcourse",
+      "src_pages_intranet_lmsacademy",
+      "src_pages_intranet_lmsacademy_assessmentdialog",
+      "src_pages_intranet_lmsacademy_audiencelabel",
+      "src_pages_intranet_lmsacademy_coursematerial",
+      "src_pages_intranet_lmsacademy_coursevideo",
+      "src_pages_intranet_lmsacademy_emptycourses",
+      "src_pages_intranet_lmsacademy_fact",
+      "src_pages_intranet_lmsacademy_lmsacademy",
+      "src_pages_intranet_lmsacademy_metric",
+      "src_pages_intranet_lmsacademy_statuslabel",
+      "src_pages_intranet_lmseditor",
+      "src_pages_intranet_lmseditor_audience",
+      "src_pages_intranet_lmseditor_editorsection",
+      "src_pages_intranet_lmseditor_emptycourse",
+      "src_pages_intranet_lmseditor_emptymodule",
+      "src_pages_intranet_lmseditor_emptyquestion",
+      "src_pages_intranet_lmseditor_field",
+      "src_pages_intranet_lmseditor_lmseditor",
+      "src_pages_intranet_lmseditor_removebutton",
+      "src_pages_intranet_lmseditor_statusbadge",
+      "src_pages_intranet_lmseditor_toeditormodel",
+      "src_pages_intranet_voluntariadogestion",
+      "src_pages_intranet_voluntariadogestion_metric",
+      "src_pages_intranet_voluntariadogestion_metricdetail",
+      "src_pages_intranet_voluntariadogestion_rate",
+      "src_pages_intranet_voluntariadogestion_voluntariadogestion",
+      "tests_lms_progress_test"
+    ],
+    "3": [
+      "emailjs_browser",
+      "lucide_react",
+      "package",
+      "package_dependencies",
+      "package_dependencies_emailjs_browser",
+      "package_dependencies_lucide_react",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_dependencies_react_router_dom",
+      "package_dependencies_supabase_supabase_js",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_preview",
+      "package_scripts_test_auth",
+      "package_scripts_test_lms",
+      "package_type",
+      "package_version",
+      "react",
+      "react_dom",
+      "react_router_dom",
+      "supabase_supabase_js"
+    ],
+    "4": [
+      "src_components_fondodonacionespanel",
+      "src_components_fondodonacionespanel_fondodonacionespanel",
+      "src_components_fondodonacionespanel_formatclp",
+      "src_components_sociosintranet",
+      "src_components_sociosintranet_auditoriapanel",
+      "src_components_sociosintranet_quota_expense_categories",
+      "src_components_sociosintranet_severity_cfg",
+      "src_components_sociosintranet_sociosearchselect",
+      "src_components_sociosintranet_sociosintranet",
+      "src_lib_emailconfig",
+      "src_lib_emailconfig_sendapprovalemail",
+      "src_lib_emailconfig_sendpagoemail",
+      "src_lib_emailconfig_sendrejectionemail",
+      "src_pages_intranet_auditorialogs",
+      "src_pages_intranet_auditorialogs_auditorialogs",
+      "src_pages_intranet_directorionacional",
+      "src_pages_intranet_directorionacional_directorionacional",
+      "src_pages_intranet_finanzaspanel",
+      "src_pages_intranet_finanzaspanel_finanzaspanel",
+      "src_pages_intranet_sociosdirectory",
+      "src_pages_intranet_sociosdirectory_sociosdirectory"
+    ],
+    "5": [
+      "audit_seguridad_critico_client_side_2fa",
+      "audit_seguridad_critico_hardcoded_admin_credentials",
+      "audit_seguridad_critico_insecure_client_sessions",
+      "audit_seguridad_critico_security_audit",
+      "audit_seguridad_critico_unprotected_admin_operations",
+      "audit_seguridad_critico_weak_rls",
+      "checklist_seguridad_remediation_checklist",
+      "diagnostico_usuario_maestro_master_user_diagnosis",
+      "diagnostico_usuario_maestro_user_roles_migration",
+      "migracion_roles_schema_roles_schema_analysis",
+      "migracion_roles_schema_server_side_role_verification",
+      "migracion_roles_schema_user_roles_table",
+      "remediacion_tecnica_http_only_sessions",
+      "remediacion_tecnica_rbac",
+      "remediacion_tecnica_server_side_2fa",
+      "remediacion_tecnica_technical_remediation",
+      "resumen_ejecutivo_seguridad_executive_security_summary"
+    ],
+    "6": [
+      "autoprefixer",
+      "package_devdependencies",
+      "package_devdependencies_autoprefixer",
+      "package_devdependencies_postcss",
+      "package_devdependencies_puppeteer_core",
+      "package_devdependencies_tailwindcss",
+      "package_devdependencies_types_react",
+      "package_devdependencies_types_react_dom",
+      "package_devdependencies_vite",
+      "package_devdependencies_vitejs_plugin_react",
+      "postcss",
+      "puppeteer_core",
+      "tailwindcss",
+      "types_react",
+      "types_react_dom",
+      "vite",
+      "vitejs_plugin_react"
+    ],
+    "7": [
+      "src_components_authmodal",
+      "src_components_authmodal_authmodal",
+      "src_lib_supabase",
+      "src_lib_supabase_buckets",
+      "src_lib_supabase_issupabaseready",
+      "src_lib_supabase_supabase",
+      "src_lib_supabase_uploadfile",
+      "src_utils_security",
+      "src_utils_security_evaluatepasswordstrength",
+      "src_utils_security_event_labels",
+      "src_utils_security_generate2facode",
+      "src_utils_security_humanize",
+      "src_utils_security_logsecurityevent",
+      "src_utils_security_sanitizeinput"
+    ],
+    "8": [
+      "public_logo_shield_animal_emergency_symbols",
+      "public_logo_shield_highres_animal_emergency_symbols",
+      "public_logo_shield_highres_pruaned_identity",
+      "public_logo_shield_pruaned_identity",
+      "public_pdf_preview_pages_page_1_animal_disaster_inclusion",
+      "public_pdf_preview_pages_page_1_pruaned_association",
+      "public_pdf_preview_pages_page_1_statutes_cover",
+      "public_pdf_preview_pages_page_3_legal_nature",
+      "public_pdf_preview_pages_page_3_one_health_one_welfare",
+      "public_pdf_preview_pages_page_3_sendai_framework",
+      "public_pdf_preview_pages_page_4_animal_dimension",
+      "public_pdf_preview_pages_page_4_association_object",
+      "public_pdf_preview_pages_page_5_institutional_objectives"
+    ],
+    "9": [
+      "public_pdf_preview_pages_page_13_one_health_direction",
+      "public_pdf_preview_pages_page_13_rrd_grd_direction",
+      "public_pdf_preview_pages_page_13_statutes_page",
+      "public_pdf_preview_pages_page_13_technical_directions",
+      "public_pdf_preview_pages_page_13_volunteer_lifecycle",
+      "public_pdf_preview_pages_page_18_permanent_volunteers",
+      "public_pdf_preview_pages_page_18_spontaneous_volunteers",
+      "public_pdf_preview_pages_page_18_volunteer_accreditation",
+      "public_pdf_preview_pages_page_18_volunteer_regulations",
+      "public_pdf_preview_pages_page_19_disciplinary_regime",
+      "public_pdf_preview_pages_page_19_ethics_committee",
+      "public_pdf_preview_pages_page_19_volunteer_training"
+    ],
+    "10": [
+      "analisis_archivos_basura_cleanup_inventory",
+      "analisis_archivos_basura_essential_project_assets",
+      "guia_limpieza_rapida_cleanup_execution",
+      "index_pruaned_disaster_risk_animal_mission",
+      "index_pruaned_web_application",
+      "public_estatutos_redisenados_association_governance",
+      "public_estatutos_redisenados_members_and_volunteers",
+      "public_estatutos_redisenados_statutes",
+      "public_estatutos_redisenados_volunteer_regulation",
+      "public_estatutos_v_3_operational_structure",
+      "public_estatutos_v_3_statutes"
+    ],
+    "11": [
+      "public_pdf_preview_pages_page_14_alliances_donations_direction",
+      "public_pdf_preview_pages_page_14_animal_protection_directions",
+      "public_pdf_preview_pages_page_14_indigenous_peoples_direction",
+      "public_pdf_preview_pages_page_14_statutes_page",
+      "public_pdf_preview_pages_page_15_conflict_of_interest",
+      "public_pdf_preview_pages_page_15_donation_governance",
+      "public_pdf_preview_pages_page_15_financial_regime",
+      "public_pdf_preview_pages_page_15_member_dues",
+      "public_pdf_preview_pages_page_15_treasury",
+      "public_pdf_preview_pages_page_16_accounts_review_commission",
+      "public_pdf_preview_pages_page_16_audit_and_control"
+    ],
+    "12": [
+      "public_pdf_preview_pages_page_10_assembly_procedures",
+      "public_pdf_preview_pages_page_10_national_board",
+      "public_pdf_preview_pages_page_11_board_functions",
+      "public_pdf_preview_pages_page_12_officer_succession",
+      "public_pdf_preview_pages_page_12_secretarial_financial_governance",
+      "public_pdf_preview_pages_page_9_association_organs",
+      "public_pdf_preview_pages_page_9_general_assembly"
+    ],
+    "13": [
+      "public_pdf_preview_pages_page_20_emergency_coordination",
+      "public_pdf_preview_pages_page_20_operational_hierarchy",
+      "public_pdf_preview_pages_page_21_interinstitutional_coordination",
+      "public_pdf_preview_pages_page_21_operational_protocols",
+      "public_pdf_preview_pages_page_22_emergency_regime",
+      "public_pdf_preview_pages_page_22_extraordinary_operations"
+    ],
+    "14": [
+      "public_pdf_preview_pages_page_5_administrative_and_operational_structure",
+      "public_pdf_preview_pages_page_5_governing_principles",
+      "public_pdf_preview_pages_page_6_membership_categories",
+      "public_pdf_preview_pages_page_6_technical_operational_response",
+      "public_pdf_preview_pages_page_7_volunteer_induction",
+      "public_pdf_preview_pages_page_9_member_volunteer_registry"
+    ],
+    "15": [
+      "public_pdf_preview_pages_page_17_electoral_committee",
+      "public_pdf_preview_pages_page_17_electoral_regime",
+      "public_pdf_preview_pages_page_17_statutory_reform",
+      "public_pdf_preview_pages_page_23_incomplete_name_fields"
+    ],
+    "16": [
+      "agents_bac",
+      "agents_collaboration_protocol",
+      "agents_fon"
+    ],
+    "17": [
+      "cleanup_pruaned_ps1_cleanup_pruaned",
+      "cleanup_pruaned_write_section",
+      "cleanup_pruaned_write_status"
+    ],
+    "18": [
+      "public_pdf_preview_pages_page_7_member_rights_and_duties",
+      "public_pdf_preview_pages_page_8_disciplinary_process",
+      "public_pdf_preview_pages_page_8_ethics_committee"
+    ],
+    "19": [
+      "public_pruaned_logo_official_brand_mark",
+      "public_pruaned_official_logo_brand_mark",
+      "src_assets_pruaned_official_logo_brand_mark"
+    ],
+    "20": [
+      "cleanup_pruaned_sh__entry",
+      "cleanup_pruaned_sh_cleanup_pruaned"
+    ],
+    "21": [
+      "public_pdf_preview_pages_page_2_governance_and_volunteering_chapters",
+      "public_pdf_preview_pages_page_2_statutes_index"
+    ],
+    "22": [
+      "vercel",
+      "vercel_rewrites"
+    ],
+    "23": [
+      "postcss_config"
+    ],
+    "24": [
+      "tailwind_config"
+    ],
+    "25": [
+      "vite_config"
+    ]
+  },
+  "cohesion": {
+    "0": 0.0745637228979376,
+    "1": 0.09413067552602436,
+    "2": 0.11586452762923351,
+    "3": 0.08333333333333333,
+    "4": 0.1523809523809524,
+    "5": 0.14705882352941177,
+    "6": 0.11764705882352941,
+    "7": 0.24175824175824176,
+    "8": 0.16666666666666666,
+    "9": 0.16666666666666666,
+    "10": 0.18181818181818182,
+    "11": 0.18181818181818182,
+    "12": 0.2857142857142857,
+    "13": 0.3333333333333333,
+    "14": 0.3333333333333333,
+    "15": 0.5,
+    "16": 1.0,
+    "17": 0.6666666666666666,
+    "18": 0.6666666666666666,
+    "19": 0.6666666666666666,
+    "20": 1.0,
+    "21": 1.0,
+    "22": 1.0,
+    "23": 1.0,
+    "24": 1.0,
+    "25": 1.0
+  },
+  "gods": [
+    {
+      "id": "src_context_authcontext_useauth",
+      "label": "useAuth()",
+      "degree": 55
+    },
+    {
+      "id": "src_context_authcontext_authprovider",
+      "label": "AuthProvider()",
+      "degree": 21
+    },
+    {
+      "id": "src_lib_lmsprogress_normalizeaudience",
+      "label": "normalizeAudience()",
+      "degree": 11
+    },
+    {
+      "id": "src_assets_pruanedlogo_pruanedlogo",
+      "label": "PRUANEDLogo()",
+      "degree": 10
+    },
+    {
+      "id": "src_components_sociosintranet_sociosintranet",
+      "label": "SociosIntranet()",
+      "degree": 9
+    },
+    {
+      "id": "src_pages_intranet_lmsacademy_lmsacademy",
+      "label": "LmsAcademy()",
+      "degree": 9
+    },
+    {
+      "id": "src_pages_intranet_lmseditor_lmseditor",
+      "label": "LmsEditor()",
+      "degree": 9
+    },
+    {
+      "id": "audit_seguridad_critico_security_audit",
+      "label": "Critical Security Audit",
+      "degree": 8
+    },
+    {
+      "id": "package_scripts",
+      "label": "scripts",
+      "degree": 6
+    },
+    {
+      "id": "src_components_authmodal_authmodal",
+      "label": "AuthModal()",
+      "degree": 6
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Master User Security Diagnosis",
+      "target": "Hardcoded Administrative Credentials",
+      "source_files": [
+        "DIAGNOSTICO_USUARIO_MAESTRO.md",
+        "AUDIT_SEGURIDAD_CRITICO.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    },
+    {
+      "source": "Roles Schema Analysis",
+      "target": "Master User Security Diagnosis",
+      "source_files": [
+        "MIGRACION_ROLES_SCHEMA.md",
+        "DIAGNOSTICO_USUARIO_MAESTRO.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    },
+    {
+      "source": "Server-Side Role Verification",
+      "target": "Role-Based Access Control",
+      "source_files": [
+        "MIGRACION_ROLES_SCHEMA.md",
+        "REMEDIACION_TECNICA.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    },
+    {
+      "source": "Animal Disaster Risk Management Mission",
+      "target": "PRUANED Statutes and General Regulations 2025",
+      "source_files": [
+        "index.html",
+        "public/Estatutos-v-3.pdf"
+      ],
+      "confidence": "INFERRED",
+      "relation": "conceptually_related_to",
+      "why": "inferred connection - not explicitly stated in source; crosses file types (doc ↔ paper); connects across different repos/directories"
+    },
+    {
+      "source": "PRUANED Official Logo",
+      "target": "PRUANED Frontend Logo Asset",
+      "source_files": [
+        "public/pruaned-official-logo.png",
+        "src/assets/pruaned-official-logo.png"
+      ],
+      "confidence": "INFERRED",
+      "relation": "semantically_similar_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; semantically similar concepts with no structural link"
+    }
+  ],
+  "questions": [
+    {
+      "type": "ambiguous_edge",
+      "question": "What is the exact relationship between `Electoral Regime` and `Incomplete Name Fields`?",
+      "why": "Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `AuthProvider()` connect `Community 1` to `Community 0`, `Community 2`, `Community 3`, `Community 7`?",
+      "why": "High betweenness centrality (0.144) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `react` connect `Community 3` to `Community 1`?",
+      "why": "High betweenness centrality (0.135) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 3 inferred relationships involving `AuthProvider()` (e.g. with `normalizeAuditLog()` and `normalizeDocument()`) actually correct?",
+      "why": "`AuthProvider()` has 3 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `cleanup-pruaned.sh script`, `name`, `private` to the rest of the system?",
+      "why": "62 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 0` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.0745637228979376 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 1` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.09413067552602436 - nodes in this community are weakly interconnected."
+    }
+  ]
+}
