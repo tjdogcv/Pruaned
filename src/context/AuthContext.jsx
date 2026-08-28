@@ -542,6 +542,13 @@ export const AuthProvider = ({ children }) => {
         await supabase.auth.signOut();
       }
     } finally {
+      // Destrucción explícita de cachés y sesiones
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.clear();
+        const legacy = localStorage.getItem('pruaned_socios');
+        window.localStorage.clear();
+        if (legacy) localStorage.setItem('pruaned_socios', legacy); // Mantener db offline si existía
+      }
       clearCurrentAuthentication();
       if (userLoggingOut) {
         addSecurityLog("USER_LOGOUT", userLoggingOut.email, "INFO");
