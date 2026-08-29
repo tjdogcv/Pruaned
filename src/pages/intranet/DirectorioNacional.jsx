@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { SocioSearchSelect } from './SociosDirectory';
+import { SocioSearchSelect } from '../../components/SocioSearchSelect';
 import {
   ClipboardList,
   UserX,
@@ -450,3 +450,4 @@ export default function DirectorioNacional() {
     </section>
   );
 }
+

@@ -163,7 +163,8 @@ export function IntranetLayout() {
     { path: '/intranet/voluntarios/aula', label: 'Aula virtual', icon: GraduationCap, group: 'principal' },
     { path: '/intranet/documentos', label: 'Documentos de socios', icon: FileText, group: 'principal', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/voluntarios/gestion/aula', label: 'Administrar aula virtual', icon: PencilRuler, group: 'principal', show: isLmsManager },
-    { path: '/intranet/socios', label: 'Socios', icon: Users, group: 'gestion', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
+    { path: '/intranet/perfil', label: 'Mi Perfil', icon: Users, group: 'principal' },
+    { path: '/intranet/socios', label: 'Padrón de Socios', icon: Users, group: 'gestion', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/postulaciones-socios', label: 'Postulaciones de socios', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/directorio', label: 'Directorio', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/finanzas', label: 'Finanzas', icon: Wallet, group: 'gestion', show: isMasterUser || isDirectiva },
@@ -242,3 +243,4 @@ export function IntranetLayout() {
     </div>
   );
 }
+

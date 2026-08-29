@@ -140,7 +140,16 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
           });
           if (error) throw error;
           
-          setSuccessMsg('¡Cuenta creada y activada con éxito! Ahora puedes iniciar sesión.');
+          if (data?.user?.identities?.length === 0) {
+            setErrorMsg('Este correo ya está registrado. Por favor, intenta iniciar sesión.');
+            setIsLoading(false);
+            return;
+          }
+          if (data?.session === null) {
+            setSuccessMsg('Hemos enviado un correo de verificación. Por favor, revisa tu bandeja de entrada (y spam) para activar tu cuenta.');
+          } else {
+            setSuccessMsg('¡Cuenta creada y activada con éxito! Ahora puedes iniciar sesión.');
+          }
           setMode('login');
           setPassword('');
         } else {

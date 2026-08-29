@@ -15,7 +15,8 @@ import { PortalTransparencia } from './components/PortalTransparencia';
 import { PrivateRoute } from './components/PrivateRoute';
 import { IntranetLayout } from './layouts/IntranetLayout';
 import DashboardHome from './pages/intranet/DashboardHome';
-import SociosDirectory from './pages/intranet/SociosDirectory';
+import MiPerfil from './pages/intranet/MiPerfil';
+import PadronSocios from './pages/intranet/PadronSocios';
 import PostulacionesSocios from './pages/intranet/PostulacionesSocios';
 import DirectorioNacional from './pages/intranet/DirectorioNacional';
 import FinanzasPanel from './pages/intranet/FinanzasPanel';
@@ -127,7 +128,7 @@ function AppRoutes() {
       }>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardHome />} />
-        <Route path="socios" element={<SociosDirectory />} />
+        <Route path="perfil" element={<MiPerfil />} />`n        <Route path="socios" element={<PadronSocios />} />
         <Route path="postulaciones-socios" element={<PostulacionesSocios />} />
         <Route path="directorio" element={<DirectorioNacional />} />
         <Route path="finanzas" element={<FinanzasPanel />} />
@@ -158,3 +159,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
