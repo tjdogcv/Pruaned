@@ -12,9 +12,18 @@ export const TarifarioEditor = ({ financialSettings, onSave, isMasterUser, canMa
 
   const hasPermission = isMasterUser || canManageCategoriesAndCargos;
 
-  const handleSave = () => {
-    onSave(tarifas, financialSettings.cuotaIncorporacionActual);
-    setIsEditing(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(tarifas, financialSettings.cuotaIncorporacionActual);
+      setIsEditing(false);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -27,8 +36,11 @@ export const TarifarioEditor = ({ financialSettings, onSave, isMasterUser, canMa
         {hasPermission && (
           isEditing ? (
             <div className="flex gap-2">
-              <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-50">Cancelar</button>
-              <button onClick={handleSave} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"><Save className="w-3.5 h-3.5"/> Guardar</button>
+              <button onClick={() => setIsEditing(false)} disabled={isSaving} className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50">Cancelar</button>
+              <button onClick={handleSave} disabled={isSaving} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1 disabled:opacity-50">
+                {isSaving ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <Save className="w-3.5 h-3.5"/>}
+                {isSaving ? 'Guardando...' : 'Guardar'}
+              </button>
             </div>
           ) : (
             <button onClick={() => setIsEditing(true)} className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 text-blue-700 hover:bg-blue-50 flex items-center gap-1"><PenTool className="w-3.5 h-3.5"/> Editar Tarifas</button>

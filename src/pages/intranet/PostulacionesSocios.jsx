@@ -23,28 +23,45 @@ export default function PostulacionesSocios() {
 
   const [postFilter, setPostFilter] = useState('pendientes');
   const [activePostulacionModal, setActivePostulacionModal] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (!isMasterUser && !isDirectiva) return <Navigate to="/intranet/dashboard" replace />;
 
   const handleApproveApplicant = async (postId, categoriaAsignada) => {
-    updatePostulacionEstado(postId, 'Aceptada / Incorporado', categoriaAsignada);
-    const post = postulacionesList.find(p => p.id === postId);
-    if (post) {
-      await sendApprovalEmail(post).catch(console.error);
+    setIsProcessing(true);
+    try {
+      await updatePostulacionEstado(postId, 'Aceptada / Incorporado', categoriaAsignada);
+      const post = postulacionesList.find(p => p.id === postId);
+      if (post) {
+        await sendApprovalEmail(post).catch(console.error);
+      }
+      setActivePostulacionModal(null);
+      alert('¡Postulante incorporado exitosamente al Padrón Oficial de Socios!');
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al procesar la aprobación.');
+    } finally {
+      setIsProcessing(false);
     }
-    setActivePostulacionModal(null);
-    alert('¡Postulante incorporado exitosamente al Padrón Oficial de Socios!');
   };
 
   const handleRejectApplicant = async (postId) => {
     if (window.confirm("¿Está seguro que desea rechazar esta postulación? Esta acción enviará un correo notificando al postulante.")) {
-      updatePostulacionEstado(postId, 'Rechazada');
-      const post = postulacionesList.find(p => p.id === postId);
-      if (post) {
-        await sendRejectionEmail(post).catch(console.error);
+      setIsProcessing(true);
+      try {
+        await updatePostulacionEstado(postId, 'Rechazada');
+        const post = postulacionesList.find(p => p.id === postId);
+        if (post) {
+          await sendRejectionEmail(post).catch(console.error);
+        }
+        setActivePostulacionModal(null);
+        alert('Postulación rechazada. Se ha notificado al postulante.');
+      } catch (error) {
+        console.error(error);
+        alert('Hubo un error al rechazar la postulación.');
+      } finally {
+        setIsProcessing(false);
       }
-      setActivePostulacionModal(null);
-      alert('Postulación rechazada. Se ha notificado al postulante.');
     }
   };
 
@@ -222,15 +239,17 @@ export default function PostulacionesSocios() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => { handleRejectApplicant(activePostulacionModal.id); }}
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
+                        disabled={isProcessing}
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
                       >
-                        <X className="w-4 h-4" /> Rechazar
+                        {isProcessing ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <X className="w-4 h-4" />} Rechazar
                       </button>
                       <button
                         onClick={() => { handleApproveApplicant(activePostulacionModal.id, 'Socio Activo'); }}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
+                        disabled={isProcessing}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
                       >
-                        <Check className="w-4 h-4" /> Aprobar e Incorporar
+                        {isProcessing ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <Check className="w-4 h-4" />} Aprobar e Incorporar
                       </button>
                     </div>
                   )}

@@ -4,6 +4,7 @@ import { PrivacyDataPolicy } from '../../components/PrivacyDataPolicy';
 import { TarifarioEditor } from '../../components/TarifarioEditor';
 import { FondoDonacionesPanel } from '../../components/FondoDonacionesPanel';
 import { sendPagoEmail, sendApprovalEmail, sendRejectionEmail } from '../../lib/emailConfig';
+import { compressImage } from '../../lib/imageCompression';
 import { 
   Users, 
   DollarSign, 
@@ -526,29 +527,32 @@ export default function SociosDirectory({ initialTab, section = 'socios' }) {
     return matchesSearch && matchesEstado && matchesCat;
   });
 
-  const handleFileUploadFoto = (e) => {
+  const handleFileUploadFoto = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditFotoPerfil(reader.result);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressImage(file, 400, 0.7);
+        setEditFotoPerfil(compressedBase64);
+      } catch (err) {
+        console.error('Error compressing profile photo', err);
+        alert('Hubo un error al procesar la imagen.');
+      }
     }
   };
 
-  const handleFileUploadFirma = (cargoKey, e) => {
+  const handleFileUploadFirma = async (cargoKey, e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateFirmaOficial(cargoKey, reader.result);
-        alert(`Â¡Firma digitalizada de ${cargoKey === 'presidenteFirma' ? 'Presidente' : 'Secretario'} actualizada en certificados y documentos!`);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressImage(file, 600, 0.8);
+        updateFirmaOficial(cargoKey, compressedBase64);
+        alert(`¡Firma digitalizada de ${cargoKey === 'presidenteFirma' ? 'Presidente' : 'Secretario'} actualizada en certificados y documentos!`);
+      } catch (err) {
+        console.error('Error compressing signature', err);
+        alert('Hubo un error al procesar la firma.');
+      }
     }
   };
-
   const handleExportarDatosARCO = () => {
     const dataARCO = {
       timestamp_descarga: new Date().toISOString(),
