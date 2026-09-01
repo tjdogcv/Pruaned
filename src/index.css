@@ -32,6 +32,29 @@ html {
   scroll-behavior: smooth;
 }
 
+:focus-visible {
+  outline: 3px solid #0EA5E9;
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 0.75rem;
+  left: 50%;
+  transform: translate(-50%, -180%);
+  border-radius: 0.75rem;
+  background: #FFFFFF;
+  color: #0C2340;
+  padding: 0.7rem 1rem;
+  font-weight: 800;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+}
+
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
 body {
   font-family: var(--font-body);
   background-color: var(--bg-page);

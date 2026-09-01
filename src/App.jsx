@@ -27,13 +27,16 @@ import LmsEditor from './pages/intranet/LmsEditor';
 import DocumentosCMS from './pages/intranet/DocumentosCMS';
 import DocumentosSocios from './pages/intranet/DocumentosSocios';
 import AuditoriaLogs from './pages/intranet/AuditoriaLogs';
+import ComunicacionesMasivas from './pages/intranet/ComunicacionesMasivas';
 import { PostulacionVoluntariado } from './components/PostulacionVoluntariado';
+import { PublicPathways } from './components/PublicPathways';
 
 function PublicLayout({ children, onOpenAuth }) {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
+    <div className="min-h-screen flex flex-col bg-slate-50 font-['+Plus+Jakarta+Sans'] text-slate-900">
       <Navbar onOpenAuth={onOpenAuth} />
-      <main className="flex-1">
+      <a className="skip-link" href="#contenido-principal">Saltar al contenido principal</a>
+      <main id="contenido-principal" className="flex-1">
         {children}
       </main>
       <Footer />
@@ -58,23 +61,18 @@ function HomePage() {
   }, [location.search, location.hash]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-['Plus_Jakarta_Sans'] text-slate-900">
+    <div className="min-h-screen flex flex-col bg-slate-50 font-['+Plus+Jakarta+Sans'] text-slate-900">
       <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
-      <main className="flex-1">
-        <Hero
-          onOpenAuth={() => setIsAuthModalOpen(true)}
-          onNavigate={(path) => navigate(path)}
-        />
+      <a className="skip-link" href="#contenido-principal">Saltar al contenido principal</a>
+      <main id="contenido-principal" className="flex-1">
+        <Hero onOpenAuth={() => setIsAuthModalOpen(true)} onNavigate={(path) => navigate(path)} />
+        <PublicPathways />
         <Institutional />
         <NewsSection />
         <DocumentsSection />
       </main>
       <Footer />
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        initialMode={authMode}
-      />
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} initialMode={authMode} />
     </div>
   );
 }
@@ -97,11 +95,7 @@ function PublicPageWrapper({ component: Component, componentProps }) {
   return (
     <PublicLayout onOpenAuth={() => setIsAuthModalOpen(true)}>
       <Component {...(componentProps || {})} />
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        initialMode={authMode}
-      />
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} initialMode={authMode} />
     </PublicLayout>
   );
 }
@@ -109,7 +103,6 @@ function PublicPageWrapper({ component: Component, componentProps }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Rutas públicas */}
       <Route path="/" element={<HomePage />} />
       <Route path="/institucional" element={<PublicPageWrapper component={Institutional} />} />
       <Route path="/noticias" element={<PublicPageWrapper component={NewsSection} />} />
@@ -120,15 +113,11 @@ function AppRoutes() {
       <Route path="/verificar" element={<PublicPageWrapper component={CertificateVerify} />} />
       <Route path="/verificar/:hash" element={<PublicPageWrapper component={CertificateVerify} />} />
 
-      {/* Rutas privadas — Intranet */}
-      <Route path="/intranet" element={
-        <PrivateRoute>
-          <IntranetLayout />
-        </PrivateRoute>
-      }>
+      <Route path="/intranet" element={<PrivateRoute><IntranetLayout /></PrivateRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardHome />} />
-        <Route path="perfil" element={<MiPerfil />} />`n        <Route path="socios" element={<PadronSocios />} />
+        <Route path="perfil" element={<MiPerfil />} />
+        <Route path="socios" element={<PadronSocios />} />
         <Route path="postulaciones-socios" element={<PostulacionesSocios />} />
         <Route path="directorio" element={<DirectorioNacional />} />
         <Route path="finanzas" element={<FinanzasPanel />} />
@@ -141,10 +130,10 @@ function AppRoutes() {
         <Route path="admin" element={<DocumentosCMS />} />
         <Route path="auditoria" element={<AuditoriaLogs />} />
         <Route path="seguridad" element={<SecurityDashboard />} />
+        <Route path="comunicaciones" element={<ComunicacionesMasivas />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
-      {/* Redirigir rutas desconocidas al home */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -159,4 +148,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-

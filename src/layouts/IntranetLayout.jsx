@@ -164,13 +164,14 @@ export function IntranetLayout() {
     { path: '/intranet/documentos', label: 'Documentos de socios', icon: FileText, group: 'principal', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/voluntarios/gestion/aula', label: 'Administrar aula virtual', icon: PencilRuler, group: 'principal', show: isLmsManager },
     { path: '/intranet/perfil', label: 'Mi Perfil', icon: Users, group: 'principal' },
-    { path: '/intranet/socios', label: 'Padr�n de Socios', icon: Users, group: 'gestion', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
+    { path: '/intranet/socios', label: 'Padrón de Socios', icon: Users, group: 'gestion', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/postulaciones-socios', label: 'Postulaciones de socios', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/directorio', label: 'Directorio', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/finanzas', label: 'Finanzas', icon: Wallet, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/voluntarios/gestion', label: 'Inscripciones de voluntariado', icon: ClipboardList, group: 'gestion', show: canManageVoluntarios },
     { path: '/intranet/admin', label: 'Contenidos', icon: FileText, group: 'administracion', show: isMasterUser || isDirectiva },
     { path: '/intranet/auditoria', label: 'Auditoría', icon: ClipboardList, group: 'administracion', show: isMasterUser || isDirectiva },
+    { path: '/intranet/comunicaciones', label: 'Comunicaciones', icon: Mail, group: 'administracion', show: isMasterUser || isDirectiva },
     { path: '/intranet/seguridad', label: 'Seguridad', icon: Shield, group: 'administracion', show: isMasterUser }
   ].filter(({ show }) => show !== false);
   const activeItem = navItems.find(({ path }) => path === location.pathname);

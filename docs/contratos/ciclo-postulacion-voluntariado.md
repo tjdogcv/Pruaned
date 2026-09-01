@@ -1,6 +1,6 @@
 # Contrato: ciclo de postulación de voluntariado
 
-**Fecha:** 2026-08-23  
+**Fecha:** 2026-08-29
 **Responsable:** BAC  
 **Consumidores:** `AuthContext`, interfaz pública de postulación, intranet de voluntariado y Directiva.
 
@@ -37,3 +37,40 @@ El servidor conserva las respuestas y datos complementarios en `formulario_compl
 - Las RPC revisan sesión, cargo y transición de estado. Los errores relevantes son `22023` (payload), `23505` (duplicado), `42501` (permiso), `P0002` (no encontrado) y `P0001` (transición inválida).
 - La migración `20260823_ciclo_postulacion_voluntariado.sql` es idempotente. Debe aplicarse en Supabase antes de habilitar el flujo en producción.
 - Se conserva la firma histórica de `updatePostulacionEstado`, por lo que las pantallas existentes de Socios no requieren migración de llamada.
+
+## BAC → FON | CONTRATO | ficha completa y activación
+
+**Impacto:** el listado conserva todas sus claves históricas y añade
+`fichaCompleta` (copia íntegra de `formularioCompleto`), `estadoActivacion`,
+`ultimaInvitacionAt` y `activadoAt`. Para mostrar las respuestas extensas, FON
+debe leer `fichaCompleta` con respaldo en `formularioCompleto`; no debe inferir
+activación desde la sola existencia de una ficha.
+
+`pruaned_get_volunteer_application_detail({ p_application_id })` devuelve el
+mismo contrato para un gestor o para la persona titular de la solicitud.
+Errores: `42501` y `P0002`.
+
+Tras aprobar, la ficha queda en `estadoActivacion: 'pendienteInvitacion'`. Sólo
+un gestor puede llamar la Edge Function autenticada `invite-volunteer` con
+`{ volunteerId }`. La función reserva el envío por RPC, limita reintentos a uno
+cada cinco minutos y usa `auth.admin.inviteUserByEmail` exclusivamente en el
+servidor. Estados: `pendienteInvitacion`, `invitacionEnCurso`, `invitado`,
+`pendienteConfirmacion`, `activo`, `errorInvitacion`.
+
+**Acción requerida de FON:** mostrar una acción de envío sólo cuando
+`canManageVoluntarios` sea verdadero, mostrar último envío/estado y refrescar
+el listado al terminar. El navegador nunca debe llamar a Auth Admin ni manejar
+una clave de servicio.
+
+## BAC → FON | ENTREGA | 2026-08-29
+
+- **Archivos:** `20260829_activacion_voluntariado.sql`,
+  `supabase/functions/invite-volunteer/index.ts` y este contrato.
+- **Prueba de integración:** aplicar la migración; aprobar una solicitud;
+  verificar ambas fichas JSON; invocar la función como gestor; aceptar el correo
+  y comprobar la transición a `activo` por trigger.
+- **Despliegue de operaciones:** publicar la función con JWT validado y definir
+  `SUPABASE_SERVICE_ROLE_KEY`, `SITE_URL` y `ALLOWED_ORIGINS` como secretos de
+  Supabase. La service role nunca va en `VITE_*` ni en el repositorio.
+- **Compatibilidad:** aditiva. `formularioCompleto` continúa disponible para
+  consumidores actuales.

@@ -1,7 +1,7 @@
 import React from 'react';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { INSTITUTIONAL_INFO } from '../data/initialData';
-import { Shield, Lock, ArrowRight, Award, Flame, Heart, Wheat, Zap } from 'lucide-react';
+import { Lock, ArrowRight, Award, Flame, Heart, Wheat, Zap, UserPlus, HeartHandshake } from 'lucide-react';
 
 export const Hero = ({ onOpenAuth, onNavigate }) => {
   return (
@@ -32,7 +32,7 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
                 "{INSTITUTIONAL_INFO.motto}"
               </p>
 
-              <p className="text-slate-300 text-xs sm:text-sm max-w-2xl font-light leading-relaxed">
+              <p className="text-slate-300 text-base max-w-2xl font-light leading-relaxed">
                 PRUANED A.G. unifica a profesionales, técnicos y personal operativo capacitado para integrar la dimensión animal en prevención, mitigación, respuesta y recuperación ante catástrofes en Chile.
               </p>
             </div>
@@ -40,21 +40,26 @@ export const Hero = ({ onOpenAuth, onNavigate }) => {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-2">
               <button
-                onClick={onOpenAuth}
-                className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all border border-emerald-400/30"
+                onClick={() => onNavigate('/postulacion')}
+                className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all border border-emerald-400/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
               >
-                <Lock className="w-4 h-4 text-emerald-100" />
-                Ingreso Intranets (Socios & Voluntarios)
+                <UserPlus className="w-4 h-4 text-emerald-100" />
+                Postula como socio
               </button>
 
               <button
-                onClick={() => onNavigate('/institucional')}
-                className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-colors"
+                onClick={() => onNavigate('/postulacion-voluntariado')}
+                className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-sm rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
               >
-                Conocer Estatutos & Reglamentos 2025
-                <ArrowRight className="w-4 h-4 text-blue-400" />
+                <HeartHandshake className="w-4 h-4 text-sky-300" />
+                Súmate al voluntariado
               </button>
             </div>
+
+            <button onClick={onOpenAuth} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-300 underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-300">
+              <Lock className="h-4 w-4" aria-hidden="true" />
+              ¿Ya eres integrante? Accede a la intranet <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
 
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-800 text-left">

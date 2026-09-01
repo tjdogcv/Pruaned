@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { 
@@ -21,17 +21,14 @@ import {
 export const Navbar = ({ onOpenAuth }) => {
   const { currentUser, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
   const location = useLocation();
 
   const publicNavItems = [
     { path: '/', label: 'Inicio', icon: Shield },
-    { path: '/institucional', label: 'Estatutos & Direcciones', icon: Building },
-    { path: '/postulacion', label: 'Hazte Socio', icon: UserPlus },
-    { path: '/postulacion-voluntariado', label: 'Voluntariado', icon: HeartHandshake },
-    { path: '/transparencia', label: 'Transparencia & Donaciones', icon: ShieldCheck },
-    { path: '/noticias', label: 'Noticias', icon: Newspaper },
-    { path: '/documentos', label: 'Documentos Públicos', icon: FileText },
+    { path: '/institucional', label: 'La asociación', icon: Building },
+    { path: '/transparencia', label: 'Transparencia', icon: ShieldCheck },
+    { path: '/noticias', label: 'Actualidad', icon: Newspaper },
+    { path: '/documentos', label: 'Recursos', icon: FileText },
   ];
 
   const isActive = (path) => {
@@ -44,31 +41,26 @@ export const Navbar = ({ onOpenAuth }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleLogoClick = () => {
-    navigate('/');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white font-['Plus_Jakarta_Sans']">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-3 h-20">
           
           {/* Logo Brand */}
-          <div 
-            className="flex min-w-0 max-w-[calc(100%-3.5rem)] shrink items-center cursor-pointer group bg-white/95 px-3 py-1.5 rounded-xl border border-slate-700"
-            onClick={handleLogoClick}
+          <Link
+            to="/"
+            aria-label="Ir al inicio de PRUANED"
+            onClick={handleNavClick}
+            className="flex min-w-0 max-w-[calc(100%-3.5rem)] shrink items-center group bg-white/95 px-3 py-1.5 rounded-xl border border-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
           >
             <PRUANEDLogo className="h-9 min-w-0 max-w-full" showText={true} />
-          </div>
+          </Link>
 
           {/* Desktop Nav Items */}
           <nav className="hidden lg:flex items-center space-x-1">
             {publicNavItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
-              const isHighlight = item.path === '/postulacion';
-
               return (
                 <Link
                   key={item.path}
@@ -77,8 +69,6 @@ export const Navbar = ({ onOpenAuth }) => {
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                     active
                       ? 'bg-blue-600 text-white shadow'
-                      : isHighlight
-                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
@@ -130,6 +120,15 @@ export const Navbar = ({ onOpenAuth }) => {
             )}
           </nav>
 
+          <div className="hidden lg:flex items-center gap-2">
+            <Link to="/postulacion-voluntariado" onClick={handleNavClick} className="inline-flex items-center gap-2 rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-bold text-sky-200 transition hover:bg-sky-950/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300">
+              <HeartHandshake className="h-4 w-4" /> Voluntariado
+            </Link>
+            <Link to="/postulacion" onClick={handleNavClick} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">
+              <UserPlus className="h-4 w-4" /> Únete
+            </Link>
+          </div>
+
           {/* User Auth Action Button */}
           <div className="hidden lg:flex items-center gap-3">
             {currentUser ? (
@@ -151,7 +150,7 @@ export const Navbar = ({ onOpenAuth }) => {
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition-all border border-emerald-400/30"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl shadow transition-all border border-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
               >
                 <Lock className="w-3.5 h-3.5" />
                 Acceso Intranets (Seguro)
@@ -163,6 +162,9 @@ export const Navbar = ({ onOpenAuth }) => {
           <div className="lg:hidden flex items-center">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="navegacion-movil"
               className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -174,7 +176,7 @@ export const Navbar = ({ onOpenAuth }) => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-6 space-y-2 animate-fade-in">
+          <nav id="navegacion-movil" aria-label="Navegación principal" className="lg:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-6 space-y-2 animate-fade-in">
           {publicNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -191,7 +193,12 @@ export const Navbar = ({ onOpenAuth }) => {
                 {item.label}
               </Link>
             );
-          })}
+            })}
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <Link to="/postulacion-voluntariado" onClick={handleNavClick} className="flex min-h-11 items-center justify-center rounded-xl border border-sky-500/40 px-3 text-center text-xs font-bold text-sky-200">Voluntariado</Link>
+              <Link to="/postulacion" onClick={handleNavClick} className="flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-3 text-center text-xs font-bold text-white">Únete</Link>
+            </div>
 
           <div className="pt-4 border-t border-slate-800">
             {currentUser ? (
@@ -213,7 +220,7 @@ export const Navbar = ({ onOpenAuth }) => {
               </button>
             )}
           </div>
-        </div>
+        </nav>
       )}
     </header>
   );

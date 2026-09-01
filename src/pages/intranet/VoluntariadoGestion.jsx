@@ -4,6 +4,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { courseProgress } from '../../lib/lmsProgress';
 import { VoluntariadoSolicitudesGestion } from '../../components/VoluntariadoSolicitudesGestion';
+import { VolunteerProfileDialog } from '../../components/VolunteerProfileDialog';
 
 function rate(value, total) {
   return total ? Math.round((value / total) * 100) : 0;
@@ -21,6 +22,7 @@ export default function VoluntariadoGestion() {
     isLmsLoading
   } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
 
   const publishedCourses = useMemo(
     () => lmsCourses.filter((course) => course.status === 'published'),
@@ -32,6 +34,7 @@ export default function VoluntariadoGestion() {
     return voluntariosList.map((volunteer) => {
       const participant = participantsByEmail.get(volunteer.email?.toLowerCase());
       return {
+        ...volunteer,
         id: volunteer.id,
         userId: participant?.userId || null,
         nombre: participant?.displayName || volunteer.nombre,
@@ -121,11 +124,12 @@ export default function VoluntariadoGestion() {
 
         <section aria-labelledby="volunteer-list-title" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4"><ClipboardList className="h-5 w-5 text-emerald-700" aria-hidden="true" /><h3 id="volunteer-list-title" className="font-['Outfit'] text-lg font-extrabold">Padrón y avance individual</h3></div>
-          <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3 font-bold">Voluntario</th><th className="px-5 py-3 font-bold">Acreditación</th><th className="px-5 py-3 font-bold">Cursos aprobados</th><th className="px-5 py-3 font-bold">Módulos completados</th><th className="px-5 py-3 font-bold">Avance</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredRows.map((volunteer) => <tr key={volunteer.id}><td className="px-5 py-4"><p className="font-bold text-slate-950">{volunteer.nombre}</p><p className="mt-1 text-xs text-slate-500">{volunteer.hasAccount ? volunteer.email : 'Sin cuenta LMS asociada'}</p></td><td className="px-5 py-4 text-slate-700">{volunteer.nivelAcreditacion || 'Sin nivel registrado'}</td><td className="px-5 py-4"><span className="inline-flex items-center gap-1 font-bold text-emerald-700"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{volunteer.approved}/{publishedCourses.length}</span></td><td className="px-5 py-4 font-semibold text-slate-700">{volunteer.completedModules}/{volunteer.totalModules}</td><td className="px-5 py-4"><div className="flex min-w-36 items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-600" style={{ width: `${volunteer.percentage}%` }} /></div><span className="font-bold text-slate-700">{volunteer.percentage}%</span></div></td></tr>)}</tbody></table></div>
+          <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3 font-bold">Voluntario</th><th className="px-5 py-3 font-bold">Acceso</th><th className="px-5 py-3 font-bold">Acreditación</th><th className="px-5 py-3 font-bold">Cursos aprobados</th><th className="px-5 py-3 font-bold">Módulos completados</th><th className="px-5 py-3 font-bold">Avance</th><th className="px-5 py-3 font-bold"><span className="sr-only">Acciones</span></th></tr></thead><tbody className="divide-y divide-slate-100">{filteredRows.map((volunteer) => <tr key={volunteer.id}><td className="px-5 py-4"><p className="font-bold text-slate-950">{volunteer.nombre}</p><p className="mt-1 text-xs text-slate-500">{volunteer.email}</p></td><td className="px-5 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${volunteer.hasAccount ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-100 text-slate-700'}`}>{volunteer.hasAccount ? 'Cuenta activa' : 'Activación pendiente'}</span></td><td className="px-5 py-4 text-slate-700">{volunteer.nivelAcreditacion || 'Sin nivel registrado'}</td><td className="px-5 py-4"><span className="inline-flex items-center gap-1 font-bold text-emerald-700"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{volunteer.approved}/{publishedCourses.length}</span></td><td className="px-5 py-4 font-semibold text-slate-700">{volunteer.completedModules}/{volunteer.totalModules}</td><td className="px-5 py-4"><div className="flex min-w-36 items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-600" style={{ width: `${volunteer.percentage}%` }} /></div><span className="font-bold text-slate-700">{volunteer.percentage}%</span></div></td><td className="px-5 py-4 text-right"><button type="button" onClick={() => setSelectedVolunteer(volunteer)} className="min-h-10 rounded-xl border border-emerald-700 px-3 text-xs font-bold text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">Ver ficha</button></td></tr>)}</tbody></table></div>
           {!filteredRows.length && <p className="p-8 text-center text-sm text-slate-500">No se encontraron voluntarios.</p>}
         </section>
 
         <aside className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600"><XCircle className="mt-0.5 h-5 w-5 flex-none text-slate-500" aria-hidden="true" /><p>Los indicadores sólo usan el último resultado persistido de cursos publicados. Quienes aún no crean su cuenta LMS se muestran en el padrón, sin progreso académico asociado.</p></aside>
+        <VolunteerProfileDialog volunteer={selectedVolunteer} hasAccount={selectedVolunteer?.hasAccount} onClose={() => setSelectedVolunteer(null)} />
       </div>
     </section>
   );

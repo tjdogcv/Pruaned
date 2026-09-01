@@ -49,9 +49,9 @@ import {
   Shield
 } from 'lucide-react';
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   AuditoriaPanel â€” Registro de auditorÃ­a institucional
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─────────────────────────────────────────────────────────────
+   AuditoriaPanel — Registro de auditoría institucional
+───────────────────────────────────────────────────────────── */
 const SEVERITY_CFG = {
   INFO:  { color: 'bg-blue-100 text-blue-800 border-blue-200',    dot: 'bg-blue-500',   label: 'Info' },
   WARN:  { color: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500',  label: 'Alerta' },
@@ -59,9 +59,9 @@ const SEVERITY_CFG = {
 };
 
 const QUOTA_EXPENSE_CATEGORIES = [
-  'Insumos MÃ©dicos Veterinarios',
-  'LogÃ­stica Terreno & Combustible',
-  'Albergues Temporales & AlimentaciÃ³n',
+  'Insumos Médicos Veterinarios',
+  'Logística Terreno & Combustible',
+  'Albergues Temporales & Alimentación',
   'Capacitaciones & Materiales',
   'Gastos Administrativos'
 ];
@@ -84,7 +84,7 @@ const AuditoriaPanel = ({ securityLogs = [] }) => {
   });
 
   const handleExportCSV = () => {
-    const headers = 'Fecha/Hora,Usuario,AcciÃ³n,CÃ³digo TÃ©cnico,Severidad\n';
+    const headers = 'Fecha/Hora,Usuario,Acción,Código Técnico,Severidad\n';
     const rows = filteredLogs.map(l =>
       `"${l.date}","${l.user}","${l.label || l.event}","${l.event}","${l.severity}"`
     ).join('\n');
@@ -105,10 +105,10 @@ const AuditoriaPanel = ({ securityLogs = [] }) => {
             </span>
             <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
               <Shield className="w-5 h-5 text-violet-700" />
-              Registro de AuditorÃ­a Institucional
+              Registro de Auditoría Institucional
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Historial completo de acciones â€” quiÃ©n hizo cada cambio y cuÃ¡ndo.
+              Historial completo de acciones — quién hizo cada cambio y cuándo.
             </p>
           </div>
           <button
@@ -125,7 +125,7 @@ const AuditoriaPanel = ({ securityLogs = [] }) => {
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Buscar acciÃ³n, usuario o fecha..."
+              placeholder="Buscar acción, usuario o fecha..."
               value={auditSearch}
               onChange={e => setAuditSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:border-violet-400"
@@ -157,7 +157,7 @@ const AuditoriaPanel = ({ securityLogs = [] }) => {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[{sev:'INFO',label:'Operaciones',icon:'ðŸ”µ'},{sev:'WARN',label:'Alertas',icon:'ðŸŸ¡'},{sev:'ERROR',label:'Errores',icon:'ðŸ”´'}].map(({sev,label,icon}) => (
+        {[{sev:'INFO',label:'Operaciones',icon:'🔵'},{sev:'WARN',label:'Alertas',icon:'🟡'},{sev:'ERROR',label:'Errores',icon:'🔴'}].map(({sev,label,icon}) => (
           <div key={sev} className={`p-4 rounded-2xl border text-xs font-bold ${SEVERITY_CFG[sev]?.color}`}>
             <div className="text-lg mb-1">{icon}</div>
             <div className="text-2xl font-extrabold font-['Outfit']">{securityLogs.filter(l => l.severity === sev).length}</div>
@@ -165,7 +165,7 @@ const AuditoriaPanel = ({ securityLogs = [] }) => {
           </div>
         ))}
         <div className="p-4 rounded-2xl border text-xs font-bold bg-slate-100 text-slate-800 border-slate-200">
-          <div className="text-lg mb-1">ðŸ“‹</div>
+          <div className="text-lg mb-1">📋</div>
           <div className="text-2xl font-extrabold font-['Outfit']">{securityLogs.length}</div>
           <div className="opacity-70">Total registros</div>
         </div>
@@ -179,7 +179,7 @@ const AuditoriaPanel = ({ securityLogs = [] }) => {
               <tr>
                 <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">Fecha / Hora</th>
                 <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">Usuario</th>
-                <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">AcciÃ³n</th>
+                <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">Acción</th>
                 <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">Severidad</th>
               </tr>
             </thead>
@@ -221,7 +221,7 @@ const AuditoriaPanel = ({ securityLogs = [] }) => {
         {filteredLogs.length > 0 && (
           <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
             <span>Mostrando {filteredLogs.length} evento{filteredLogs.length !== 1 ? 's' : ''}</span>
-            <span>Los registros se sincronizan con el historial de auditorÃ­a institucional.</span>
+            <span>Los registros se sincronizan con el historial de auditoría institucional.</span>
           </div>
         )}
       </div>
@@ -290,9 +290,70 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
   const [activePostulacionModal, setActivePostulacionModal] = useState(null);
   const [activeSocioModal, setActiveSocioModal] = useState(null);
   const [postFilter, setPostFilter] = useState('pendientes');
-      const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
-
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [comprobanteInput, setComprobanteInput] = useState('');
+
+  // --- Estado modales de renuncia ---
+  const [activeApproveRenunciaModal, setActiveApproveRenunciaModal] = useState(null);
+  const [activeRequestRenunciaModal, setActiveRequestRenunciaModal] = useState(null);
+  const [acuerdoNumero, setAcuerdoNumero] = useState('');
+  const [motivoRenunciaInput, setMotivoRenunciaInput] = useState('');
+  // Renuncia retroactiva (directiva registra renuncias ocurridas antes del sistema)
+  const [showRetroactiveForm, setShowRetroactiveForm] = useState(false);
+  const [retroSocioId, setRetroSocioId] = useState('');
+  const [retroFechaSolicitud, setRetroFechaSolicitud] = useState('');
+  const [retroFechaRetiro, setRetroFechaRetiro] = useState('');
+  const [retroMotivo, setRetroMotivo] = useState('');
+  const [retroActa, setRetroActa] = useState('');
+  const [isRetroSaving, setIsRetroSaving] = useState(false);
+
+  const handleRetroactiveRenuncia = async (e) => {
+    e.preventDefault();
+    if (!retroSocioId || !retroFechaRetiro || !retroActa) {
+      alert('Socio, Fecha de Retiro y Número de Acta son obligatorios.');
+      return;
+    }
+    setIsRetroSaving(true);
+    try {
+      await solicitarRenunciaSocio(retroSocioId, retroMotivo || 'Renuncia presentada con anterioridad a la implementación del sistema digital PRUANED.');
+      await aprobarRenunciaDirectorio(retroSocioId, retroActa);
+      alert('✓ Renuncia retroactiva registrada. El socio quedó como Desvinculado.');
+      setShowRetroactiveForm(false);
+      setRetroSocioId(''); setRetroFechaSolicitud(''); setRetroFechaRetiro('');
+      setRetroMotivo(''); setRetroActa('');
+    } catch (err) {
+      alert('Error al registrar: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setIsRetroSaving(false);
+    }
+  };
+
+  const handleApproveRenuncia = async (e) => {
+    e.preventDefault();
+    if (!acuerdoNumero) { alert('Debe indicar el número de Acta del Directorio.'); return; }
+    try {
+      await aprobarRenunciaDirectorio(activeApproveRenunciaModal.id, acuerdoNumero);
+      setActiveApproveRenunciaModal(null);
+      setAcuerdoNumero('');
+      alert('Retiro aprobado. El socio quedó como Desvinculado conforme al DL 2.757.');
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  const handleRequestRenuncia = async (e) => {
+    e.preventDefault();
+    if (!motivoRenunciaInput.trim()) { alert('Por favor indica el motivo de la renuncia.'); return; }
+    try {
+      await solicitarRenunciaSocio(activeRequestRenunciaModal.id, motivoRenunciaInput.trim());
+      setActiveRequestRenunciaModal(null);
+      setMotivoRenunciaInput('');
+      alert('Solicitud de renuncia enviada al Directorio.');
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  };
+
       const [isCuotaIncorporacionCheck, setIsCuotaIncorporacionCheck] = useState(false);
 
   useEffect(() => {
@@ -317,7 +378,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
     proveedor: '',
     monto: '',
     origenFondo: 'Fondo Cuotas',
-    categoria: 'Insumos MÃ©dicos Veterinarios',
+    categoria: 'Insumos Médicos Veterinarios',
     glosa: ''
   });
 
@@ -343,38 +404,38 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
     }
   }, [newExpense.origenFondo, financialCategories]);
 
-  const postulacionesPendientes = postulacionesList.filter(p => p.estado === 'Pendiente RevisiÃ³n Directorio').length;
+  const postulacionesPendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisión Directorio').length;
   const renunciasPendientes = sociosList.filter(s => s.estadoCuota === 'Solicitud Renuncia Pendiente Directorio').length;
   const sectionMeta = {
     socios: {
-      eyebrow: 'Ãrea personal',
-      title: 'Mi cuenta y padrÃ³n',
-      description: 'Actualiza tu ficha, consulta el padrÃ³n y revisa tus solicitudes.'
+      eyebrow: 'Área personal',
+      title: 'Mi cuenta y padrón',
+      description: 'Actualiza tu ficha, consulta el padrón y revisa tus solicitudes.'
     },
     directorio: {
       eyebrow: 'Directorio nacional',
       title: 'Cargos y firmas',
-      description: 'Gestiona la representaciÃ³n institucional y sus firmas oficiales.'
+      description: 'Gestiona la representación institucional y sus firmas oficiales.'
     },
     finanzas: {
-      eyebrow: 'AdministraciÃ³n financiera',
+      eyebrow: 'Administración financiera',
       title: 'Finanzas',
       description: 'Consulta el balance y administra cobros, egresos y postulaciones.'
     },
     auditoria: {
       eyebrow: 'Control institucional',
-      title: 'Registro de auditorÃ­a',
+      title: 'Registro de auditoría',
       description: 'Revisa la actividad relevante de la intranet.'
     }
   }[section] || {
     eyebrow: 'Intranet',
-    title: 'GestiÃ³n de socios',
-    description: 'Administra la informaciÃ³n gremial.'
+    title: 'Gestión de socios',
+    description: 'Administra la información gremial.'
   };
   const contextualTabs = {
     socios: [
       { id: 'mi-cuenta', label: 'Mi cuenta', icon: User },
-      { id: 'padron', label: 'PadrÃ³n y cuotas', icon: Users },
+      { id: 'padron', label: 'Padrón y cuotas', icon: Users },
       { id: 'renuncias', label: canManageFinances ? 'Renuncias' : 'Mi renuncia', icon: UserX, badge: canManageFinances ? renunciasPendientes : null }
     ],
     directorio: canManageCategoriesAndCargos ? [
@@ -469,7 +530,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
       profesion: editProfesion.trim(),
       fotoPerfil: editFotoPerfil
     });
-    alert('Â¡Tus datos de contacto y perfil han sido actualizados!');
+    alert('¡Tus datos de contacto y perfil han sido actualizados!');
   };
 
   const handleRegisterPayment = (e) => {
@@ -478,18 +539,18 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
       const remainingMonthlyDebt = Math.max(0, Number(activePaymentModal.mesesAdeudados || 0) - 1);
       const nextEstado = isCuotaIncorporacionCheck
         ? activePaymentModal.estadoCuota
-        : remainingMonthlyDebt > 0 ? 'En Mora' : 'Al DÃ­a';
+        : remainingMonthlyDebt > 0 ? 'En Mora' : 'Al Día';
       updateSocioCuota(
         activePaymentModal.id, 
         nextEstado,
-        comprobanteInput.trim() || 'Validado por TesorerÃ­a', 
+        comprobanteInput.trim() || 'Validado por Tesorería',
         false, 
         isCuotaIncorporacionCheck
       );
       
       const pagoData = {
         monto: isCuotaIncorporacionCheck ? (activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual) : (activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual),
-        referencia: comprobanteInput.trim() || 'Validado por TesorerÃ­a'
+        referencia: comprobanteInput.trim() || 'Validado por Tesorería'
       };
       sendPagoEmail(pagoData, activePaymentModal);
 
@@ -518,7 +579,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
           glosa: ''
         });
       } catch (error) {
-        alert(error.message || 'No fue posible registrar el egreso. Verifica la migraciÃ³n financiera y tu permiso.');
+        alert(error.message || 'No fue posible registrar el egreso. Verifica la migración financiera y tu permiso.');
       }
     }
   };
@@ -564,7 +625,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
       if (arrayToBatch.length > 0) {
         addCobrosBatch(arrayToBatch);
         setNewCobro({ tipoCobro: 'Cuota Mensual', titulo: '', monto: '', asignacion: 'A todos', socioId: '', mesesAGenerar: 1 });
-        alert(`Â¡Se emitieron ${arrayToBatch.length} cobro(s) exitosamente!`);
+        alert(`¡Se emitieron ${arrayToBatch.length} cobro(s) exitosamente!`);
       }
     }
   };
@@ -590,7 +651,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
   };
 
   const handleExportRegistroSociosCSV = () => {
-    const headers = "Nombre Socio,RUT,Fecha Ingreso,Fecha Renuncia/DesvinculaciÃ³n,Motivo Renuncia\n";
+    const headers = "Nombre Socio,RUT,Fecha Ingreso,Fecha Renuncia/Desvinculación,Motivo Renuncia\n";
     const rows = sociosList.map(s => {
       const fechaIngreso = s.fechaIngreso || 'No registrada';
       const fechaRenuncia = s.fechaRetiroOficial || s.fechaSolicitudRenuncia || 'Activo';
@@ -652,7 +713,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                 </div>
                 <h3 className="text-2xl font-extrabold font-['Outfit'] text-white">Cuenta Gremial PRUANED</h3>
                 <p className="text-slate-300 text-sm max-w-md">
-                  Para estar al dÃ­a con tus cuotas sociales ($5.000 mensuales desde sept. 2026), realiza el pago a esta cuenta y envÃ­a el comprobante a TesorerÃ­a.
+                  Para estar al día con tus cuotas sociales ($5.000 mensuales desde sept. 2026), realiza el pago a esta cuenta y envía el comprobante a Tesorería.
                 </p>
               </div>
               <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 min-w-[300px] text-xs font-mono space-y-2.5">
@@ -673,7 +734,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                   <strong className="text-white">Cuenta Vista</strong>
                 </div>
                 <div className="flex justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">NÂ° Cuenta:</span>
+                  <span className="text-slate-400">N° Cuenta:</span>
                   <strong className="text-amber-400 font-bold text-sm">1046032015</strong>
                 </div>
                 <div className="flex justify-between pt-1">
@@ -703,7 +764,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                       showHistorico ? 'bg-blue-900 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <ClipboardList className="w-3.5 h-3.5" /> {showHistorico ? 'Ocultar HistÃ³rico' : 'Registro HistÃ³rico'}
+                    <ClipboardList className="w-3.5 h-3.5" /> {showHistorico ? 'Ocultar Histórico' : 'Registro Histórico'}
                   </button>
                   <button
                     onClick={handleExportCSV}
@@ -728,11 +789,11 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                     <thead>
                       <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
                         <th className="py-3.5 px-5">Socio / RUT</th>
-                        <th className="py-3.5 px-5">Fecha IncorporaciÃ³n</th>
-                        <th className="py-3.5 px-5">Fecha DesvinculaciÃ³n</th>
+                        <th className="py-3.5 px-5">Fecha Incorporación</th>
+                        <th className="py-3.5 px-5">Fecha Desvinculación</th>
                         <th className="py-3.5 px-5">Estado</th>
                         <th className="py-3.5 px-5">Motivo / Acta</th>
-                        <th className="py-3.5 px-5 text-right">AcciÃ³n</th>
+                        <th className="py-3.5 px-5 text-right">Acción</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -769,11 +830,11 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                     <thead>
                       <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
                         <th className="py-3.5 px-5">Socio / RUT</th>
-                        <th className="py-3.5 px-5">CategorÃ­a Gremial</th>
+                        <th className="py-3.5 px-5">Categoría Gremial</th>
                         <th className="py-3.5 px-5">Estado Cuota</th>
                         <th className="py-3.5 px-5">Cuota Incorp.</th>
                         <th className="py-3.5 px-5">Permiso Voluntarios</th>
-                        <th className="py-3.5 px-5">Cobros e incorporaciÃ³n pendientes</th>
+                        <th className="py-3.5 px-5">Cobros e incorporación pendientes</th>
                         <th className="py-3.5 px-5 text-right">Acciones</th>
                       </tr>
                     </thead>
@@ -798,7 +859,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                               />
                               <div>
                                 <div className="font-bold text-slate-900 text-sm font-['Outfit']">{socio.nombre}</div>
-                                <div className="text-[11px] text-slate-500 font-mono">{socio.rut} â€¢ {socio.email}</div>
+                                <div className="text-[11px] text-slate-500 font-mono">{socio.rut} • {socio.email}</div>
                               </div>
                             </div>
                           </td>
@@ -823,7 +884,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
 
                           <td className="py-3.5 px-5">
                             <span className={`badge-inst ${
-                              socio.estadoCuota === 'Al DÃ­a' ? 'badge-green' :
+                              socio.estadoCuota === 'Al Día' ? 'badge-green' :
                               socio.estadoCuota === 'En Mora' ? 'badge-red' :
                               socio.estadoCuota.includes('Solicitud Renuncia') ? 'badge-amber' :
                               'badge-blue'
@@ -920,15 +981,80 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
           </div>
         )}
 
-        {/* TAB 2: APROBACIÃ“N DE RENUNCIAS Y DESVINCULACIÃ“N */}
+        {/* TAB 2: APROBACIÓN DE RENUNCIAS Y DESVINCULACIÓN */}
         {activeTabLocal === 'renuncias' && (
           <div className="space-y-6 animate-fade-in">
             {canManageFinances ? (
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
-                  <FileCheck2 className="w-5 h-5 text-amber-600" />
-                  Solicitudes de Renuncia & DesvinculaciÃ³n Voluntaria (DL NÂ° 2.757)
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
+                    <FileCheck2 className="w-5 h-5 text-amber-600" />
+                    Solicitudes de Renuncia &amp; Desvinculación Voluntaria (DL N° 2.757)
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowRetroactiveForm(v => !v)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" /> Registrar renuncia retroactiva
+                  </button>
+                </div>
+
+                {/* FORMULARIO DE RENUNCIA RETROACTIVA */}
+                {showRetroactiveForm && (
+                  <form onSubmit={handleRetroactiveRenuncia} className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-4">
+                    <div className="border-b border-amber-200 pb-3">
+                      <h4 className="font-bold text-amber-900 text-sm flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" /> Registrar Renuncia Anterior al Sistema
+                      </h4>
+                      <p className="text-xs text-amber-800 mt-1">Usa este formulario para registrar retroactivamente la renuncia de socios que se desvincularon antes de la implementación del sistema digital.</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Socio *</label>
+                        <select
+                          required
+                          value={retroSocioId}
+                          onChange={e => setRetroSocioId(e.target.value)}
+                          className="w-full text-xs border border-amber-300 rounded-xl px-3 py-2 bg-white text-slate-900 font-semibold outline-none"
+                        >
+                          <option value="">— Seleccionar socio —</option>
+                          {sociosList.filter(s => !s.estadoCuota?.includes('Desvinculado')).sort((a,b) => a.nombre.localeCompare(b.nombre)).map(s => (
+                            <option key={s.id} value={s.id}>{s.nombre} ({s.rut})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Fecha de solicitud de renuncia</label>
+                        <input type="date" value={retroFechaSolicitud} onChange={e => setRetroFechaSolicitud(e.target.value)}
+                          className="w-full text-xs border border-amber-300 rounded-xl px-3 py-2 bg-white text-slate-900 outline-none" />
+                        <p className="text-[10px] text-amber-700 mt-0.5">Si no la tienes, déjala vacía.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Fecha de retiro oficial *</label>
+                        <input type="date" required value={retroFechaRetiro} onChange={e => setRetroFechaRetiro(e.target.value)}
+                          className="w-full text-xs border border-amber-300 rounded-xl px-3 py-2 bg-white text-slate-900 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">N° Acta Directorio que aprobó *</label>
+                        <input type="text" required placeholder="Ej: Acta N° 2024-03" value={retroActa} onChange={e => setRetroActa(e.target.value)}
+                          className="w-full text-xs border border-amber-300 rounded-xl px-3 py-2 bg-white text-slate-900 outline-none" />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Motivo de la renuncia</label>
+                        <textarea rows={2} placeholder="Motivo expresado por el socio al momento de renunciar..." value={retroMotivo} onChange={e => setRetroMotivo(e.target.value)}
+                          className="w-full text-xs border border-amber-300 rounded-xl px-3 py-2 bg-white text-slate-900 outline-none resize-none" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end pt-2 border-t border-amber-200">
+                      <button type="button" onClick={() => setShowRetroactiveForm(false)} className="px-4 py-2 text-xs font-bold rounded-xl border border-amber-300 text-amber-900 hover:bg-amber-100">Cancelar</button>
+                      <button type="submit" disabled={isRetroSaving} className="px-5 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 flex items-center gap-1.5">
+                        {isRetroSaving ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        {isRetroSaving ? 'Registrando...' : 'Registrar desvinculación'}
+                      </button>
+                    </div>
+                  </form>
+                )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {sociosList.filter(s => s.estadoCuota.includes('Renuncia') || s.estadoCuota.includes('Desvinculado')).length ? sociosList.filter(s => s.estadoCuota.includes('Renuncia') || s.estadoCuota.includes('Desvinculado')).map((soc) => (
@@ -941,7 +1067,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                         <h4 className="font-bold text-slate-900 text-base font-['Outfit'] mt-1">
                           {soc.nombre}
                         </h4>
-                        <p className="text-xs text-slate-500 font-mono">{soc.rut} â€¢ {soc.email}</p>
+                        <p className="text-xs text-slate-500 font-mono">{soc.rut} • {soc.email}</p>
                       </div>
                       <span className={`badge-inst ${
                         soc.estadoCuota.includes('Aprobado') ? 'badge-green' : 'badge-amber'
@@ -951,10 +1077,10 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                     </div>
 
                     <div className="text-xs text-slate-600 space-y-1 bg-white p-3 rounded-lg border border-slate-200">
-                      <div>â€¢ <strong>Fecha Solicitud:</strong> {soc.fechaSolicitudRenuncia || 'Sin fecha registrada'}</div>
-                      <div>â€¢ <strong>Motivo Expresado:</strong> {soc.motivoRenuncia || 'Sin motivo registrado'}</div>
+                      <div>• <strong>Fecha Solicitud:</strong> {soc.fechaSolicitudRenuncia || 'Sin fecha registrada'}</div>
+                      <div>• <strong>Motivo Expresado:</strong> {soc.motivoRenuncia || 'Sin motivo registrado'}</div>
                       {soc.actaDirectorioAprobacion && (
-                        <div>â€¢ <strong>Acta AprobaciÃ³n Directorio:</strong> <span className="font-bold text-emerald-800">{soc.actaDirectorioAprobacion}</span></div>
+                        <div>• <strong>Acta Aprobación Directorio:</strong> <span className="font-bold text-emerald-800">{soc.actaDirectorioAprobacion}</span></div>
                       )}
                     </div>
 
@@ -980,7 +1106,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                 </h3>
                 <p className="text-slate-600 mb-6">
                   Si deseas desvincularte de PRUANED A.G. conforme a los estatutos, puedes enviar una solicitud formal de renuncia.
-                  Esta serÃ¡ revisada y ratificada por el Directorio Nacional.
+                  Esta será revisada y ratificada por el Directorio Nacional.
                 </p>
                 {currentSocio.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' ? (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-950">
@@ -1027,8 +1153,8 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                 <div className="flex items-center gap-3">
                   <FileText className="w-6 h-6 text-blue-900" />
                   <div>
-                    <h3 className="text-2xl font-bold text-slate-900">Ficha de PostulaciÃ³n</h3>
-                    <p className="text-xs text-slate-400 font-mono">{activePostulacionModal.id} â€” Enviada el {activePostulacionModal.fechaEnvio}</p>
+                    <h3 className="text-2xl font-bold text-slate-900">Ficha de Postulación</h3>
+                    <p className="text-xs text-slate-400 font-mono">{activePostulacionModal.id} — Enviada el {activePostulacionModal.fechaEnvio}</p>
                   </div>
                 </div>
                 <span className={`mt-3 inline-block text-xs font-bold px-3 py-1 rounded-full border ${
@@ -1043,7 +1169,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                   <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                   <div>
                     <p className="font-bold">Socio Incorporado Vinculado</p>
-                    <p className="text-xs text-emerald-600">{socioVinculado.nombre} â€” {socioVinculado.categoria} â€” Ingreso: {socioVinculado.fechaIngreso}</p>
+                    <p className="text-xs text-emerald-600">{socioVinculado.nombre} — {socioVinculado.categoria} — Ingreso: {socioVinculado.fechaIngreso}</p>
                   </div>
                 </div>
               )}
@@ -1053,12 +1179,12 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                   <div><span className="font-bold text-slate-400 text-xs uppercase block">Nombre Completo</span>{activePostulacionModal.nombreCompleto}</div>
                   <div><span className="font-bold text-slate-400 text-xs uppercase block">RUT</span>{activePostulacionModal.rut}</div>
                   <div><span className="font-bold text-slate-400 text-xs uppercase block">Email</span>{activePostulacionModal.email}</div>
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">TelÃ©fono</span>{activePostulacionModal.telefono || '-'}</div>
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">ProfesiÃ³n</span>{activePostulacionModal.profesion}</div>
+                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Teléfono</span>{activePostulacionModal.telefono || '-'}</div>
+                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Profesión</span>{activePostulacionModal.profesion}</div>
                   <div><span className="font-bold text-slate-400 text-xs uppercase block">Comuna</span>{activePostulacionModal.comuna}</div>
                 </div>
                 {activePostulacionModal.razonesIntegracion && (
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Razones de IntegraciÃ³n</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.razonesIntegracion}</p></div>
+                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Razones de Integración</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.razonesIntegracion}</p></div>
                 )}
                 {activePostulacionModal.aporteEsperado && (
                   <div><span className="font-bold text-slate-400 text-xs uppercase block">Aporte Esperado</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.aporteEsperado}</p></div>
@@ -1075,7 +1201,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                 >
                   Cerrar
                 </button>
-                {activePostulacionModal.estado === 'Pendiente RevisiÃ³n Directorio' && (
+                {activePostulacionModal.estado === 'Pendiente Revisión Directorio' && (
                   <div className="flex gap-2">
                     <button
                       onClick={() => { handleRejectApplicant(activePostulacionModal.id); }}
@@ -1102,23 +1228,23 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
           <section role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title" aria-describedby="payment-dialog-description" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">TesorerÃ­a</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Tesorería</p>
                 <h3 id="payment-dialog-title" className="mt-1 font-['Outfit'] text-xl font-extrabold text-slate-950">Registrar pago</h3>
               </div>
               <button type="button" onClick={() => { setActivePaymentModal(null); setComprobanteInput(''); setIsCuotaIncorporacionCheck(false); }} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700" aria-label="Cerrar registro de pago"><X className="h-5 w-5" aria-hidden="true" /></button>
             </div>
             <form onSubmit={handleRegisterPayment} className="space-y-5 pt-5">
-              <p id="payment-dialog-description" className="text-sm leading-6 text-slate-600">Registra un pago para <strong className="text-slate-900">{activePaymentModal.nombre}</strong>. El estado sÃ³lo cambiarÃ¡ a â€œAl DÃ­aâ€ si no quedan meses registrados en mora.</p>
+              <p id="payment-dialog-description" className="text-sm leading-6 text-slate-600">Registra un pago para <strong className="text-slate-900">{activePaymentModal.nombre}</strong>. El estado sólo cambiará a “Al Día” si no quedan meses registrados en mora.</p>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
                 <div className="flex justify-between gap-3"><span className="text-slate-600">Cuota mensual</span><strong>${(activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual).toLocaleString('es-CL')} CLP</strong></div>
                 <div className="mt-2 flex justify-between gap-3"><span className="text-slate-600">Meses en mora</span><strong>{activePaymentModal.mesesAdeudados || 0}</strong></div>
               </div>
               <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
                 <input type="checkbox" checked={isCuotaIncorporacionCheck} onChange={event => setIsCuotaIncorporacionCheck(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-700" />
-                <span><span className="block font-bold text-slate-900">Corresponde a cuota de incorporaciÃ³n</span><span className="mt-1 block text-xs text-slate-600">Monto: ${(activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual).toLocaleString('es-CL')} CLP.</span></span>
+                <span><span className="block font-bold text-slate-900">Corresponde a cuota de incorporación</span><span className="mt-1 block text-xs text-slate-600">Monto: ${(activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual).toLocaleString('es-CL')} CLP.</span></span>
               </label>
               <label className="block text-sm font-bold text-slate-800" htmlFor="payment-reference">Comprobante o referencia <span className="font-normal text-slate-500">(opcional)</span></label>
-              <input id="payment-reference" autoFocus value={comprobanteInput} onChange={event => setComprobanteInput(event.target.value)} placeholder="Ej. transferencia N.Âº 1234" className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
+              <input id="payment-reference" autoFocus value={comprobanteInput} onChange={event => setComprobanteInput(event.target.value)} placeholder="Ej. transferencia N.º 1234" className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
               <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
                 <button type="button" onClick={() => { setActivePaymentModal(null); setComprobanteInput(''); setIsCuotaIncorporacionCheck(false); }} className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">Cancelar</button>
                 <button type="submit" className="min-h-11 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">Confirmar pago</button>
@@ -1157,9 +1283,9 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
               <div className="grid grid-cols-2 gap-4">
                 <div><span className="font-bold text-slate-400 text-xs uppercase block">RUT</span>{activeSocioModal.rut}</div>
                 <div><span className="font-bold text-slate-400 text-xs uppercase block">Email</span>{activeSocioModal.email}</div>
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">TelÃ©fono</span>{activeSocioModal.telefono || '-'}</div>
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">ProfesiÃ³n</span>{activeSocioModal.profesion}</div>
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">RegiÃ³n</span>{activeSocioModal.region || '-'}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Teléfono</span>{activeSocioModal.telefono || '-'}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Profesión</span>{activeSocioModal.profesion}</div>
+                <div><span className="font-bold text-slate-400 text-xs uppercase block">Región</span>{activeSocioModal.region || '-'}</div>
                 <div><span className="font-bold text-slate-400 text-xs uppercase block">Fecha Ingreso</span>{activeSocioModal.fechaIngreso || '-'}</div>
                 <div className="col-span-2"><span className="font-bold text-slate-400 text-xs uppercase block">Domicilio</span>{activeSocioModal.domicilio || '-'} {activeSocioModal.comuna || ''}</div>
               </div>
@@ -1174,7 +1300,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                   </div>
                   <div><span className="font-bold text-slate-500 text-xs block">Meses Adeudados</span>{activeSocioModal.mesesAdeudados || 0} meses</div>
                   <div><span className="font-bold text-slate-500 text-xs block">Cuota Mensual Pactada</span>${(activeSocioModal.montoCuotaMensual || financialSettings.cuotaMensualActual).toLocaleString('es-CL')}</div>
-                  <div><span className="font-bold text-slate-500 text-xs block">Cuota IncorporaciÃ³n</span>
+                  <div><span className="font-bold text-slate-500 text-xs block">Cuota Incorporación</span>
                     {activeSocioModal.cuotaIncorporacionPagada || (activeSocioModal.fechaIngreso && new Date(activeSocioModal.fechaIngreso).getFullYear() < 2026) ? (
                       <span className="text-emerald-600 font-bold"><Check className="w-3 h-3 inline"/> Pagada</span>
                     ) : (
@@ -1186,7 +1312,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
 
               {(activeSocioModal.estadoCuota.includes('Desvinculado') || activeSocioModal.fechaSolicitudRenuncia) && (
                 <div className="mt-4 p-4 bg-rose-50 rounded-xl border border-rose-200">
-                  <h4 className="font-bold text-rose-900 mb-2 border-b border-rose-200 pb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4"/> Historial de DesvinculaciÃ³n</h4>
+                  <h4 className="font-bold text-rose-900 mb-2 border-b border-rose-200 pb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4"/> Historial de Desvinculación</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div><span className="font-bold text-rose-700 text-xs block">Fecha Solicitud / Retiro</span>{activeSocioModal.fechaRetiroOficial || activeSocioModal.fechaSolicitudRenuncia || '-'}</div>
                     <div className="col-span-2"><span className="font-bold text-rose-700 text-xs block">Motivo / Acta de Directorio</span>{activeSocioModal.actaDirectorioAprobacion || activeSocioModal.motivoRenuncia || '-'}</div>
@@ -1221,8 +1347,52 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
         </div>
       )}
 
+      {/* MODAL: Aprobar Renuncia (Directiva) */}
+      {activeApproveRenunciaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <form onSubmit={handleApproveRenuncia} className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full space-y-5 border border-slate-200">
+            <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
+              <FileCheck2 className="w-5 h-5 text-emerald-600" /> Aprobar Retiro — {activeApproveRenunciaModal.nombre}
+            </h3>
+            <p className="text-xs text-slate-600">Confirma el Número de Acta del Directorio en que se aprobó esta renuncia (conforme al DL N° 2.757). Esto desvinculará al socio definitivamente y anonimizará sus datos de contacto.</p>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">N° Acta del Directorio *</label>
+              <input type="text" required placeholder="Ej: Acta Directorio N° 2024-03" value={acuerdoNumero} onChange={e => setAcuerdoNumero(e.target.value)}
+                className="w-full text-sm border border-slate-300 rounded-xl px-3 py-2.5 outline-none focus:border-emerald-500" />
+            </div>
+            <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+              <button type="button" onClick={() => { setActiveApproveRenunciaModal(null); setAcuerdoNumero(''); }} className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50">Cancelar</button>
+              <button type="submit" className="px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" /> Aprobar desvinculación definitiva
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL: Solicitar Renuncia (Socio) */}
+      {activeRequestRenunciaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <form onSubmit={handleRequestRenuncia} className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full space-y-5 border border-slate-200">
+            <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
+              <UserX className="w-5 h-5 text-rose-600" /> Solicitar Renuncia Gremial
+            </h3>
+            <p className="text-xs text-slate-600">Tu solicitud será enviada al Directorio Nacional para su ratificación formal conforme a los Estatutos de PRUANED A.G. y el DL N° 2.757.</p>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Motivo de la renuncia *</label>
+              <textarea rows={3} required placeholder="Indica brevemente el motivo por el cual solicitas tu desvinculación..." value={motivoRenunciaInput} onChange={e => setMotivoRenunciaInput(e.target.value)}
+                className="w-full text-sm border border-slate-300 rounded-xl px-3 py-2.5 outline-none focus:border-rose-400 resize-none" />
+            </div>
+            <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+              <button type="button" onClick={() => { setActiveRequestRenunciaModal(null); setMotivoRenunciaInput(''); }} className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50">Cancelar</button>
+              <button type="submit" className="px-5 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5">
+                <FileCheck2 className="w-3.5 h-3.5" /> Enviar solicitud al Directorio
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
     </section>
   );
 };
-
-

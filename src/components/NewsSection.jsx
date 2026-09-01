@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Newspaper, Search, Calendar, User, ArrowRight, PlusCircle, Trash2 } from 'lucide-react';
 
@@ -7,6 +7,14 @@ export const NewsSection = ({ onOpenPublishModal }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [activeArticle, setActiveArticle] = useState(null);
+
+  useEffect(() => {
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setActiveArticle(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, []);
 
   const categories = ['Todas', ...new Set(newsList.map(n => n.category))];
 
@@ -150,10 +158,11 @@ export const NewsSection = ({ onOpenPublishModal }) => {
 
         {/* Modal Article Reader */}
         {activeArticle && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white text-slate-900 rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 relative border border-slate-200 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in" role="presentation" onMouseDown={() => setActiveArticle(null)}>
+            <div role="dialog" aria-modal="true" aria-labelledby="noticia-activa-titulo" onMouseDown={(event) => event.stopPropagation()} className="bg-white text-slate-900 rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 relative border border-slate-200 max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setActiveArticle(null)}
+                aria-label="Cerrar noticia"
                 className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500 font-bold"
               >
                 ✕
@@ -172,7 +181,7 @@ export const NewsSection = ({ onOpenPublishModal }) => {
                   <span><User className="w-3.5 h-3.5 inline mr-1 text-emerald-600" /> {activeArticle.author}</span>
                 </div>
 
-                <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">
+                <h3 id="noticia-activa-titulo" className="text-xl font-bold text-slate-900 font-['Outfit']">
                   {activeArticle.title}
                 </h3>
 
