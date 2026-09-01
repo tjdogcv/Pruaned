@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { PrivacyDataPolicy } from '../../components/PrivacyDataPolicy';
 import { TarifarioEditor } from '../../components/TarifarioEditor';
 import { FondoDonacionesPanel } from '../../components/FondoDonacionesPanel';
-import { sendPagoEmail, sendApprovalEmail, sendRejectionEmail } from '../../lib/emailConfig';
+import { sendPagoEmail, sendPagoValidadoEmail, sendApprovalEmail, sendRejectionEmail } from '../../lib/emailConfig';
 import { compressImage } from '../../lib/imageCompression';
 import { 
   Users, 
@@ -45,6 +45,8 @@ import {
   ClipboardList,
   Filter,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X,
   Shield
 } from 'lucide-react';
@@ -271,6 +273,12 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
   const [selectedEstado, setSelectedEstado] = useState('TODOS');
   const [selectedCategory, setSelectedCategory] = useState('TODAS');
   const [showHistorico, setShowHistorico] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedEstado, selectedCategory]);
 
   const currentSocio = isMasterUser 
     ? { nombre: 'Administrador Maestro', email: 'ag.pruaned@gmail.com', rut: 'ADMIN-0', categoria: 'Sistema', profesion: 'Soporte Gremial', fotoPerfil: '' } 
@@ -474,6 +482,9 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
     return matchesSearch && matchesEstado && matchesCat;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredSocios.length / itemsPerPage));
+  const paginatedSocios = filteredSocios.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const handleFileUploadFoto = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -553,6 +564,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
         referencia: comprobanteInput.trim() || 'Validado por Tesorería'
       };
       sendPagoEmail(pagoData, activePaymentModal);
+      sendPagoValidadoEmail(activePaymentModal, pagoData.monto);
 
       setActivePaymentModal(null);
       setComprobanteInput('');
@@ -826,7 +838,8 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                     </tbody>
                   </table>
                 ) : (
-                  <table className="w-full text-left text-xs">
+                  <>
+                    <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
                         <th className="py-3.5 px-5">Socio / RUT</th>
@@ -839,7 +852,7 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                    {filteredSocios.map((socio) => {
+                    {paginatedSocios.map((socio) => {
                       const esAntiguo = socio.fechaIngreso && new Date(socio.fechaIngreso).getFullYear() < 2026;
                       const cuotaIncorpPagadaReal = socio.cuotaIncorporacionPagada || esAntiguo;
                       const cuotaIncorp = cuotaIncorpPagadaReal ? 0 : (socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
@@ -975,6 +988,52 @@ export default function PadronSocios({ initialTab, section = 'socios' }) {
                       })}
                     </tbody>
                   </table>
+
+                  {/* BARRA DE PAGINACIÓN */}
+                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div className="text-slate-500">
+                      Mostrando <strong className="text-slate-900">{Math.min(filteredSocios.length, (currentPage - 1) * itemsPerPage + 1)}</strong> a <strong className="text-slate-900">{Math.min(filteredSocios.length, currentPage * itemsPerPage)}</strong> de <strong className="text-slate-900">{filteredSocios.length}</strong> socios
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="text-slate-500">Filas por pág:</label>
+                      <select
+                        value={itemsPerPage}
+                        onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                        className="border border-slate-300 rounded-lg px-2 py-1 bg-white text-slate-800 font-bold outline-none"
+                      >
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+
+                      <div className="flex items-center gap-1 ml-2">
+                        <button
+                          type="button"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          className="p-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Página anterior"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="px-3 py-1 font-bold text-slate-800">
+                          {currentPage} / {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={currentPage >= totalPages}
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          className="p-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Página siguiente"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  </>
                 )}
               </div>
             </div>

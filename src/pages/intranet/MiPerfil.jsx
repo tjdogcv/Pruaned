@@ -1,396 +1,43 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { PrivacyDataPolicy } from '../../components/PrivacyDataPolicy';
-import { TarifarioEditor } from '../../components/TarifarioEditor';
-import { FondoDonacionesPanel } from '../../components/FondoDonacionesPanel';
-import { sendPagoEmail, sendApprovalEmail, sendRejectionEmail } from '../../lib/emailConfig';
+import { CredencialDigitalModal } from '../../components/CredencialDigitalModal';
+import { CertificadoAfiliacionModal } from '../../components/CertificadoAfiliacionModal';
+import { sendPagoEmail } from '../../lib/emailConfig';
 import { compressImage } from '../../lib/imageCompression';
+import { uploadToSupabaseStorage } from '../../lib/storage';
 import { 
-  Users, 
-  DollarSign, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  Download, 
-  Search, 
-  FileText, 
-  Receipt, 
-  PlusCircle, 
-  Trash2, 
-  Settings, 
-  PieChart, 
-  TrendingUp, 
-  TrendingDown, 
-  Wallet,
-  UserPlus,
-  Eye,
-  Check,
-  UserX,
-  ShieldCheck,
-  Scale,
-  FileCheck2,
-  ToggleLeft,
-  ToggleRight,
-  ShieldAlert,
-  User,
-  Camera,
-  Upload,
-  Save,
-  Mail,
-  Phone,
-  MapPin,
-  Award,
-  Crown,
-  PenTool,
-  ClipboardList,
-  Filter,
-  ChevronDown,
-  X,
-  Shield
+  CheckCircle2, AlertCircle, Clock, Download, 
+  Receipt, Save, User, Camera, Mail, Phone, MapPin, 
+  Award, Scale, FileText, Check, ShieldCheck, UserCheck, Printer
 } from 'lucide-react';
 
-/* ─────────────────────────────────────────────────────────────
-   AuditoriaPanel — Registro de auditoría institucional
-───────────────────────────────────────────────────────────── */
-const SEVERITY_CFG = {
-  INFO:  { color: 'bg-blue-100 text-blue-800 border-blue-200',    dot: 'bg-blue-500',   label: 'Info' },
-  WARN:  { color: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500',  label: 'Alerta' },
-  ERROR: { color: 'bg-rose-100 text-rose-800 border-rose-200',    dot: 'bg-rose-500',   label: 'Error' },
-};
-
-const QUOTA_EXPENSE_CATEGORIES = [
-  'Insumos Médicos Veterinarios',
-  'Logística Terreno & Combustible',
-  'Albergues Temporales & Alimentación',
-  'Capacitaciones & Materiales',
-  'Gastos Administrativos'
-];
-
-const AuditoriaPanel = ({ securityLogs = [] }) => {
-  const [auditSearch, setAuditSearch] = useState('');
-  const [auditSeverity, setAuditSeverity] = useState('TODAS');
-  const [auditUser, setAuditUser] = useState('TODOS');
-
-  const uniqueUsers = [...new Set(securityLogs.map(l => l.user))].sort();
-
-  const filteredLogs = securityLogs.filter(log => {
-    const matchSearch = auditSearch.trim() === '' ||
-      (log.label || log.event).toLowerCase().includes(auditSearch.toLowerCase()) ||
-      log.user.toLowerCase().includes(auditSearch.toLowerCase()) ||
-      log.date.includes(auditSearch);
-    const matchSeverity = auditSeverity === 'TODAS' || log.severity === auditSeverity;
-    const matchUser = auditUser === 'TODOS' || log.user === auditUser;
-    return matchSearch && matchSeverity && matchUser;
-  });
-
-  const handleExportCSV = () => {
-    const headers = 'Fecha/Hora,Usuario,Acción,Código Técnico,Severidad\n';
-    const rows = filteredLogs.map(l =>
-      `"${l.date}","${l.user}","${l.label || l.event}","${l.event}","${l.severity}"`
-    ).join('\n');
-    const el = document.createElement('a');
-    el.href = URL.createObjectURL(new Blob([headers + rows], { type: 'text/csv;charset=utf-8' }));
-    el.download = `Auditoria_PRUANED_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(el); el.click(); document.body.removeChild(el);
-  };
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header card */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-5">
-          <div>
-            <span className="px-2.5 py-0.5 bg-violet-100 text-violet-900 font-bold text-[10px] rounded-full uppercase">
-              Trazabilidad de Cambios
-            </span>
-            <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-violet-700" />
-              Registro de Auditoría Institucional
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Historial completo de acciones — quién hizo cada cambio y cuándo.
-            </p>
-          </div>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-900 hover:bg-violet-800 text-white text-xs font-bold rounded-xl shadow transition-colors flex-shrink-0"
-          >
-            <Download className="w-3.5 h-3.5" /> Exportar CSV
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Buscar acción, usuario o fecha..."
-              value={auditSearch}
-              onChange={e => setAuditSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:border-violet-400"
-            />
-          </div>
-          <select
-            value={auditSeverity}
-            onChange={e => setAuditSeverity(e.target.value)}
-            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-900 font-semibold outline-none"
-          >
-            <option value="TODAS">Todas las severidades</option>
-            <option value="INFO">Info</option>
-            <option value="WARN">Alerta</option>
-            <option value="ERROR">Error</option>
-          </select>
-          <select
-            value={auditUser}
-            onChange={e => setAuditUser(e.target.value)}
-            className="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-900 font-semibold outline-none max-w-[220px]"
-          >
-            <option value="TODOS">Todos los usuarios</option>
-            {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-          <span className="text-[11px] text-slate-400 font-mono ml-auto">
-            {filteredLogs.length} / {securityLogs.length} eventos
-          </span>
-        </div>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[{sev:'INFO',label:'Operaciones',icon:'🔵'},{sev:'WARN',label:'Alertas',icon:'🟡'},{sev:'ERROR',label:'Errores',icon:'🔴'}].map(({sev,label,icon}) => (
-          <div key={sev} className={`p-4 rounded-2xl border text-xs font-bold ${SEVERITY_CFG[sev]?.color}`}>
-            <div className="text-lg mb-1">{icon}</div>
-            <div className="text-2xl font-extrabold font-['Outfit']">{securityLogs.filter(l => l.severity === sev).length}</div>
-            <div className="opacity-70">{label}</div>
-          </div>
-        ))}
-        <div className="p-4 rounded-2xl border text-xs font-bold bg-slate-100 text-slate-800 border-slate-200">
-          <div className="text-lg mb-1">📋</div>
-          <div className="text-2xl font-extrabold font-['Outfit']">{securityLogs.length}</div>
-          <div className="opacity-70">Total registros</div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">Fecha / Hora</th>
-                <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">Usuario</th>
-                <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">Acción</th>
-                <th className="px-4 py-3 text-left font-bold text-slate-500 uppercase tracking-wider">Severidad</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-slate-400 italic">
-                    No se encontraron eventos con los filtros actuales.
-                  </td>
-                </tr>
-              ) : (
-                filteredLogs.map((log, idx) => {
-                  const cfg = SEVERITY_CFG[log.severity] || SEVERITY_CFG.INFO;
-                  return (
-                    <tr key={log.id || idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-slate-500 whitespace-nowrap">{log.date}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-800 truncate max-w-[200px]">{log.user}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900">{log.label || log.event}</div>
-                        {log.label && log.event !== log.label && (
-                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">{log.event}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.color}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                          {cfg.label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        {filteredLogs.length > 0 && (
-          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
-            <span>Mostrando {filteredLogs.length} evento{filteredLogs.length !== 1 ? 's' : ''}</span>
-            <span>Los registros se sincronizan con el historial de auditoría institucional.</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-/* ─────────────────────────────────────────────────────────────
-   Permite escribir nombre, RUT o email para filtrar socios.
-───────────────────────────────────────────────────────────── */
-export const SocioSearchSelect = ({ sociosList, selectedId, onSelect, label }) => {
-  const [query, setQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
-
-  const selected = sociosList.find(s => s.id === selectedId);
-
-  const filtered = query.trim() === ''
-    ? sociosList
-    : sociosList.filter(s =>
-        s.nombre.toLowerCase().includes(query.toLowerCase()) ||
-        s.rut.includes(query) ||
-        (s.email || '').toLowerCase().includes(query.toLowerCase())
-      );
-
-  // Cerrar al hacer click fuera
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsOpen(false);
-        setQuery('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelect = (socio) => {
-    onSelect(socio.id);
-    setIsOpen(false);
-    setQuery('');
-  };
-
-  return (
-    <div ref={containerRef} className="relative w-full">
-      {label && (
-        <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">{label}</label>
-      )}
-      {/* Trigger button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(prev => !prev)}
-        className="w-full flex items-center justify-between bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 hover:border-blue-500 transition-colors"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          {selected?.fotoPerfil && (
-            <img src={selected.fotoPerfil} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
-          )}
-          <span className="truncate">
-            {selected ? `${selected.nombre} (${selected.rut})` : 'Seleccionar socio...'}
-          </span>
-        </div>
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
-          {/* Search input */}
-          <div className="p-2 border-b border-slate-100">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                autoFocus
-                type="text"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="Buscar por nombre, RUT o email..."
-                className="w-full pl-7 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-400"
-              />
-              {query && (
-                <button onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          </div>
-          {/* Options list */}
-          <ul className="max-h-56 overflow-y-auto divide-y divide-slate-50">
-            {filtered.length === 0 ? (
-              <li className="px-4 py-3 text-xs text-slate-400 italic text-center">Sin resultados para "{query}"</li>
-            ) : (
-              filtered.map(s => (
-                <li
-                  key={s.id}
-                  onClick={() => handleSelect(s)}
-                  className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer text-xs transition-colors ${
-                    s.id === selectedId
-                      ? 'bg-blue-50 text-blue-900 font-bold'
-                      : 'hover:bg-slate-50 text-slate-800'
-                  }`}
-                >
-                  <img src={s.fotoPerfil} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">{s.nombre}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{s.rut} • {s.categoria}</div>
-                  </div>
-                  {s.id === selectedId && <Check className="w-3.5 h-3.5 text-blue-600 ml-auto flex-shrink-0" />}
-                </li>
-              ))
-            )}
-          </ul>
-          <div className="px-3 py-1.5 border-t border-slate-100 bg-slate-50 text-[10px] text-slate-400">
-            {filtered.length} de {sociosList.length} socios
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default function MiPerfil({ initialTab, section = 'socios' }) {
+export default function MiPerfil() {
   const { 
-    sociosList, 
-    updateSocioCuota, 
-    updateSocioCategoria,
-    updateSocioCuotaIncorporacion,
-    financialSettings, 
-    updateFinancialSettings,
-    expensesList, 
-    addExpense, 
-    deleteExpense, 
-    financialCategories = [],
-    postulacionesList,
-    updatePostulacionEstado,
-    solicitarRenunciaSocio,
-    aprobarRenunciaDirectorio,
-    togglePermisoGestionVoluntariosSocio,
-    updateSocioPerfil,
-    directorioCargos,
-    updateDirectorioCargo,
-    getDirectorioMember,
-    firmasOficiales,
-    updateFirmaOficial,
-    canManageCategoriesAndCargos,
-    isMasterUser,
-    isDirectiva,
-    canManageFinances,
-    currentUser,
-    securityLogs,
+    currentUser, 
+    sociosList = [], 
+    updateSocioPerfil, 
+    updateSocioCuota,
+    financialSettings = {},
     cobrosList = [],
-    addCobrosBatch = () => {}
+    isMasterUser
   } = useAuth();
 
-  const [activeTabLocal, setActiveTabLocal] = useState('mi-cuenta');
-
-  useEffect(() => {
-    if (initialTab != null) setActiveTabLocal(initialTab);
-  }, [initialTab]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedEstado, setSelectedEstado] = useState('TODOS');
-  const [selectedCategory, setSelectedCategory] = useState('TODAS');
-  const [showHistorico, setShowHistorico] = useState(false);
-
   const currentSocio = isMasterUser 
-    ? { nombre: 'Administrador Maestro', email: 'ag.pruaned@gmail.com', rut: 'ADMIN-0', categoria: 'Sistema', profesion: 'Soporte Gremial', fotoPerfil: '' } 
-    : (sociosList.find(s => s.email === currentUser?.email) || {});
+    ? { id: 'admin-master', nombre: 'Administrador Maestro', email: 'ag.pruaned@gmail.com', rut: 'ADMIN-0', categoria: 'Sistema', profesion: 'Soporte Gremial', fotoPerfil: '', estadoCuota: 'Al Día', mesesAdeudados: 0, historialPagos: [] } 
+    : (sociosList.find(s => s.email?.toLowerCase() === currentUser?.email?.toLowerCase()) || {
+        id: 'socio-temp',
+        nombre: currentUser?.name || 'Socio PRUANED',
+        email: currentUser?.email || '',
+        rut: 'No registrado',
+        categoria: 'Socio Activo',
+        profesion: 'Profesional',
+        estadoCuota: 'Al Día',
+        mesesAdeudados: 0,
+        historialPagos: []
+      });
 
-  const [editEmail, setEditEmail] = useState(currentSocio?.email || currentUser?.email || '');
+  const [editEmail, setEditEmail] = useState(currentSocio?.email || '');
   const [editTelefono, setEditTelefono] = useState(currentSocio?.telefono || '');
   const [editDomicilio, setEditDomicilio] = useState(currentSocio?.domicilio || '');
   const [editComuna, setEditComuna] = useState(currentSocio?.comuna || '');
@@ -399,845 +46,459 @@ export default function MiPerfil({ initialTab, section = 'socios' }) {
   const [editEstadoCivil, setEditEstadoCivil] = useState(currentSocio?.estadoCivil || '');
   const [editProfesion, setEditProfesion] = useState(currentSocio?.profesion || '');
   const [editFotoPerfil, setEditFotoPerfil] = useState(currentSocio?.fotoPerfil || '');
+  const [isSavingPerfil, setIsSavingPerfil] = useState(false);
 
-  const [activePaymentModal, setActivePaymentModal] = useState(null);
-  const [activePostulacionModal, setActivePostulacionModal] = useState(null);
-  const [activeSocioModal, setActiveSocioModal] = useState(null);
-  const [postFilter, setPostFilter] = useState('pendientes');
-      const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
-
+  const [activePaymentModal, setActivePaymentModal] = useState(false);
   const [comprobanteInput, setComprobanteInput] = useState('');
-      const [isCuotaIncorporacionCheck, setIsCuotaIncorporacionCheck] = useState(false);
+  const [isCuotaIncorporacionCheck, setIsCuotaIncorporacionCheck] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isCredencialModalOpen, setIsCredencialModalOpen] = useState(false);
+  const [isCertificadoModalOpen, setIsCertificadoModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (!activePaymentModal) return undefined;
-    const closeOnEscape = (event) => {
-      if (event.key !== 'Escape') return;
-      setActivePaymentModal(null);
-      
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [activePaymentModal]);
+  const fileInputRef = useRef(null);
+  const comprobanteFileRef = useRef(null);
 
-  const presidente = getDirectorioMember('presidenteId');
-  const vicepresidente = getDirectorioMember('vicepresidenteId');
-  const secretario = getDirectorioMember('secretarioId');
-  const tesorero = getDirectorioMember('tesoreroId');
+  const cuotaMensual = financialSettings?.cuotaMensualActual || 5000;
+  const cuotaIncorp = (currentSocio?.cuotaIncorporacionPagada || currentSocio?.estadoCuota === 'Exento') ? 0 : (financialSettings?.cuotaIncorporacionActual || 35000);
 
-  const [newExpense, setNewExpense] = useState({
-    tipoDocumento: 'Factura',
-    numeroDocumento: '',
-    proveedor: '',
-    monto: '',
-    origenFondo: 'Fondo Cuotas',
-    categoria: 'Insumos Médicos Veterinarios',
-    glosa: ''
-  });
+  // Cobros especiales pendientes
+  const misCobrosPendientes = cobrosList.filter(c => c.socioId === currentSocio.id && !c.pagado);
+  const totalCobrosEspeciales = misCobrosPendientes.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0);
 
-  const [newCobro, setNewCobro] = useState({
-    tipoCobro: 'Cuota Mensual', // 'Cuota Mensual' | 'Cobro Extraordinario'
-    titulo: '',
-    monto: '',
-    asignacion: 'A todos',
-    socioId: '',
-    mesesAGenerar: 1
-  });
+  // Cálculo de deuda
+  const currentDate = new Date();
+  const feeStartDate = new Date('2026-09-01');
+  const isFeeActive = currentDate >= feeStartDate;
+  const deudaCalculada = (currentSocio.estadoCuota === 'Exento' || (currentSocio.estadoCuota && currentSocio.estadoCuota.includes('Desvinculado'))) 
+    ? 0 
+    : ((isFeeActive ? (currentSocio.mesesAdeudados || 0) * cuotaMensual : 0) + cuotaIncorp + totalCobrosEspeciales);
 
-  const donationExpenseCategories = financialCategories
-    .filter(category => category.tipo === 'donacion_egreso' && category.activo)
-    .map(category => category.nombre);
-  const availableExpenseCategories = newExpense.origenFondo === 'Fondo Donaciones'
-    ? donationExpenseCategories
-    : QUOTA_EXPENSE_CATEGORIES;
-
-  useEffect(() => {
-    if (availableExpenseCategories.length && !availableExpenseCategories.includes(newExpense.categoria)) {
-      setNewExpense(previous => ({ ...previous, categoria: availableExpenseCategories[0] }));
-    }
-  }, [newExpense.origenFondo, financialCategories]);
-
-  const postulacionesPendientes = postulacionesList.filter(p => p.estado === 'Pendiente Revisión Directorio').length;
-  const renunciasPendientes = sociosList.filter(s => s.estadoCuota === 'Solicitud Renuncia Pendiente Directorio').length;
-  const sectionMeta = {
-    socios: {
-      eyebrow: 'Área personal',
-      title: 'Mi cuenta y padrón',
-      description: 'Actualiza tu ficha, consulta el padrón y revisa tus solicitudes.'
-    },
-    directorio: {
-      eyebrow: 'Directorio nacional',
-      title: 'Cargos y firmas',
-      description: 'Gestiona la representación institucional y sus firmas oficiales.'
-    },
-    finanzas: {
-      eyebrow: 'Administración financiera',
-      title: 'Finanzas',
-      description: 'Consulta el balance y administra cobros, egresos y postulaciones.'
-    },
-    auditoria: {
-      eyebrow: 'Control institucional',
-      title: 'Registro de auditoría',
-      description: 'Revisa la actividad relevante de la intranet.'
-    }
-  }[section] || {
-    eyebrow: 'Intranet',
-    title: 'Gestión de socios',
-    description: 'Administra la información gremial.'
-  };
-  const contextualTabs = {
-    socios: [
-      { id: 'mi-cuenta', label: 'Mi cuenta', icon: User },
-      { id: 'padron', label: 'Padrón y cuotas', icon: Users },
-      { id: 'renuncias', label: canManageFinances ? 'Renuncias' : 'Mi renuncia', icon: UserX, badge: canManageFinances ? renunciasPendientes : null }
-    ],
-    directorio: canManageCategoriesAndCargos ? [
-      { id: 'directorio-gestion', label: 'Cargos y firmas', icon: ClipboardList }
-    ] : [],
-    finanzas: canManageFinances ? [
-      { id: 'balance', label: 'Balance', icon: PieChart },
-      { id: 'donaciones', label: 'Fondo donaciones', icon: DollarSign },
-      { id: 'egresos', label: 'Egresos', icon: Receipt },
-      { id: 'cobros-especiales', label: 'Cobros', icon: Wallet },
-      { id: 'postulaciones', label: 'Postulaciones', icon: UserPlus, badge: postulacionesPendientes },
-      { id: 'renuncias', label: 'Renuncias', icon: UserX, badge: renunciasPendientes }
-    ] : [],
-    auditoria: (isMasterUser || isDirectiva) ? [
-      { id: 'auditoria', label: 'Actividad institucional', icon: ClipboardList }
-    ] : []
-  }[section] || [];
-
-  const totalIngresos = sociosList.reduce((acc, socio) => {
-    const pagosSocio = (socio.historialPagos || []).reduce((pAcc, p) => pAcc + (p.monto || 0), 0);
-    return acc + pagosSocio;
-  }, 0);
-
-  const totalEgresos = expensesList.reduce((acc, exp) => acc + Number(exp.monto || 0), 0);
-  const saldoCaja = totalIngresos - totalEgresos;
-
-  const filteredSocios = sociosList.filter(s => {
-    // Ocultar cuenta de sistema
-    if (s.email === 'ag.pruaned@gmail.com') return false;
-
-    const matchesSearch = s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          s.rut.includes(searchTerm) ||
-                          (s.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesEstado = selectedEstado === 'TODOS' || s.estadoCuota === selectedEstado;
-    const matchesCat = selectedCategory === 'TODAS' || s.categoria === selectedCategory;
-    return matchesSearch && matchesEstado && matchesCat;
-  });
-
-  const handleFileUploadFoto = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const compressedBase64 = await compressImage(file, 400, 0.7);
-        setEditFotoPerfil(compressedBase64);
-      } catch (err) {
-        console.error('Error compressing profile photo', err);
-        alert('Hubo un error al procesar la imagen.');
-      }
+  // Subir y comprimir foto de perfil con Supabase Storage
+  const handleFotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressedBase64 = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.8 });
+      const storageUrl = await uploadToSupabaseStorage('perfiles', `socio_${currentSocio.id || 'avatar'}.webp`, compressedBase64);
+      setEditFotoPerfil(storageUrl || compressedBase64);
+    } catch (err) {
+      alert('Error al procesar la imagen: ' + err.message);
     }
   };
 
-  const handleFileUploadFirma = async (cargoKey, e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const compressedBase64 = await compressImage(file, 600, 0.8);
-        updateFirmaOficial(cargoKey, compressedBase64);
-        alert(`¡Firma digitalizada de ${cargoKey === 'presidenteFirma' ? 'Presidente' : 'Secretario'} actualizada en certificados y documentos!`);
-      } catch (err) {
-        console.error('Error compressing signature', err);
-        alert('Hubo un error al procesar la firma.');
-      }
+  // Guardar cambios de perfil
+  const handleSavePerfil = async (e) => {
+    e.preventDefault();
+    setIsSavingPerfil(true);
+    try {
+      const perfilData = {
+        email: editEmail,
+        telefono: editTelefono,
+        domicilio: editDomicilio,
+        comuna: editComuna,
+        region: editRegion,
+        fechaNacimiento: editFechaNacimiento,
+        estadoCivil: editEstadoCivil,
+        profesion: editProfesion,
+        fotoPerfil: editFotoPerfil
+      };
+      await updateSocioPerfil(currentSocio.id, perfilData);
+      alert('✓ Perfil actualizado correctamente');
+    } catch (err) {
+      alert('Error al guardar perfil: ' + err.message);
+    } finally {
+      setIsSavingPerfil(false);
     }
   };
+
+  // Subir comprobante de pago
+  const handleComprobanteUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.7 });
+      const storageUrl = await uploadToSupabaseStorage('comprobantes', `pago_${currentSocio.id}_${Date.now()}.webp`, compressed);
+      setComprobanteInput(storageUrl || compressed);
+    } catch (err) {
+      alert('Error al procesar el comprobante: ' + err.message);
+    }
+  };
+
+  const handleEnviarPago = async (e) => {
+    e.preventDefault();
+    if (!comprobanteInput.trim()) {
+      alert('Por favor adjunta el comprobante o ingresa el código de transferencia.');
+      return;
+    }
+    try {
+      await updateSocioCuota(currentSocio.id, 'Al Día', comprobanteInput, false, isCuotaIncorporacionCheck);
+      await sendPagoEmail({
+        monto: isCuotaIncorporacionCheck ? cuotaIncorp : cuotaMensual,
+        mesesCancelados: isCuotaIncorporacionCheck ? 'Cuota de Incorporación' : '1 Mes',
+        referencia: comprobanteInput.startsWith('http') ? comprobanteInput : 'Comprobante adjuntado'
+      }, currentSocio);
+      alert('✓ Comprobante enviado a Tesorería exitosamente.');
+      setActivePaymentModal(false);
+      setComprobanteInput('');
+    } catch (err) {
+      alert('Error al enviar pago: ' + err.message);
+    }
+  };
+
+  // Exportar datos ARCO (Ley 19.628 / 21.719)
   const handleExportarDatosARCO = () => {
     const dataARCO = {
-      timestamp_descarga: new Date().toISOString(),
-      entidad: 'PRUANED A.G.',
-      derechos_arco: 'Derecho de Acceso y Portabilidad (Ley 19.628)',
-      socio: currentSocio
+      titulo: "REGISTRO DE DATOS PERSONALES Y GREMIALES - PRUANED A.G.",
+      marcoLegal: "Ley N° 19.628 sobre Protección de la Vida Privada y Ley N° 21.719",
+      fechaExportacion: new Date().toISOString(),
+      socio: {
+        id: currentSocio.id,
+        nombre: currentSocio.nombre,
+        rut: currentSocio.rut,
+        email: currentSocio.email,
+        telefono: currentSocio.telefono || 'No informado',
+        domicilio: currentSocio.domicilio || 'No informado',
+        comuna: currentSocio.comuna || 'No informado',
+        region: currentSocio.region || 'No informado',
+        profesion: currentSocio.profesion || 'No informado',
+        categoria: currentSocio.categoria,
+        estadoCuota: currentSocio.estadoCuota,
+        mesesAdeudados: currentSocio.mesesAdeudados,
+        cuotaIncorporacionPagada: currentSocio.cuotaIncorporacionPagada,
+        historialPagos: currentSocio.historialPagos || []
+      }
     };
-    const blob = new Blob([JSON.stringify(dataARCO, null, 2)], { type: 'application/json' });
-    const el = document.createElement('a');
-    el.href = URL.createObjectURL(blob);
-    el.download = `PRUANED_Datos_ARCO_${currentSocio.rut}.json`;
-    document.body.appendChild(el);
-    el.click();
-    document.body.removeChild(el);
-    alert('Se ha descargado un archivo JSON con toda tu información en cumplimiento de la Ley 19.628.');
-  };
-
-  const handleSaveMiCuentaSubmit = (e) => {
-    e.preventDefault();
-    updateSocioPerfil(currentSocio.id, {
-      email: editEmail.trim(),
-      telefono: editTelefono.trim(),
-      domicilio: editDomicilio.trim(),
-      comuna: editComuna.trim(),
-      region: editRegion.trim(),
-      fechaNacimiento: editFechaNacimiento,
-      estadoCivil: editEstadoCivil.trim(),
-      profesion: editProfesion.trim(),
-      fotoPerfil: editFotoPerfil
-    });
-    alert('¡Tus datos de contacto y perfil han sido actualizados!');
-  };
-
-  const handleRegisterPayment = (e) => {
-    e.preventDefault();
-    if (activePaymentModal && canManageFinances) {
-      const remainingMonthlyDebt = Math.max(0, Number(activePaymentModal.mesesAdeudados || 0) - 1);
-      const nextEstado = isCuotaIncorporacionCheck
-        ? activePaymentModal.estadoCuota
-        : remainingMonthlyDebt > 0 ? 'En Mora' : 'Al Día';
-      updateSocioCuota(
-        activePaymentModal.id, 
-        nextEstado,
-        comprobanteInput.trim() || 'Validado por Tesorería',
-        false, 
-        isCuotaIncorporacionCheck
-      );
-      
-      const pagoData = {
-        monto: isCuotaIncorporacionCheck ? (activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual) : (activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual),
-        referencia: comprobanteInput.trim() || 'Validado por Tesorería'
-      };
-      sendPagoEmail(pagoData, activePaymentModal);
-
-      setActivePaymentModal(null);
-      setComprobanteInput('');
-      setIsCuotaIncorporacionCheck(false);
-    }
-  };
-
-  const handleAddExpenseSubmit = async (e) => {
-    e.preventDefault();
-    if (newExpense.numeroDocumento && newExpense.monto && newExpense.categoria) {
-      try {
-        await addExpense({
-        ...newExpense,
-        monto: Number(newExpense.monto),
-        fecha: new Date().toISOString().split('T')[0]
-      });
-        setNewExpense({
-          tipoDocumento: 'Factura',
-          numeroDocumento: '',
-          proveedor: '',
-          monto: '',
-          origenFondo: 'Fondo Cuotas',
-          categoria: QUOTA_EXPENSE_CATEGORIES[0],
-          glosa: ''
-        });
-      } catch (error) {
-        alert(error.message || 'No fue posible registrar el egreso. Verifica la migración financiera y tu permiso.');
-      }
-    }
-  };
-
-  const handleAddCobroEspecial = (e) => {
-    e.preventDefault();
-    if (newCobro.titulo && (newCobro.monto || newCobro.tipoCobro === 'Cuota Mensual')) {
-      let arrayToBatch = [];
-      const numMeses = newCobro.tipoCobro === 'Cuota Mensual' ? parseInt(newCobro.mesesAGenerar || 1, 10) : 1;
-      
-      const generateForSocio = (s) => {
-        let cobrosSocio = [];
-        for (let i = 0; i < numMeses; i++) {
-          const montoCalculado = newCobro.tipoCobro === 'Cuota Mensual' 
-            ? (financialSettings.cuotasPorCategoria?.[s.categoria] ?? financialSettings.cuotaMensualActual) 
-            : Number(newCobro.monto);
-            
-          const suffix = numMeses > 1 ? ` (${i + 1}/${numMeses})` : '';
-          
-          cobrosSocio.push({
-            socioId: s.id,
-            titulo: `${newCobro.titulo}${suffix}`,
-            monto: montoCalculado,
-            fecha: new Date().toISOString().split('T')[0],
-            pagado: false
-          });
-        }
-        return cobrosSocio;
-      };
-
-      if (newCobro.asignacion === 'A todos') {
-        const sociosActivos = sociosList.filter(s => s.estadoCuota !== 'Exento' && !s.estadoCuota.includes('Desvinculado') && s.email !== 'ag.pruaned@gmail.com');
-        sociosActivos.forEach(s => {
-          arrayToBatch = arrayToBatch.concat(generateForSocio(s));
-        });
-      } else if (newCobro.socioId) {
-        const socio = sociosList.find(s => s.id === newCobro.socioId);
-        if (socio) {
-          arrayToBatch = arrayToBatch.concat(generateForSocio(socio));
-        }
-      }
-
-      if (arrayToBatch.length > 0) {
-        addCobrosBatch(arrayToBatch);
-        setNewCobro({ tipoCobro: 'Cuota Mensual', titulo: '', monto: '', asignacion: 'A todos', socioId: '', mesesAGenerar: 1 });
-        alert(`¡Se emitieron ${arrayToBatch.length} cobro(s) exitosamente!`);
-      }
-    }
-  };
-
-  const handleExportCSV = () => {
-    const headers = "RUT,Nombre,Categoria,EstadoCuota,MesesAdeudados,DeudaCalculadaCLP,UltimoPago\n";
-    const rows = sociosList.map(s => {
-      const pendingCobros = cobrosList.filter(c => c.socioId === s.id && !c.pagado).reduce((acc, c) => acc + (c.monto || 0), 0);
-      const cuotaIncorpPagadaReal = s.cuotaIncorporacionPagada || (s.fechaIngreso && new Date(s.fechaIngreso).getFullYear() < 2026);
-      const cuotaIncorp = cuotaIncorpPagadaReal ? 0 : (s.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual);
-      const deuda = (s.estadoCuota === 'Exento' || s.estadoCuota.includes('Desvinculado') || s.categoria === 'Socio Honorario') ? 0 : cuotaIncorp + pendingCobros;
-
-      return `"${s.rut}","${s.nombre}","${s.categoria}","${s.estadoCuota}","${s.mesesAdeudados || 0}","${deuda}","${s.ultimaCuotaPagada}"`;
-    }).join("\n");
-    
-    const element = document.createElement("a");
-    const file = new Blob(['\uFEFF' + headers + rows], { type: 'text/csv;charset=utf-8' });
-    element.href = URL.createObjectURL(file);
-    element.download = `Padron_Deudas_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
-
-  const handleExportRegistroSociosCSV = () => {
-    const headers = "Nombre Socio,RUT,Fecha Ingreso,Fecha Renuncia/Desvinculación,Motivo Renuncia\n";
-    const rows = sociosList.map(s => {
-      const fechaIngreso = s.fechaIngreso || 'No registrada';
-      const fechaRenuncia = s.fechaRetiroOficial || s.fechaSolicitudRenuncia || 'Activo';
-      const motivo = s.motivoRenuncia || (s.estadoCuota.includes('Desvinculado') ? 'Desvinculado' : 'N/A');
-      
-      return `"${s.nombre}","${s.rut}","${fechaIngreso}","${fechaRenuncia}","${motivo}"`;
-    }).join("\n");
-    
-    const element = document.createElement("a");
-    const file = new Blob(['\uFEFF' + headers + rows], { type: 'text/csv;charset=utf-8' });
-    element.href = URL.createObjectURL(file);
-    element.download = `Registro_Socios_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    const blob = new Blob([JSON.stringify(dataARCO, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Datos_ARCO_PRUANED_${currentSocio.rut || 'SOCIO'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <section className="min-h-screen bg-slate-50 py-2 text-slate-900 font-['Plus_Jakarta_Sans']">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <header className="border-b border-slate-200 pb-0">
-          <div className="max-w-2xl pb-6">
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-blue-700">{sectionMeta.eyebrow}</p>
-            <h2 className="font-['Outfit'] text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">{sectionMeta.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{sectionMeta.description}</p>
-          </div>
+    <section className="space-y-6 animate-fade-in font-['Plus_Jakarta_Sans']">
+      
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 font-bold text-[10px] rounded-full uppercase tracking-wider">
+            Portal Personal
+          </span>
+          <h2 className="text-2xl font-extrabold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
+            <User className="w-6 h-6 text-blue-900" /> Mi Cuenta &amp; Ficha Gremial
+          </h2>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Administra tus datos de contacto, descarga tu credencial y revisa tu estado de cuotas.
+          </p>
+        </div>
 
-          {contextualTabs.length > 0 && (
-            <nav className="flex gap-1 overflow-x-auto" aria-label={`Opciones de ${sectionMeta.title}`}>
-              {contextualTabs.map(({ id, label, icon: Icon, badge }) => {
-                const active = activeTabLocal === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setActiveTabLocal(id)}
-                    aria-current={active ? 'page' : undefined}
-                    className={`inline-flex min-h-11 flex-none items-center gap-2 border-b-2 px-3 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 ${active ? 'border-blue-700 text-blue-800' : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-950'}`}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                    {label}
-                    {badge > 0 && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-900">{badge}</span>}
-                  </button>
-                );
-              })}
-            </nav>
-          )}
-        </header>
+        {/* Botones de Credencial y Certificado con QR */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsCredencialModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all"
+          >
+            <UserCheck className="w-4 h-4" /> Credencial Oficial con QR
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCertificadoModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow transition-all"
+          >
+            <Award className="w-4 h-4" /> Certificado de Afiliación
+          </button>
+        </div>
+      </div>
 
-        {/* SUBTAB: MI CUENTA */}
-        {activeTabLocal === 'mi-cuenta' && (
-          <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
-              
-              <div className="border-b border-slate-100 pb-4">
-                <span className="px-2.5 py-0.5 bg-blue-100 text-blue-900 font-bold text-[10px] rounded-full uppercase">
-                  Ficha de Miembro Gremial
-                </span>
-                <h3 className="text-2xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
-                  <User className="w-6 h-6 text-blue-900" />
-                  Mi Cuenta & Datos Personales
-                </h3>
-              </div>
+      {/* Grid Principal: Datos de Perfil + Estado Financiero */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-              <form onSubmit={handleSaveMiCuentaSubmit} className="space-y-6 text-xs">
-                
-                <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                  <div className="relative group flex-shrink-0">
-                    <img
-                      src={editFotoPerfil}
-                      alt={currentSocio.nombre}
-                      className="w-24 h-24 rounded-full object-cover border-4 border-blue-900 shadow-lg"
-                    />
-                    <label className="absolute bottom-0 right-0 bg-blue-900 text-white p-2 rounded-full cursor-pointer hover:bg-blue-800 shadow transition-transform hover:scale-110">
-                      <Camera className="w-4 h-4" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUploadFoto}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="space-y-1 text-center sm:text-left">
-                    <h4 className="text-lg font-bold text-slate-900 font-['Outfit']">
-                      {currentSocio.nombre}
-                    </h4>
-                    <div className="text-xs text-blue-900 font-semibold">{currentSocio.profesion}</div>
-                    <div className="text-[11px] text-slate-500 font-mono">RUT: {currentSocio.rut} • Categoría: {currentSocio.categoria}</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Correo Electrónico *</label>
-                    <input
-                      type="email"
-                      required
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Teléfono Móvil *</label>
-                    <input
-                      type="tel"
-                      required
-                      value={editTelefono}
-                      onChange={(e) => setEditTelefono(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Fecha de Nacimiento *</label>
-                    <input
-                      type="date"
-                      required
-                      value={editFechaNacimiento}
-                      onChange={(e) => setEditFechaNacimiento(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Estado Civil *</label>
-                    <select
-                      required
-                      value={editEstadoCivil}
-                      onChange={(e) => setEditEstadoCivil(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                    >
-                      <option value="">Seleccionar...</option>
-                      <option value="Soltero">Soltero/a</option>
-                      <option value="Casado">Casado/a</option>
-                      <option value="Conviviente Civil">Conviviente Civil</option>
-                      <option value="Divorciado">Divorciado/a</option>
-                      <option value="Viudo">Viudo/a</option>
-                      <option value="Separado">Separado/a</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Profesión *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editProfesion}
-                      onChange={(e) => setEditProfesion(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Región *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editRegion}
-                      onChange={(e) => setEditRegion(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Comuna / Ciudad *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editComuna}
-                      onChange={(e) => setEditComuna(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Dirección Completa *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editDomicilio}
-                      onChange={(e) => setEditDomicilio(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-white font-extrabold rounded-xl text-xs shadow flex items-center gap-2"
-                  >
-                    <Save className="w-4 h-4 text-emerald-400" /> Guardar Cambios en Mi Cuenta
-                  </button>
-                </div>
-
-              </form>
-              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-                <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
-                  <div>
-                    <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 font-bold text-[10px] rounded-full uppercase">
-                      Ley 19.628
-                    </span>
-                    <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
-                      <Scale className="w-5 h-5 text-emerald-600" />
-                      Derechos ARCO y Privacidad
-                    </h3>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-600">
-                  En cumplimiento de la Ley sobre Protección de la Vida Privada (Ley 19.628) y la nueva Ley de Datos de Chile, tienes derecho a solicitar una copia de toda la información personal y financiera que PRUANED almacena sobre ti (Derecho de Acceso y Portabilidad).
-                </p>
-                <div className="flex justify-start pt-2">
-                  <button
-                    type="button"
-                    onClick={handleExportarDatosARCO}
-                    className="px-6 py-3 bg-slate-800 hover:bg-slate-900 text-white font-extrabold rounded-xl text-xs shadow flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4 text-emerald-400" /> Descargar mis datos (Formato JSON)
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 1: PADRÓN & CONTROL DE DEUDAS */}
-        {activeTabLocal === 'renuncias' && (
-          <div className="space-y-6 animate-fade-in">
-            {canManageFinances ? (
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <h3 className="text-lg font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
-                  <FileCheck2 className="w-5 h-5 text-amber-600" />
-                  Solicitudes de Renuncia & Desvinculación Voluntaria (DL N° 2.757)
-                </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sociosList.filter(s => s.estadoCuota.includes('Renuncia') || s.estadoCuota.includes('Desvinculado')).length ? sociosList.filter(s => s.estadoCuota.includes('Renuncia') || s.estadoCuota.includes('Desvinculado')).map((soc) => (
-                  <div key={soc.id} className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="px-2.5 py-0.5 bg-slate-200 text-slate-800 font-bold text-[10px] rounded-full font-mono">
-                          {soc.id}
-                        </span>
-                        <h4 className="font-bold text-slate-900 text-base font-['Outfit'] mt-1">
-                          {soc.nombre}
-                        </h4>
-                        <p className="text-xs text-slate-500 font-mono">{soc.rut} • {soc.email}</p>
-                      </div>
-                      <span className={`badge-inst ${
-                        soc.estadoCuota.includes('Aprobado') ? 'badge-green' : 'badge-amber'
-                      }`}>
-                        {soc.estadoCuota}
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-slate-600 space-y-1 bg-white p-3 rounded-lg border border-slate-200">
-                      <div>• <strong>Fecha Solicitud:</strong> {soc.fechaSolicitudRenuncia || 'Sin fecha registrada'}</div>
-                      <div>• <strong>Motivo Expresado:</strong> {soc.motivoRenuncia || 'Sin motivo registrado'}</div>
-                      {soc.actaDirectorioAprobacion && (
-                        <div>• <strong>Acta Aprobación Directorio:</strong> <span className="font-bold text-emerald-800">{soc.actaDirectorioAprobacion}</span></div>
-                      )}
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200 flex justify-end">
-                      {soc.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' && (
-                        <button
-                          onClick={() => setActiveApproveRenunciaModal(soc)}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
-                        >
-                          <Check className="w-4 h-4" /> Revisar y aprobar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )) : <div className="col-span-full rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">No hay solicitudes de renuncia ni desvinculaciones registradas.</div>}
-              </div>
-            </div>
-            ) : (
-              <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-lg mx-auto">
-                <h3 className="text-2xl font-bold text-slate-900 font-['Outfit'] mb-4 flex justify-center items-center gap-2">
-                  <FileCheck2 className="w-6 h-6 text-rose-600" />
-                  Solicitar Mi Renuncia
-                </h3>
-                <p className="text-slate-600 mb-6">
-                  Si deseas desvincularte de PRUANED A.G. conforme a los estatutos, puedes enviar una solicitud formal de renuncia.
-                  Esta será revisada y ratificada por el Directorio Nacional.
-                </p>
-                {currentSocio.estadoCuota === 'Solicitud Renuncia Pendiente Directorio' ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-950">
-                    <p className="font-bold">Solicitud enviada al Directorio</p>
-                    <p className="mt-1">Fecha: {currentSocio.fechaSolicitudRenuncia || 'Sin fecha registrada'}</p>
-                    <p className="mt-1">Motivo: {currentSocio.motivoRenuncia || 'Sin motivo registrado'}</p>
-                  </div>
+        {/* --- FORMULARIO DATOS DE CONTACTO --- */}
+        <form onSubmit={handleSavePerfil} className="lg:col-span-8 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
+          <div className="flex items-center gap-5 border-b border-slate-100 pb-6">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl bg-slate-100 border-2 border-slate-200 overflow-hidden flex items-center justify-center">
+                {editFotoPerfil ? (
+                  <img src={editFotoPerfil} alt="Foto perfil" className="w-full h-full object-cover" />
                 ) : (
-                  <button
-                    onClick={() => setActiveRequestRenunciaModal(currentSocio)}
-                    className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm transition-colors"
-                  >
-                    Solicitar Renuncia Gremial
-                  </button>
+                  <User className="w-10 h-10 text-slate-400" />
                 )}
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 p-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl shadow"
+                title="Cambiar foto de perfil"
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFotoUpload}
+                className="hidden"
+              />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">{currentSocio.nombre}</h3>
+              <p className="text-xs text-slate-500 font-mono font-bold">RUT: {currentSocio.rut}</p>
+              <span className="inline-block mt-1 px-2.5 py-0.5 bg-blue-50 text-blue-800 text-[10px] font-bold rounded-full border border-blue-200">
+                {currentSocio.categoria || 'Socio Activo'}
+              </span>
+            </div>
           </div>
-        )}
 
-        {/* TAB 3: POSTULACIONES */}
-        {activeTabLocal === 'auditoria' && (isMasterUser || isDirectiva) && (
-          <AuditoriaPanel securityLogs={securityLogs || []} />
-        )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-slate-400" /> Correo Electrónico *
+              </label>
+              <input
+                type="email"
+                required
+                value={editEmail}
+                onChange={e => setEditEmail(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-slate-400" /> Teléfono
+              </label>
+              <input
+                type="tel"
+                value={editTelefono}
+                onChange={e => setEditTelefono(e.target.value)}
+                placeholder="+56 9 1234 5678"
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" /> Domicilio
+              </label>
+              <input
+                type="text"
+                value={editDomicilio}
+                onChange={e => setEditDomicilio(e.target.value)}
+                placeholder="Calle, número, depto / villa"
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Comuna</label>
+              <input
+                type="text"
+                value={editComuna}
+                onChange={e => setEditComuna(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Región</label>
+              <input
+                type="text"
+                value={editRegion}
+                onChange={e => setEditRegion(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Profesión u Ocupación</label>
+              <input
+                type="text"
+                value={editProfesion}
+                onChange={e => setEditProfesion(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Fecha de Nacimiento</label>
+              <input
+                type="date"
+                value={editFechaNacimiento}
+                onChange={e => setEditFechaNacimiento(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-3 border-t border-slate-100">
+            <button
+              type="submit"
+              disabled={isSavingPerfil}
+              className="px-6 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow flex items-center gap-2 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" /> {isSavingPerfil ? 'Guardando...' : 'Guardar Cambios'}
+            </button>
+          </div>
+        </form>
+
+        {/* --- PANEL ESTADO DE CUOTAS Y PAGOS --- */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2 text-base">
+                <Receipt className="w-4 h-4 text-emerald-600" /> Estado Financiero
+              </h3>
+              <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full ${
+                deudaCalculada === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+              }`}>
+                {deudaCalculada === 0 ? 'Al Día' : 'Cuotas Pendientes'}
+              </span>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-600">Cuota mensual ordinaria:</span>
+                <span className="font-bold text-slate-900">${cuotaMensual.toLocaleString('es-CL')}</span>
+              </div>
+              {cuotaIncorp > 0 && (
+                <div className="flex justify-between items-center text-xs text-amber-900">
+                  <span>Cuota de incorporación:</span>
+                  <span className="font-bold">${cuotaIncorp.toLocaleString('es-CL')}</span>
+                </div>
+              )}
+              {totalCobrosEspeciales > 0 && (
+                <div className="flex justify-between items-center text-xs text-purple-900">
+                  <span>Cobros extraordinarios:</span>
+                  <span className="font-bold">${totalCobrosEspeciales.toLocaleString('es-CL')}</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-bold">
+                <span className="text-slate-800">Total a pagar:</span>
+                <span className={deudaCalculada === 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                  ${deudaCalculada.toLocaleString('es-CL')}
+                </span>
+              </div>
+            </div>
+
+            {/* Botón de Informar Pago */}
+            <button
+              type="button"
+              onClick={() => setActivePaymentModal(true)}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-2"
+            >
+              <Receipt className="w-4 h-4" /> Informar / Subir Comprobante de Pago
+            </button>
+
+            {/* Datos para transferencia */}
+            <div className="text-[10px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-0.5 font-mono">
+              <p className="font-bold text-slate-700 font-sans">Datos de Transferencia Bancaria:</p>
+              <p>Banco: Banco Estado</p>
+              <p>Cuenta Corriente N°: 123456789</p>
+              <p>RUT: 65.123.456-7</p>
+              <p>Email: tesoreria@pruaned.cl</p>
+            </div>
+          </div>
+
+          {/* DERECHOS ARCO (Ley 19.628 / 21.719) */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <Scale className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-bold text-slate-900 text-sm">Derechos ARCO &amp; Portabilidad</h3>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Descarga una copia completa de toda tu información personal, bancaria y gremial almacenada en PRUANED en formato auditable.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleExportarDatosARCO}
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-400" /> Descargar mis datos (JSON)
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(true)}
+                className="w-full py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 text-center underline"
+              >
+                Ver Política de Tratamiento de Datos
+              </button>
+            </div>
+          </div>
+        </div>
 
       </div>
 
-      {/* POSTULACION MODAL */}
-      {activePostulacionModal && (() => {
-        const socioVinculado = activePostulacionModal.estado === 'Aceptada / Incorporado'
-          ? sociosList.find(s => s.rut === activePostulacionModal.rut || s.email === activePostulacionModal.email)
-          : null;
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-['Outfit']">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
-              <button
-                onClick={() => setActivePostulacionModal(null)}
-                className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 text-slate-500"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-6 h-6 text-blue-900" />
-                  <div>
-                    <h3 className="text-2xl font-bold text-slate-900">Ficha de Postulación</h3>
-                    <p className="text-xs text-slate-400 font-mono">{activePostulacionModal.id} — Enviada el {activePostulacionModal.fechaEnvio}</p>
-                  </div>
-                </div>
-                <span className={`mt-3 inline-block text-xs font-bold px-3 py-1 rounded-full border ${
-                  activePostulacionModal.estado === 'Aceptada / Incorporado' ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                  : activePostulacionModal.estado === 'Rechazada' ? 'bg-rose-100 text-rose-800 border-rose-300'
-                  : 'bg-amber-100 text-amber-800 border-amber-300'
-                }`}>{activePostulacionModal.estado}</span>
-              </div>
-
-              {socioVinculado && (
-                <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-sm text-emerald-800">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold">Socio Incorporado Vinculado</p>
-                    <p className="text-xs text-emerald-600">{socioVinculado.nombre} — {socioVinculado.categoria} — Ingreso: {socioVinculado.fechaIngreso}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-4 text-sm text-slate-700">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Nombre Completo</span>{activePostulacionModal.nombreCompleto}</div>
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">RUT</span>{activePostulacionModal.rut}</div>
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Email</span>{activePostulacionModal.email}</div>
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Teléfono</span>{activePostulacionModal.telefono || '-'}</div>
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Profesión</span>{activePostulacionModal.profesion}</div>
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Comuna</span>{activePostulacionModal.comuna}</div>
-                </div>
-                {activePostulacionModal.razonesIntegracion && (
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Razones de Integración</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.razonesIntegracion}</p></div>
-                )}
-                {activePostulacionModal.aporteEsperado && (
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Aporte Esperado</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.aporteEsperado}</p></div>
-                )}
-                {activePostulacionModal.experienciaPrevia && (
-                  <div><span className="font-bold text-slate-400 text-xs uppercase block">Experiencia Previa</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.experienciaPrevia}</p></div>
-                )}
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex gap-3 justify-end">
-                <button
-                  onClick={() => setActivePostulacionModal(null)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
-                >
-                  Cerrar
-                </button>
-                {activePostulacionModal.estado === 'Pendiente Revisión Directorio' && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { handleRejectApplicant(activePostulacionModal.id); }}
-                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
-                    >
-                      <X className="w-4 h-4" /> Rechazar
-                    </button>
-                    <button
-                      onClick={() => { handleApproveApplicant(activePostulacionModal.id, 'Socio Activo'); }}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-lg"
-                    >
-                      <Check className="w-4 h-4" /> Aprobar e Incorporar
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
+      {/* MODAL: SUBIR COMPROBANTE DE PAGO */}
       {activePaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <section role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title" aria-describedby="payment-dialog-description" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Tesorería</p>
-                <h3 id="payment-dialog-title" className="mt-1 font-['Outfit'] text-xl font-extrabold text-slate-950">Registrar pago</h3>
-              </div>
-              <button type="button" onClick={() => { setActivePaymentModal(null); setComprobanteInput(''); setIsCuotaIncorporacionCheck(false); }} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700" aria-label="Cerrar registro de pago"><X className="h-5 w-5" aria-hidden="true" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <form onSubmit={handleEnviarPago} className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 space-y-5 border border-slate-200">
+            <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-emerald-600" /> Informar Pago de Cuotas
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Adjunta la captura de tu transferencia bancaria o comprobante. Tesorería validará el depósito y tu cuenta quedará Al Día.
+            </p>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Comprobante de Transferencia *</label>
+              <input
+                ref={comprobanteFileRef}
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleComprobanteUpload}
+                className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100"
+              />
+              {comprobanteInput && (
+                <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ Comprobante listo para enviar</p>
+              )}
             </div>
-            <form onSubmit={handleRegisterPayment} className="space-y-5 pt-5">
-              <p id="payment-dialog-description" className="text-sm leading-6 text-slate-600">Registra un pago para <strong className="text-slate-900">{activePaymentModal.nombre}</strong>. El estado sólo cambiará a “Al Día” si no quedan meses registrados en mora.</p>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-                <div className="flex justify-between gap-3"><span className="text-slate-600">Cuota mensual</span><strong>${(activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual).toLocaleString('es-CL')} CLP</strong></div>
-                <div className="mt-2 flex justify-between gap-3"><span className="text-slate-600">Meses en mora</span><strong>{activePaymentModal.mesesAdeudados || 0}</strong></div>
-              </div>
-              <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 text-sm text-slate-700">
-                <input type="checkbox" checked={isCuotaIncorporacionCheck} onChange={event => setIsCuotaIncorporacionCheck(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-700" />
-                <span><span className="block font-bold text-slate-900">Corresponde a cuota de incorporación</span><span className="mt-1 block text-xs text-slate-600">Monto: ${(activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual).toLocaleString('es-CL')} CLP.</span></span>
-              </label>
-              <label className="block text-sm font-bold text-slate-800" htmlFor="payment-reference">Comprobante o referencia <span className="font-normal text-slate-500">(opcional)</span></label>
-              <input id="payment-reference" autoFocus value={comprobanteInput} onChange={event => setComprobanteInput(event.target.value)} placeholder="Ej. transferencia N.º 1234" className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
-              <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
-                <button type="button" onClick={() => { setActivePaymentModal(null); setComprobanteInput(''); setIsCuotaIncorporacionCheck(false); }} className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">Cancelar</button>
-                <button type="submit" className="min-h-11 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">Confirmar pago</button>
-              </div>
-            </form>
-          </section>
+
+            <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActivePaymentModal(false)}
+                className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" /> Enviar a Tesorería
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
-      {/* SOCIO PERFIL MODAL */}
-      {activeSocioModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-['Outfit']">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setActiveSocioModal(null)}
-              className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 text-slate-500"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
-            <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
-              {activeSocioModal.fotoPerfil ? (
-                <img src={activeSocioModal.fotoPerfil} alt={activeSocioModal.nombre} className="w-16 h-16 rounded-full object-cover shadow-sm border border-slate-200" />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-slate-900 text-white flex items-center justify-center text-2xl font-bold shadow-sm">
-                  {activeSocioModal.nombre.charAt(0)}
-                </div>
-              )}
-              <div>
-                <h3 className="text-2xl font-bold text-slate-900">{activeSocioModal.nombre}</h3>
-                <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold border border-slate-200">{activeSocioModal.categoria}</span>
-              </div>
-            </div>
-            
-            <div className="space-y-4 text-sm text-slate-700">
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">RUT</span>{activeSocioModal.rut}</div>
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">Email</span>{activeSocioModal.email}</div>
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">Teléfono</span>{activeSocioModal.telefono || '-'}</div>
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">Profesión</span>{activeSocioModal.profesion}</div>
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">Región</span>{activeSocioModal.region || '-'}</div>
-                <div><span className="font-bold text-slate-400 text-xs uppercase block">Fecha Ingreso</span>{activeSocioModal.fechaIngreso || '-'}</div>
-                <div className="col-span-2"><span className="font-bold text-slate-400 text-xs uppercase block">Domicilio</span>{activeSocioModal.domicilio || '-'} {activeSocioModal.comuna || ''}</div>
-              </div>
-              
-              <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-2 flex items-center gap-2"><Wallet className="w-4 h-4 text-blue-800"/> Estado Financiero</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><span className="font-bold text-slate-500 text-xs block">Estado Cuota</span>
-                    <span className={`font-bold ${activeSocioModal.estadoCuota.includes('Mora') ? 'text-rose-600' : 'text-emerald-600'}`}>
-                      {activeSocioModal.estadoCuota}
-                    </span>
-                  </div>
-                  <div><span className="font-bold text-slate-500 text-xs block">Meses Adeudados</span>{activeSocioModal.mesesAdeudados || 0} meses</div>
-                  <div><span className="font-bold text-slate-500 text-xs block">Cuota Mensual Pactada</span>${(activeSocioModal.montoCuotaMensual || financialSettings.cuotaMensualActual).toLocaleString('es-CL')}</div>
-                  <div><span className="font-bold text-slate-500 text-xs block">Cuota Incorporación</span>
-                    {activeSocioModal.cuotaIncorporacionPagada || (activeSocioModal.fechaIngreso && new Date(activeSocioModal.fechaIngreso).getFullYear() < 2026) ? (
-                      <span className="text-emerald-600 font-bold"><Check className="w-3 h-3 inline"/> Pagada</span>
-                    ) : (
-                      <span className="text-rose-600 font-bold"><X className="w-3 h-3 inline"/> Pendiente (${(activeSocioModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual).toLocaleString('es-CL')})</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+      {/* MODAL: CREDENCIAL DIGITAL */}
+      {isCredencialModalOpen && (
+        <CredencialDigitalModal
+          socio={currentSocio}
+          onClose={() => setIsCredencialModalOpen(false)}
+        />
+      )}
 
-              {(activeSocioModal.estadoCuota.includes('Desvinculado') || activeSocioModal.fechaSolicitudRenuncia) && (
-                <div className="mt-4 p-4 bg-rose-50 rounded-xl border border-rose-200">
-                  <h4 className="font-bold text-rose-900 mb-2 border-b border-rose-200 pb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4"/> Historial de Desvinculación</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><span className="font-bold text-rose-700 text-xs block">Fecha Solicitud / Retiro</span>{activeSocioModal.fechaRetiroOficial || activeSocioModal.fechaSolicitudRenuncia || '-'}</div>
-                    <div className="col-span-2"><span className="font-bold text-rose-700 text-xs block">Motivo / Acta de Directorio</span>{activeSocioModal.actaDirectorioAprobacion || activeSocioModal.motivoRenuncia || '-'}</div>
-                  </div>
-                </div>
-              )}
+      {/* MODAL: CERTIFICADO DE AFILIACIÓN */}
+      {isCertificadoModalOpen && (
+        <CertificadoAfiliacionModal
+          socio={currentSocio}
+          onClose={() => setIsCertificadoModalOpen(false)}
+        />
+      )}
 
-              {(canManageFinances || activeSocioModal.email === currentUser?.email) && cobrosList.filter(c => c.socioId === activeSocioModal.id && !c.pagado).length > 0 && (
-                <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
-                  <h4 className="font-bold text-amber-900 mb-2 border-b border-amber-200 pb-2 flex items-center gap-2"><DollarSign className="w-4 h-4"/> Deudas Pendientes (Cuotas y Especiales)</h4>
-                  <ul className="space-y-2">
-                    {cobrosList.filter(c => c.socioId === activeSocioModal.id && !c.pagado).map((cobro, idx) => (
-                      <li key={idx} className="flex justify-between text-xs text-amber-800">
-                        <span>{cobro.titulo}</span>
-                        <span className="font-bold">${cobro.monto.toLocaleString('es-CL')}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex gap-3 justify-end">
-              <button
-                onClick={() => setActiveSocioModal(null)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl"
-              >
-                Cerrar Perfil
-              </button>
-            </div>
-          </div>
+      {/* MODAL: POLÍTICA DE PRIVACIDAD */}
+      {isPrivacyModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+          <PrivacyDataPolicy onClose={() => setIsPrivacyModalOpen(false)} />
         </div>
       )}
 
     </section>
   );
-};
-
-
-
+}
