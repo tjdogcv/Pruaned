@@ -1,6 +1,5 @@
 -- ============================================================================
 -- SCRIPT FINAL DE BLINDAJE DE SEGURIDAD (FASE 2) - SUPABASE PRUANED A.G.
--- Elimina los avisos restantes de SECURITY DEFINER y RLS en Cursos/Postulaciones
 -- ============================================================================
 
 -- ============================================================================
@@ -34,23 +33,24 @@ CREATE POLICY "Cursos: gestion directiva" ON public.cursos_lms
     ) OR auth.email() = 'ag.pruaned@gmail.com'
   );
 
--- B. Postulaciones Socios: Validación de campos en lugar de CHECK (true)
+-- B. Postulaciones Socios: Validación de campos (nombre_completo, rut, email)
 DROP POLICY IF EXISTS "Postulaciones: insertar público" ON public.postulaciones;
 CREATE POLICY "Postulaciones: insertar público" ON public.postulaciones 
   FOR INSERT TO anon, authenticated
   WITH CHECK (
     email IS NOT NULL AND 
     rut IS NOT NULL AND 
-    length(nombre) > 0
+    nombre_completo IS NOT NULL
   );
 
--- C. Postulaciones Voluntariado: Validación de campos en lugar de CHECK (true)
+-- C. Postulaciones Voluntariado: Validación de campos
 DROP POLICY IF EXISTS "Postulaciones voluntariado insertar público" ON public.postulaciones_voluntariado;
 CREATE POLICY "Postulaciones voluntariado insertar público" ON public.postulaciones_voluntariado 
   FOR INSERT TO anon, authenticated
   WITH CHECK (
     email IS NOT NULL AND 
-    rut IS NOT NULL
+    rut IS NOT NULL AND
+    nombre_completo IS NOT NULL
   );
 
 
