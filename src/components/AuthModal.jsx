@@ -69,17 +69,18 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
     const cleanEmail = sanitizeInput(email).trim().toLowerCase();
 
     if (isSupabaseReady()) {
-      const { data, error } = await supabase.rpc('pruaned_login_lockout', {
-        p_email: cleanEmail,
-        p_ip: null
-      });
-
-      if (!error && data?.blocked) {
-        const delayMs = Number(data.retry_after_seconds || 0) * 1000;
-        setLockoutUntil(Date.now() + delayMs);
-        setErrorMsg(`Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado por ${data.retry_after_seconds} segundos.`);
-        return;
-      }
+      try {
+        const { data, error } = await supabase.rpc('pruaned_login_lockout', {
+          p_email: cleanEmail,
+          p_ip: null
+        });
+        if (!error && data?.blocked) {
+          const delayMs = Number(data.retry_after_seconds || 0) * 1000;
+          setLockoutUntil(Date.now() + delayMs);
+          setErrorMsg(`Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado por ${data.retry_after_seconds} segundos.`);
+          return;
+        }
+      } catch (_) { /* RPC no configurada aún — continuar */ }
     }
 
     if (mode !== 'login_otp' && mode !== 'update_password' && !cleanEmail.includes('@')) {
@@ -105,11 +106,11 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
         // Paso 1: Validar contraseña y solicitar OTP
         await loginStep1_RequestOTP(cleanEmail, password);
         if (isSupabaseReady()) {
-          await supabase.rpc('pruaned_record_login_event', {
-            p_email: cleanEmail,
-            p_event: 'otp_sent',
-            p_ip: null
-          });
+          try {
+            await supabase.rpc('pruaned_record_login_event', {
+              p_email: cleanEmail, p_event: 'otp_sent', p_ip: null
+            });
+          } catch (_) {}
         }
         setMode('login_otp');
         setSuccessMsg('Código enviado a tu correo. Por favor revísalo e ingrésalo a continuación.');
@@ -121,11 +122,11 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
 
         const targetTab = await loginStep2_VerifyOTP(cleanEmail, twoFactorCode);
         if (isSupabaseReady()) {
-          await supabase.rpc('pruaned_record_login_event', {
-            p_email: cleanEmail,
-            p_event: 'success',
-            p_ip: null
-          });
+          try {
+            await supabase.rpc('pruaned_record_login_event', {
+              p_email: cleanEmail, p_event: 'success', p_ip: null
+            });
+          } catch (_) {}
         }
         onClose();
         if (targetTab === 'socios') navigate('/intranet/socios');
@@ -171,25 +172,24 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
       }
     } catch (error) {
       if (isSupabaseReady()) {
-        await supabase.rpc('pruaned_record_login_event', {
-          p_email: cleanEmail,
-          p_event: 'failed',
-          p_ip: null
-        });
-
-        const { data, error: lockoutError } = await supabase.rpc('pruaned_login_lockout', {
-          p_email: cleanEmail,
-          p_ip: null
-        });
-
-        if (!lockoutError && data?.blocked) {
-          const delayMs = Number(data.retry_after_seconds || 0) * 1000;
-          setLockoutUntil(Date.now() + delayMs);
-          setErrorMsg(`Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado por ${data.retry_after_seconds} segundos.`);
-          return;
-        }
+        try {
+          await supabase.rpc('pruaned_record_login_event', {
+            p_email: cleanEmail,
+            p_event: 'failed',
+            p_ip: null
+          });
+          const { data } = await supabase.rpc('pruaned_login_lockout', {
+            p_email: cleanEmail,
+            p_ip: null
+          });
+          if (data?.blocked) {
+            const delayMs = Number(data.retry_after_seconds || 0) * 1000;
+            setLockoutUntil(Date.now() + delayMs);
+            setErrorMsg(`Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado por ${data.retry_after_seconds} segundos.`);
+            return;
+          }
+        } catch (_) { /* RPC no configurada aún — continuar */ }
       }
-
       setErrorMsg(error.message || 'Error en la autenticación.');
     } finally {
       setIsLoading(false);
