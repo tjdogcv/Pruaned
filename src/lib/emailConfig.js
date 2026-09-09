@@ -94,6 +94,30 @@ export const sendPagoValidadoEmail = async (socioData, montoValidado) => {
   }
 };
 
+/**
+ * Envía un aviso / recordatorio de cobro de cuotas pendientes con datos bancarios
+ */
+export const sendAvisoCobroEmail = async (socioData, deudaDetalle = {}) => {
+  if (!socioData?.email || socioData.email.includes('anonimizado')) return;
+  
+  try {
+    const totalCLP = Number(deudaDetalle.montoTotal || 0).toLocaleString('es-CL');
+    return await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      TEMPLATE_ID_APPROVAL,
+      {
+        to_email: socioData.email,
+        nombre_postulante: socioData.nombre,
+        mensaje_personalizado: `Estimado/a ${socioData.nombre}, le recordamos desde Tesorería PRUANED A.G. que registra compromisos sociales pendientes por $${totalCLP} CLP (${deudaDetalle.detalle || 'Cuotas ordinarias'}).\n\nPuede transferir a:\nBanco: Mercado Pago\nTipo: Cuenta Vista\nN° Cuenta: 1046032015\nRUT: 65.272.406-K\nTitular: PRUANED A.G.\nCorreo: ag.pruaned@gmail.com\n\nFavor enviar el comprobante para regularizar su estado de cuota.`
+      },
+      EMAILJS_PUBLIC_KEY
+    );
+  } catch (err) {
+    console.warn("[Email] Error enviando recordatorio de cobro:", err);
+    return null;
+  }
+};
+
 export const sendApprovalEmail = async (postulanteData) => {
   if (EMAILJS_PUBLIC_KEY === "TU_PUBLIC_KEY") {
     console.warn(`[SIMULACIÓN] Correo de APROBACIÓN enviado a: ${postulanteData.email}`);

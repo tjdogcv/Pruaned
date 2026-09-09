@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }) => {
     expensesList, setExpensesList, addExpense, deleteExpense,
     financialCategories, setFinancialCategories, addFinancialCategory, archiveFinancialCategory,
     financialAccounts, setFinancialAccounts, addFinancialAccount, removeFinancialAccount, updateFinancialAccountRut,
-    cobrosList, setCobrosList, addCobrosBatch, balancesList, setBalancesList
+    cobrosList, setCobrosList, addCobrosBatch, markCobroPaid, deleteCobro, balancesList, setBalancesList
   } = financeDomain;
   const [postulacionesList, setPostulacionesList] = useState([]);
 
@@ -672,24 +672,55 @@ export const AuthProvider = ({ children }) => {
     addSecurityLog(`PROMOTED_VOLUNTEER_RANK_${volId}_TO_${nuevoNivel}`, currentUser?.email, "INFO");
   };
 
-  const updateSocioCategoria = (socioId, nuevaCategoria) => {
+  const updateSocioCategoria = async (socioId, nuevaCategoria) => {
+    const esActivo = nuevaCategoria === 'Socio Activo';
+    const esHonorario = nuevaCategoria === 'Socio Honorario';
+    let cuotaMensual = financialSettings.cuotaMensualActual;
+    if (financialSettings.cuotasPorCategoria && financialSettings.cuotasPorCategoria[nuevaCategoria] !== undefined) {
+      cuotaMensual = financialSettings.cuotasPorCategoria[nuevaCategoria];
+    }
+    if (esHonorario) cuotaMensual = 0;
+
     setSociosList(prev => prev.map(s => {
       if (s.id === socioId) {
         return {
           ...s,
           categoria: nuevaCategoria,
-          voto: nuevaCategoria === 'Socio Activo',
-          estadoCuota: nuevaCategoria === 'Socio Honorario' ? 'Exento' : s.estadoCuota,
-          montoCuotaMensual: nuevaCategoria === 'Socio Honorario' ? 0 : financialSettings.cuotaMensualActual
+          voto: esActivo,
+          estadoCuota: esHonorario ? 'Exento' : s.estadoCuota,
+          montoCuotaMensual: cuotaMensual
         };
       }
       return s;
     }));
+
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('socios').update({
+          categoria: nuevaCategoria,
+          voto: esActivo,
+          estado_cuota: esHonorario ? 'Exento' : undefined,
+          monto_cuota_mensual: cuotaMensual
+        }).eq('id', socioId);
+      } catch (err) {
+        console.error('Error in updateSocioCategoria:', err);
+      }
+    }
     addSecurityLog(`UPDATE_SOCIO_CATEGORY_${socioId}_TO_${nuevaCategoria}`, currentUser?.email, "INFO");
   };
 
-  const updateSocioCuotaIncorporacion = (id, pagada) => {
+  const updateSocioCuotaIncorporacion = async (id, pagada) => {
     setSociosList(prev => prev.map(s => s.id === id ? { ...s, cuotaIncorporacionPagada: pagada } : s));
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('socios').update({
+          cuota_incorporacion_pagada: pagada
+        }).eq('id', id);
+      } catch (err) {
+        console.error('Error in updateSocioCuotaIncorporacion:', err);
+      }
+    }
+    addSecurityLog(`UPDATE_SOCIO_INCORPORACION_${id}_TO_${pagada}`, currentUser?.email, "INFO");
   };
 
   const levantarConvocatoriaEmergencia = async (asunto, mensaje) => {
@@ -1017,40 +1048,96 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateSocioCuota = (socioId, newEstado, newComprobante = null, isSuspensionRequest = false, isCuotaIncorporacion = false) => {
+  const updateSocioCuota = async (socioId, newEstado, newComprobante = null, isSuspensionRequest = false, isCuotaIncorporacion = false, paymentDetails = {}) => {
+    let updatedSocioObj = null;
+    const hoy = new Date().toISOString().split('T')[0];
+    const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const mesActualLabel = `${mesesNombres[new Date().getMonth()]} ${new Date().getFullYear()}`;
+
     setSociosList(prev => prev.map(socio => {
       if (socio.id === socioId) {
-        let updatedPagos = socio.historialPagos;
+        let updatedPagos = Array.isArray(socio.historialPagos) ? [...socio.historialPagos] : [];
         let isIncorporacionPaid = socio.cuotaIncorporacionPagada;
-        let mesesAdeudados = socio.mesesAdeudados;
+        let mesesAdeudados = Number(socio.mesesAdeudados || 0);
 
-        if (isCuotaIncorporacion) {
+        const comprobanteRef = paymentDetails.comprobanteUrl || newComprobante || 'Validado por Tesorería';
+
+        if (isCuotaIncorporacion || paymentDetails.isCuotaIncorporacion) {
           isIncorporacionPaid = true;
           updatedPagos = [
-            { mes: "Cuota Incorporación", monto: socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual, fecha: new Date().toISOString().split('T')[0], comprobante: newComprobante || 'Validado por Tesorería' },
-            ...socio.historialPagos
+            {
+              mes: "Cuota Incorporación",
+              monto: Number(paymentDetails.monto || socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual),
+              fecha: hoy,
+              comprobante: comprobanteRef,
+              concepto: paymentDetails.concepto || "Cuota de Incorporación"
+            },
+            ...updatedPagos
           ];
-        } else if (newComprobante !== null) {
-          const currentMonthYear = "Agosto 2026";
-          mesesAdeudados = Math.max(0, mesesAdeudados - 1);
+        } else if (paymentDetails.tipo === 'cobro_especial' || paymentDetails.cobroId) {
           updatedPagos = [
-            { mes: currentMonthYear, monto: socio.montoCuotaMensual || financialSettings.cuotaMensualActual, fecha: new Date().toISOString().split('T')[0], comprobante: newComprobante || 'Validado por Tesorería' },
-            ...socio.historialPagos
+            {
+              mes: paymentDetails.concepto || "Cobro Extraordinario",
+              monto: Number(paymentDetails.monto || 0),
+              fecha: hoy,
+              comprobante: comprobanteRef,
+              concepto: paymentDetails.concepto || "Cobro Extraordinario"
+            },
+            ...updatedPagos
+          ];
+        } else if (newComprobante !== null || paymentDetails.monto) {
+          const mesPagado = paymentDetails.mes || mesActualLabel;
+          const mesesReducir = paymentDetails.mesesReducir !== undefined ? paymentDetails.mesesReducir : 1;
+          mesesAdeudados = Math.max(0, mesesAdeudados - mesesReducir);
+          updatedPagos = [
+            {
+              mes: mesPagado,
+              monto: Number(paymentDetails.monto || socio.montoCuotaMensual || financialSettings.cuotaMensualActual),
+              fecha: hoy,
+              comprobante: comprobanteRef,
+              concepto: paymentDetails.concepto || `Cuota Social ${mesPagado}`
+            },
+            ...updatedPagos
           ];
         }
 
-        return {
+        const calculatedEstado = newEstado || (mesesAdeudados > 0 ? 'En Mora' : 'Al Día');
+
+        updatedSocioObj = {
           ...socio,
-          estadoCuota: newEstado,
+          estadoCuota: calculatedEstado,
           mesesAdeudados: mesesAdeudados,
           cuotaIncorporacionPagada: isIncorporacionPaid,
-          ultimaCuotaPagada: newComprobante || isCuotaIncorporacion ? "Agosto 2026" : socio.ultimaCuotaPagada,
+          ultimaCuotaPagada: paymentDetails.mes || mesActualLabel,
           historialPagos: updatedPagos,
           solicitudSuspenso: isSuspensionRequest ? "Pendiente Aprobación Directorio Art. 42" : socio.solicitudSuspenso
         };
+        return updatedSocioObj;
       }
       return socio;
     }));
+
+    if (isSupabaseReady() && updatedSocioObj) {
+      try {
+        await supabase.from('socios').update({
+          estado_cuota: updatedSocioObj.estadoCuota,
+          meses_adeudados: updatedSocioObj.mesesAdeudados,
+          cuota_incorporacion_pagada: updatedSocioObj.cuotaIncorporacionPagada,
+          ultima_cuota_pagada: updatedSocioObj.ultimaCuotaPagada,
+          historial_pagos: updatedSocioObj.historialPagos,
+          solicitud_suspenso: updatedSocioObj.solicitudSuspenso
+        }).eq('id', socioId);
+      } catch (err) {
+        console.error('Error in updateSocioCuota Supabase sync:', err);
+      }
+    }
+
+    if (paymentDetails.cobroId) {
+      await markCobroPaid(paymentDetails.cobroId, true);
+    }
+
+    addSecurityLog(`PAYMENT_REGISTERED_SOCIO_${socioId}`, currentUser?.email, "INFO");
+    return updatedSocioObj;
   };
 
   const updateVolunteerCert = async (volId, courseId) => {
@@ -1265,6 +1352,8 @@ export const AuthProvider = ({ children }) => {
       cobrosList,
       setCobrosList,
       addCobrosBatch,
+      markCobroPaid,
+      deleteCobro,
       balancesList,
       setBalancesList,
       newsList,

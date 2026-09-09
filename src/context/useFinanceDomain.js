@@ -335,12 +335,38 @@ const addCobrosBatch = async (cobrosArray) => {
   }
 };
 
+const markCobroPaid = async (cobroId, pagado = true) => {
+  if (isSupabaseReady()) {
+    try {
+      const { error } = await supabase.from('cobros').update({ pagado }).eq('id', cobroId);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error marking cobro paid in Supabase:', err);
+    }
+  }
+  setCobrosList(prev => prev.map(c => c.id === cobroId ? { ...c, pagado } : c));
+  addSecurityLog(`COBRO_${cobroId}_MARKED_${pagado ? 'PAID' : 'PENDING'}`, currentUser?.email, 'INFO');
+};
+
+const deleteCobro = async (cobroId) => {
+  if (isSupabaseReady()) {
+    try {
+      const { error } = await supabase.from('cobros').delete().eq('id', cobroId);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error deleting cobro from Supabase:', err);
+    }
+  }
+  setCobrosList(prev => prev.filter(c => c.id !== cobroId));
+  addSecurityLog(`COBRO_${cobroId}_DELETED`, currentUser?.email, 'WARN');
+};
+
   return {
     donacionesList, setDonacionesList, publicDonationsList, setPublicDonationsList, addDonacion, deleteDonacion,
     financialSettings, setFinancialSettings, updateFinancialSettings,
     expensesList, setExpensesList, addExpense, deleteExpense,
     financialCategories, setFinancialCategories, addFinancialCategory, archiveFinancialCategory,
     financialAccounts, setFinancialAccounts, addFinancialAccount, removeFinancialAccount, updateFinancialAccountRut,
-    cobrosList, setCobrosList, addCobrosBatch, balancesList, setBalancesList
+    cobrosList, setCobrosList, addCobrosBatch, markCobroPaid, deleteCobro, balancesList, setBalancesList
   };
 };

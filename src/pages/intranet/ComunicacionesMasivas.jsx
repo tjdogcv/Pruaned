@@ -34,7 +34,10 @@ export default function ComunicacionesMasivas() {
     let list = [];
     if (targetGroup === 'socios' || targetGroup === 'morosos') {
       list = sociosList.filter(s => {
-        if (targetGroup === 'morosos') return s.estadoCuota?.toLowerCase().includes('moroso') || s.estadoCuota?.toLowerCase().includes('deudor');
+        if (targetGroup === 'morosos') {
+          const est = (s.estadoCuota || '').toLowerCase();
+          return est.includes('mora') || est.includes('moroso') || est.includes('deudor');
+        }
         if (filterCategoria !== 'Todas' && s.categoria !== filterCategoria) return false;
         if (filterEstado !== 'Todos' && s.estadoCuota !== filterEstado) return false;
         return true;
