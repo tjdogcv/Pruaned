@@ -144,6 +144,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
 
   // KPIs del padrón y cobranza
   const activeSociosList = sociosList.filter(s => s.email !== 'ag.pruaned@gmail.com');
+  const totalSocios = activeSociosList.length;
   const isSocioRenunciado = (s) => !!(
     s.estadoCuota?.includes('Desvinculado') || 
     s.estadoCuota?.includes('Renuncia') || 
@@ -499,7 +500,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div className="text-2xl font-extrabold text-emerald-800 font-['Outfit']">{sociosAlDia}</div>
-              <p className="text-[10px] text-emerald-700 font-medium">{Math.round((sociosAlDia / (totalSocios || 1)) * 100)}% de cumplimiento</p>
+              <p className="text-[10px] text-emerald-700 font-medium">{Math.round((sociosAlDia / (totalSociosActivos || totalSocios || 1)) * 100)}% de cumplimiento</p>
             </div>
 
             <div className="bg-white p-4 rounded-2xl border border-rose-200 bg-rose-50/20 shadow-sm space-y-1">
