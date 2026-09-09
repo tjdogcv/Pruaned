@@ -725,9 +725,11 @@ Correo tesorería: ag.pruaned@gmail.com`;
                                 </>
                               )}
                             </span>
-                            {socio.ultimaCuotaPagada && (
+                            {mesesDeuda === 1 ? (
+                              <span className="block text-[9px] text-blue-700 font-semibold mt-0.5">Cuota Septiembre 2026</span>
+                            ) : socio.ultimaCuotaPagada ? (
                               <span className="block text-[9px] text-slate-400 mt-0.5">Últ: {socio.ultimaCuotaPagada}</span>
-                            )}
+                            ) : null}
                           </td>
 
                           <td className="py-3 px-4">
