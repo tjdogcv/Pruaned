@@ -144,17 +144,25 @@ Correo tesorería: ag.pruaned@gmail.com`;
 
   // KPIs del padrón y cobranza
   const activeSociosList = sociosList.filter(s => s.email !== 'ag.pruaned@gmail.com');
-  const totalSocios = activeSociosList.length;
-  const sociosRenunciados = activeSociosList.filter(s => s.estadoCuota?.includes('Desvinculado') || s.estadoCuota?.includes('Renuncia')).length;
+  const isSocioRenunciado = (s) => !!(
+    s.estadoCuota?.includes('Desvinculado') || 
+    s.estadoCuota?.includes('Renuncia') || 
+    s.motivoRenuncia || 
+    s.fechaSolicitudRenuncia || 
+    s.fechaRetiroOficial
+  );
+
+  const totalSociosActivos = activeSociosList.filter(s => !isSocioRenunciado(s)).length;
+  const sociosRenunciados = activeSociosList.filter(isSocioRenunciado).length;
   
-  // Socios que tienen 2 o más meses adeudados o marcados formalmente como En Mora
+  // Socios activos que tienen 2 o más meses adeudados o marcados formalmente como En Mora
   const sociosEnMora = activeSociosList.filter(s => {
-    if (s.estadoCuota?.includes('Desvinculado') || s.estadoCuota === 'Exento' || s.categoria === 'Socio Honorario') return false;
+    if (isSocioRenunciado(s) || s.estadoCuota === 'Exento' || s.categoria === 'Socio Honorario') return false;
     const pendingCuotasEmitidas = cobrosList.filter(c => c.socioId === s.id && !c.pagado && c.titulo.toLowerCase().startsWith('cuota')).length;
     const meses = Math.max(s.mesesAdeudados || 0, pendingCuotasEmitidas);
     return s.estadoCuota === 'En Mora' || meses >= 2;
   }).length;
-  const sociosAlDia = Math.max(0, totalSocios - sociosEnMora - sociosRenunciados);
+  const sociosAlDia = Math.max(0, totalSociosActivos - sociosEnMora);
 
   // Total recaudado históricamente por cuotas
   const totalRecaudadoHistorico = activeSociosList.reduce((acc, s) => {
@@ -162,9 +170,9 @@ Correo tesorería: ag.pruaned@gmail.com`;
     return acc + pagos;
   }, 0);
 
-  // Total deuda actual del padrón (sin duplicar cuotas ordinarias con cobros)
+  // Total deuda actual del padrón (sin duplicar cuotas ordinarias con cobros y excluyendo renunciados)
   const totalDeudaPadron = activeSociosList.reduce((acc, s) => {
-    if (s.estadoCuota === 'Exento' || s.estadoCuota?.includes('Desvinculado') || s.categoria === 'Socio Honorario') return acc;
+    if (isSocioRenunciado(s) || s.estadoCuota === 'Exento' || s.categoria === 'Socio Honorario') return acc;
     const esAntiguo = s.fechaIngreso && new Date(s.fechaIngreso).getFullYear() < 2026;
     const cuotaIncorp = (s.cuotaIncorporacionPagada || esAntiguo) ? 0 : (s.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000);
     const cuotaMensual = s.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
@@ -180,16 +188,17 @@ Correo tesorería: ag.pruaned@gmail.com`;
   }, 0);
 
   const recaudacionMensualEsperada = activeSociosList
-    .filter(s => s.categoria !== 'Socio Honorario' && !s.estadoCuota?.includes('Desvinculado'))
+    .filter(s => s.categoria !== 'Socio Honorario' && !isSocioRenunciado(s))
     .reduce((acc, s) => acc + Number(s.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000), 0);
 
   // Filtrado de socios
   const filteredSocios = activeSociosList.filter(s => {
+    const renunciado = isSocioRenunciado(s);
     if (activeMainTab === 'renuncias') {
-      return s.estadoCuota?.includes('Desvinculado') || s.fechaSolicitudRenuncia;
+      return renunciado;
     }
 
-    if (s.estadoCuota?.includes('Desvinculado')) return false;
+    if (renunciado) return false;
 
     const matchesSearch = s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.rut.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -202,10 +211,10 @@ Correo tesorería: ag.pruaned@gmail.com`;
   const totalPages = Math.max(1, Math.ceil(filteredSocios.length / itemsPerPage));
   const paginatedSocios = filteredSocios.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Emisión rápida de cuota mensual a todos los socios
+  // Emisión rápida de cuota mensual a todos los socios activos (excluye renunciados)
   const handleEmitirCuotaMesATodos = async () => {
     if (!monthlyFeeName.trim()) return;
-    const sociosActivos = activeSociosList.filter(s => s.categoria !== 'Socio Honorario' && !s.estadoCuota?.includes('Desvinculado'));
+    const sociosActivos = activeSociosList.filter(s => s.categoria !== 'Socio Honorario' && !isSocioRenunciado(s));
     
     if (!confirm(`¿Emitir "${monthlyFeeName}" a ${sociosActivos.length} socios activos?`)) return;
 
@@ -464,7 +473,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
             activeMainTab === 'padron' ? 'border-blue-700 text-blue-800' : 'border-transparent text-slate-600 hover:text-slate-950'
           }`}
         >
-          <Users className="w-4 h-4" /> Padrón Oficial de Socios ({totalSocios})
+          <Users className="w-4 h-4" /> Padrón Oficial de Socios ({totalSociosActivos})
         </button>
 
         <button
