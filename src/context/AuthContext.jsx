@@ -191,10 +191,20 @@ export const AuthProvider = ({ children }) => {
           ]);
 
           if (sociosRes.data && sociosRes.data.length > 0) {
-            const mappedSocios = snakeToCamel(sociosRes.data).map(s => ({
-              ...s,
-              historialPagos: s.historialPagos || []
-            }));
+            const mappedSocios = snakeToCamel(sociosRes.data).map(s => {
+              const isRenunciado = Boolean(
+                s.motivoRenuncia ||
+                s.fechaSolicitudRenuncia ||
+                s.fechaRetiroOficial ||
+                s.fechaRenuncia ||
+                (s.estadoCuota && (s.estadoCuota.includes('Desvinculad') || s.estadoCuota.includes('Renuncia')))
+              );
+              return {
+                ...s,
+                estadoCuota: isRenunciado ? 'Desvinculado / Retiro Aprobado DL 2757' : s.estadoCuota,
+                historialPagos: s.historialPagos || []
+              };
+            });
             setSociosList(mappedSocios);
           } else if (sociosRes.data && sociosRes.data.length === 0) setSociosList([]); 
 

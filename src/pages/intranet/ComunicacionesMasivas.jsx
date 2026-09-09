@@ -80,7 +80,8 @@ export default function ComunicacionesMasivas() {
       estado.includes('inactiv') ||
       Boolean(motivo) ||
       Boolean(solRenuncia) ||
-      Boolean(retOficial)
+      Boolean(retOficial) ||
+      Boolean(s.fechaRenuncia)
     );
   };
 
