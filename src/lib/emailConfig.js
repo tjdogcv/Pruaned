@@ -71,36 +71,28 @@ export const sendPagoEmail = async (pagoData, socioData) => {
   }
 };
 
-const TEMPLATE_ID_PAGO_VALIDADO = "template_pago_validado";
-const TEMPLATE_ID_AVISO_COBRO = "template_aviso_cobro";
-
 /**
  * Notifica al socio que su comprobante de pago fue validado y su cuenta quedó 'Al Día'
- * IMPORTANTE: No reutiliza template_mxedl3t (que es exclusivo para resolución de postulaciones de nuevos miembros).
  */
 export const sendPagoValidadoEmail = async (socioData, montoValidado) => {
   if (!socioData?.email || socioData.email.includes('anonimizado')) return;
   
-  const configuredTemplate = typeof window !== 'undefined' 
-    ? (window.localStorage.getItem('pruaned_emailjs_template_pago') || null) 
-    : null;
-
-  // Si no hay plantilla específica de pagos creada en EmailJS, evitamos enviar la carta de postulación
-  if (!configuredTemplate) {
-    console.info("[Email] Omitiendo notificación automática de pago: requiere plantilla específica de recibo en EmailJS para no confundir con aprobación de postulante.");
-    return null;
-  }
+  const nombre = socioData.nombre || 'Socio';
+  const montoStr = Number(montoValidado || 0).toLocaleString('es-CL');
 
   try {
     return await emailjs.send(
       EMAILJS_SERVICE_ID,
-      configuredTemplate,
+      TEMPLATE_ID_APPROVAL,
       {
         to_email: socioData.email,
-        to_name: socioData.nombre,
-        socio_nombre: socioData.nombre,
-        monto: Number(montoValidado || 0).toLocaleString('es-CL'),
-        mensaje: `Tu comprobante de pago por $${Number(montoValidado || 0).toLocaleString('es-CL')} CLP ha sido validado exitosamente por Tesorería. Tu cuenta gremial se encuentra ahora Al Día.`
+        to_name: nombre,
+        nombre_postulante: nombre,
+        subject: `Comprobante de Pago Validado ($${montoStr} CLP) - PRUANED A.G.`,
+        asunto: `Comprobante de Pago Validado ($${montoStr} CLP) - PRUANED A.G.`,
+        message: `Confirmamos que tu pago por un monto de $${montoStr} CLP ha sido validado exitosamente por Tesorería de PRUANED A.G.\n\nTu registro en el padrón social se encuentra debidamente actualizado y al día.\n\nMuchas gracias por tu compromiso continuo con nuestra asociación gremial.`,
+        body_html: `Confirmamos que tu pago por un monto de $${montoStr} CLP ha sido validado exitosamente por Tesorería de PRUANED A.G.\n\nTu registro en el padrón social se encuentra debidamente actualizado y al día.\n\nMuchas gracias por tu compromiso continuo con nuestra asociación gremial.`,
+        mensaje_personalizado: `Tu comprobante de pago por $${montoStr} CLP ha sido validado exitosamente por Tesorería.`
       },
       EMAILJS_PUBLIC_KEY
     );
@@ -116,26 +108,22 @@ export const sendPagoValidadoEmail = async (socioData, montoValidado) => {
 export const sendAvisoCobroEmail = async (socioData, deudaDetalle = {}) => {
   if (!socioData?.email || socioData.email.includes('anonimizado')) return;
   
-  const configuredTemplate = typeof window !== 'undefined' 
-    ? (window.localStorage.getItem('pruaned_emailjs_template_aviso') || null) 
-    : null;
-
-  if (!configuredTemplate) {
-    console.info("[Email] Omitiendo envío de aviso de cobro: no hay plantilla específica de cobranza configurada en EmailJS.");
-    return null;
-  }
+  const nombre = socioData.nombre || 'Socio';
+  const totalCLP = Number(deudaDetalle.montoTotal || 0).toLocaleString('es-CL');
 
   try {
-    const totalCLP = Number(deudaDetalle.montoTotal || 0).toLocaleString('es-CL');
     return await emailjs.send(
       EMAILJS_SERVICE_ID,
-      configuredTemplate,
+      TEMPLATE_ID_APPROVAL,
       {
         to_email: socioData.email,
-        to_name: socioData.nombre,
-        socio_nombre: socioData.nombre,
-        monto_deuda: totalCLP,
-        detalle_deuda: deudaDetalle.detalle || 'Cuotas ordinarias pendientes'
+        to_name: nombre,
+        nombre_postulante: nombre,
+        subject: `Recordatorio de Cuotas Sociales Pendientes - PRUANED A.G.`,
+        asunto: `Recordatorio de Cuotas Sociales Pendientes - PRUANED A.G.`,
+        message: `Le recordamos desde Tesorería PRUANED A.G. que registra compromisos sociales pendientes por un total de $${totalCLP} CLP (${deudaDetalle.detalle || 'Cuotas ordinarias'}).\n\nDatos de transferencia bancaria oficial:\n• Titular: PRUANED A.G.\n• RUT: 65.272.406-K\n• Banco: Mercado Pago\n• Tipo: Cuenta Vista\n• N° Cuenta: 1046032015\n• Correo: ag.pruaned@gmail.com\n\nFavor enviar el comprobante de transferencia a este correo para actualizar su estado de cuota a "Al Día".`,
+        body_html: `Le recordamos desde Tesorería PRUANED A.G. que registra compromisos sociales pendientes por un total de $${totalCLP} CLP (${deudaDetalle.detalle || 'Cuotas ordinarias'}).\n\nDatos de transferencia bancaria oficial:\n• Titular: PRUANED A.G.\n• RUT: 65.272.406-K\n• Banco: Mercado Pago\n• Tipo: Cuenta Vista\n• N° Cuenta: 1046032015\n• Correo: ag.pruaned@gmail.com\n\nFavor enviar el comprobante de transferencia a este correo para actualizar su estado de cuota a "Al Día".`,
+        mensaje_personalizado: `Registras compromisos sociales pendientes por $${totalCLP} CLP.`
       },
       EMAILJS_PUBLIC_KEY
     );
@@ -151,17 +139,24 @@ export const sendApprovalEmail = async (postulanteData) => {
     return Promise.resolve("Simulated");
   }
 
+  const nombre = postulanteData.nombreCompleto || postulanteData.nombre || 'Postulante';
+
   try {
-    const response = await emailjs.send(
+    return await emailjs.send(
       EMAILJS_SERVICE_ID,
       TEMPLATE_ID_APPROVAL,
       {
         to_email: postulanteData.email,
-        nombre_postulante: postulanteData.nombreCompleto
+        to_name: nombre,
+        nombre_postulante: nombre,
+        subject: "¡Resolución de Postulación: APROBADA! - PRUANED A.G.",
+        asunto: "¡Resolución de Postulación: APROBADA! - PRUANED A.G.",
+        message: `El Directorio Nacional de la Asociación Gremial de Profesionales Unidos por los Animales en Emergencias y Desastres (PRUANED A.G.) tiene el agrado de informarle que, tras revisar los antecedentes presentados, su postulación de membresía ha sido APROBADA OFICIALMENTE.\n\n¡Bienvenido/a a PRUANED A.G.!\n\nA partir de este momento, usted es formalmente reconocido como Socio y se encuentra habilitado para acceder a todos los beneficios, derechos y deberes que confieren nuestros estatutos.\n\nPasos a seguir:\n1. Ingrese al Portal Seguro en www.pruaned.cl e inicie sesión activando su cuenta con este mismo correo.\n2. Ingrese a Mi Perfil para revisar sus credenciales y estado gremial.`,
+        body_html: `El Directorio Nacional de la Asociación Gremial de Profesionales Unidos por los Animales en Emergencias y Desastres (PRUANED A.G.) tiene el agrado de informarle que, tras revisar los antecedentes presentados, su postulación de membresía ha sido APROBADA OFICIALMENTE.\n\n¡Bienvenido/a a PRUANED A.G.!\n\nA partir de este momento, usted es formalmente reconocido como Socio y se encuentra habilitado para acceder a todos los beneficios, derechos y deberes que confieren nuestros estatutos.\n\nPasos a seguir:\n1. Ingrese al Portal Seguro en www.pruaned.cl e inicie sesión activando su cuenta con este mismo correo.\n2. Ingrese a Mi Perfil para revisar sus credenciales y estado gremial.`,
+        mensaje_personalizado: "¡Bienvenido/a a PRUANED A.G.! Su postulación ha sido aprobada oficialmente."
       },
       EMAILJS_PUBLIC_KEY
     );
-    return response;
   } catch (error) {
     console.error("Error al enviar email de aprobación", error);
     return null;
