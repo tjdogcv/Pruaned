@@ -1074,7 +1074,7 @@ export const AuthProvider = ({ children }) => {
             },
             ...updatedPagos
           ];
-        } else if (paymentDetails.tipo === 'cobro_especial' || paymentDetails.cobroId) {
+        } else if (paymentDetails.tipo === 'cobro_especial') {
           updatedPagos = [
             {
               mes: paymentDetails.concepto || "Cobro Extraordinario",

@@ -82,7 +82,9 @@ export default function PadronSocios() {
   const [isEmittingMonthly, setIsEmittingMonthly] = useState(false);
   const [monthlyFeeName, setMonthlyFeeName] = useState('');
 
-  // Estado del modal de pago avanzado
+  // Estado del modal de pago avanzado (dinámico según compromisos pendientes reales)
+  const [selectedCommitmentId, setSelectedCommitmentId] = useState('');
+  const [customConcepto, setCustomConcepto] = useState('');
   const [paymentType, setPaymentType] = useState('mensual');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedCobroId, setSelectedCobroId] = useState('');
@@ -90,6 +92,122 @@ export default function PadronSocios() {
   const [comprobanteRef, setComprobanteRef] = useState('');
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Compromisos pendientes específicos del socio activo en el modal de pago
+  const pendingCommitments = React.useMemo(() => {
+    if (!activePaymentModal) return [];
+    const items = [];
+
+    // 1. Cobros en tabla cobros (cuotas mensuales y extraordinarias)
+    const socioCobros = cobrosList.filter(c => c.socioId === activePaymentModal.id && !c.pagado);
+    const cuotasMensuales = socioCobros.filter(c => c.titulo.toLowerCase().startsWith('cuota'));
+    const extraordinarios = socioCobros.filter(c => !c.titulo.toLowerCase().startsWith('cuota'));
+
+    // Añadir cuotas mensuales pendientes
+    cuotasMensuales.forEach(c => {
+      items.push({
+        id: c.id,
+        tipo: 'mensual',
+        titulo: c.titulo,
+        monto: Number(c.monto),
+        cobroId: c.id,
+        tipoLabel: 'Cuota Social Mensual',
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
+      });
+    });
+
+    // Fallback: Si el socio tiene meses adeudados pero no tenía fila en cobrosList
+    if (cuotasMensuales.length === 0 && (activePaymentModal.mesesAdeudados || 0) > 0 && activePaymentModal.categoria !== 'Socio Honorario' && !activePaymentModal.estadoCuota?.includes('Desvinculado')) {
+      const cuotaMensual = activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
+      items.push({
+        id: 'cuota_septiembre_2026_fallback',
+        tipo: 'mensual',
+        titulo: 'Cuota Septiembre 2026',
+        monto: Number(cuotaMensual),
+        cobroId: null,
+        tipoLabel: 'Cuota Social Mensual',
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
+      });
+    }
+
+    // Añadir extraordinarios pendientes
+    extraordinarios.forEach(c => {
+      items.push({
+        id: c.id,
+        tipo: 'cobro_especial',
+        titulo: c.titulo,
+        monto: Number(c.monto),
+        cobroId: c.id,
+        tipoLabel: 'Cobro Extraordinario',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-200'
+      });
+    });
+
+    // Añadir Cuota de Incorporación si está pendiente
+    const esAntiguo = activePaymentModal.fechaIngreso && new Date(activePaymentModal.fechaIngreso).getFullYear() < 2026;
+    const incorpPendiente = !(activePaymentModal.cuotaIncorporacionPagada || esAntiguo);
+    if (incorpPendiente && activePaymentModal.categoria !== 'Socio Honorario' && !activePaymentModal.estadoCuota?.includes('Desvinculado')) {
+      const montoIncorp = activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000;
+      items.push({
+        id: 'incorporacion',
+        tipo: 'incorporacion',
+        titulo: 'Cuota de Incorporación',
+        monto: Number(montoIncorp),
+        cobroId: null,
+        tipoLabel: 'Cuota de Incorporación',
+        badgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+      });
+    }
+
+    return items;
+  }, [activePaymentModal, cobrosList, financialSettings]);
+
+  // Al abrir modal de pago, seleccionar automáticamente el primer compromiso pendiente del socio
+  useEffect(() => {
+    if (activePaymentModal) {
+      setComprobanteRef('');
+      setComprobanteFile(null);
+
+      if (pendingCommitments.length > 0) {
+        const first = pendingCommitments[0];
+        setSelectedCommitmentId(first.id);
+        setPaymentType(first.tipo);
+        setCustomMonto(first.monto);
+        setSelectedCobroId(first.cobroId || '');
+        setSelectedMonth(first.titulo);
+        setCustomConcepto(first.titulo);
+      } else {
+        setSelectedCommitmentId('abono_libre');
+        setPaymentType('libre');
+        setCustomMonto('');
+        setSelectedCobroId('');
+        setSelectedMonth('');
+        setCustomConcepto('Abono Libre');
+      }
+    }
+  }, [activePaymentModal, pendingCommitments]);
+
+  // Manejar cambio de compromiso en el selector
+  const handleSelectCommitment = (id) => {
+    setSelectedCommitmentId(id);
+    if (id === 'abono_libre') {
+      setPaymentType('libre');
+      setSelectedCobroId('');
+      setCustomMonto('');
+      setSelectedMonth('');
+      setCustomConcepto('Abono Libre');
+      return;
+    }
+
+    const item = pendingCommitments.find(c => c.id === id);
+    if (item) {
+      setPaymentType(item.tipo);
+      setCustomMonto(item.monto);
+      setSelectedCobroId(item.cobroId || '');
+      setSelectedMonth(item.titulo);
+      setCustomConcepto(item.titulo);
+    }
+  };
 
   // Estado de aviso de cobro
   const [isSendingAviso, setIsSendingAviso] = useState(null); // id del socio enviando aviso
@@ -105,28 +223,6 @@ export default function PadronSocios() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedEstado, selectedCategory, activeMainTab]);
-
-  // Al abrir modal de pago, inicializar valores por defecto
-  useEffect(() => {
-    if (activePaymentModal) {
-      setPaymentType('mensual');
-      const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-      const now = new Date();
-      const mesActual = `${meses[now.getMonth()]} ${now.getFullYear()}`;
-      setSelectedMonth(mesActual);
-      const cuotaSocio = activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
-      setCustomMonto(cuotaSocio);
-      setComprobanteRef('');
-      setComprobanteFile(null);
-      
-      const socioCobrosPendientes = cobrosList.filter(c => c.socioId === activePaymentModal.id && !c.pagado);
-      if (socioCobrosPendientes.length > 0) {
-        setSelectedCobroId(socioCobrosPendientes[0].id);
-      } else {
-        setSelectedCobroId('');
-      }
-    }
-  }, [activePaymentModal, financialSettings, cobrosList]);
 
   // Manejo de copia de datos bancarios
   const handleCopyBankData = () => {
@@ -307,29 +403,40 @@ Correo tesorería: ag.pruaned@gmail.com`;
       }
 
       const refFinal = comprobanteRef.trim() || (uploadedUrl ? 'Comprobante adjunto' : 'Validado por Tesorería');
+      
+      const selectedItem = pendingCommitments.find(c => c.id === selectedCommitmentId);
+      const isIncorporacion = selectedCommitmentId === 'incorporacion' || paymentType === 'incorporacion';
+      const isCobroExtraordinario = (selectedItem && selectedItem.tipo === 'cobro_especial') || paymentType === 'cobro_especial';
+      const isMensual = (selectedItem && selectedItem.tipo === 'mensual') || paymentType === 'mensual';
+
       let paymentPayload = {
         monto: Number(customMonto),
         comprobanteUrl: uploadedUrl || refFinal,
-        mes: selectedMonth,
-        tipo: paymentType
+        tipo: isIncorporacion ? 'incorporacion' : (isCobroExtraordinario ? 'cobro_especial' : (isMensual ? 'mensual' : 'libre')),
+        cobroId: selectedItem?.cobroId || (selectedCobroId || null)
       };
 
       let nextEstado = activePaymentModal.estadoCuota;
       let nextMesesAdeudados = Number(activePaymentModal.mesesAdeudados || 0);
       let isCuotaIncorp = false;
 
-      if (paymentType === 'incorporacion') {
+      if (isIncorporacion) {
         isCuotaIncorp = true;
         paymentPayload.isCuotaIncorporacion = true;
         paymentPayload.concepto = 'Cuota de Incorporación';
-      } else if (paymentType === 'cobro_especial') {
-        const targetCobro = cobrosList.find(c => c.id === selectedCobroId);
-        paymentPayload.cobroId = selectedCobroId;
-        paymentPayload.concepto = targetCobro ? targetCobro.titulo : 'Cobro Extraordinario';
-      } else {
-        paymentPayload.concepto = `Cuota Social ${selectedMonth}`;
+        paymentPayload.mes = 'Cuota Incorporación';
+      } else if (isCobroExtraordinario) {
+        paymentPayload.concepto = selectedItem?.titulo || customConcepto || 'Cobro Extraordinario';
+        paymentPayload.mes = paymentPayload.concepto;
+      } else if (isMensual) {
+        const tituloCuota = selectedItem?.titulo || selectedMonth || 'Cuota Septiembre 2026';
+        paymentPayload.concepto = tituloCuota;
+        paymentPayload.mes = tituloCuota;
         nextMesesAdeudados = Math.max(0, nextMesesAdeudados - 1);
         nextEstado = nextMesesAdeudados === 0 ? 'Al Día' : 'En Mora';
+      } else {
+        paymentPayload.concepto = customConcepto.trim() || 'Abono Libre';
+        paymentPayload.mes = 'Abono Libre';
       }
 
       await updateSocioCuota(
@@ -353,7 +460,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
         console.warn('Error enviando notificación por email:', mailErr);
       }
 
-      alert('✓ Pago validado y registrado exitosamente en Supabase.');
+      alert(`✓ Pago de $${Number(customMonto).toLocaleString('es-CL')} CLP registrado y validado exitosamente para ${activePaymentModal.nombre}.`);
       setActivePaymentModal(null);
     } catch (err) {
       alert('Error al registrar pago: ' + (err.message || 'Error desconocido'));
@@ -1075,118 +1182,106 @@ Correo tesorería: ag.pruaned@gmail.com`;
             </div>
 
             <form onSubmit={handleConfirmPayment} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-800 mb-1.5">Concepto a Pagar:</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentType('mensual');
-                      setCustomMonto(activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000);
-                    }}
-                    className={`p-2.5 rounded-xl border text-left font-bold transition-all ${
-                      paymentType === 'mensual' ? 'bg-emerald-50 border-emerald-600 text-emerald-900' : 'border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    Cuota Social Mensual
-                  </button>
+              {/* SELECTOR DE COMPROMISOS PENDIENTES DEL SOCIO */}
+              <div className="space-y-1.5">
+                <label className="block font-bold text-slate-800">
+                  Cuota o Cobro Pendiente a Cancelar:
+                </label>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentType('incorporacion');
-                      setCustomMonto(activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000);
-                    }}
-                    className={`p-2.5 rounded-xl border text-left font-bold transition-all ${
-                      paymentType === 'incorporacion' ? 'bg-emerald-50 border-emerald-600 text-emerald-900' : 'border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    Cuota de Incorporación
-                  </button>
+                {pendingCommitments.length === 0 ? (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      El socio no registra cuotas ni cobros pendientes.
+                    </div>
+                    <p className="text-[11px] text-emerald-700">
+                      Se encuentra al día con sus compromisos. Si deseas registrar un pago adelantado o aporte voluntario, utiliza la opción "Abono Libre".
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      value={selectedCommitmentId}
+                      onChange={e => handleSelectCommitment(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-bold outline-none focus:border-emerald-600 focus:bg-white text-xs cursor-pointer shadow-sm"
+                    >
+                      <optgroup label="Compromisos Pendientes de Este Socio">
+                        {pendingCommitments.map(c => (
+                          <option key={c.id} value={c.id}>
+                            [{c.tipoLabel.toUpperCase()}] {c.titulo} — ${c.monto.toLocaleString('es-CL')} CLP
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Otras Modalidades">
+                        <option value="abono_libre">
+                          [OTRO] Abono Libre / Pago Personalizado
+                        </option>
+                      </optgroup>
+                    </select>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentType('cobro_especial');
-                      const cobro = cobrosList.find(c => c.id === selectedCobroId);
-                      if (cobro) setCustomMonto(cobro.monto);
-                    }}
-                    className={`p-2.5 rounded-xl border text-left font-bold transition-all ${
-                      paymentType === 'cobro_especial' ? 'bg-emerald-50 border-emerald-600 text-emerald-900' : 'border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    Cobro Extraordinario
-                  </button>
+                    {/* Tarjeta con detalle del concepto seleccionado */}
+                    {selectedCommitmentId !== 'abono_libre' && (
+                      <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                            Concepto Seleccionado
+                          </span>
+                          <span className="font-extrabold text-slate-900 text-sm">
+                            {pendingCommitments.find(c => c.id === selectedCommitmentId)?.titulo}
+                          </span>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${
+                          pendingCommitments.find(c => c.id === selectedCommitmentId)?.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}>
+                          {pendingCommitments.find(c => c.id === selectedCommitmentId)?.tipoLabel}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                  <button
-                    type="button"
-                    onClick={() => setPaymentType('libre')}
-                    className={`p-2.5 rounded-xl border text-left font-bold transition-all ${
-                      paymentType === 'libre' ? 'bg-emerald-50 border-emerald-600 text-emerald-900' : 'border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    Abono Libre
-                  </button>
-                </div>
+                {/* Si no hay compromisos pendientes o eligió Abono Libre */}
+                {(pendingCommitments.length === 0 || selectedCommitmentId === 'abono_libre') && (
+                  <div className="pt-1">
+                    <label className="block font-bold text-slate-700 mb-1">Descripción / Glosa del Abono:</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej: Pago adelantado Cuota Octubre 2026"
+                      value={customConcepto}
+                      onChange={e => setCustomConcepto(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 font-semibold outline-none focus:border-emerald-600 focus:bg-white"
+                    />
+                  </div>
+                )}
               </div>
 
-              {paymentType === 'mensual' && (
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mes que se cancela:</label>
-                  <select
-                    value={selectedMonth}
-                    onChange={e => setSelectedMonth(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 outline-none font-semibold"
-                  >
-                    {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map(m => (
-                      <option key={m} value={`${m} 2026`}>{m} 2026</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {paymentType === 'cobro_especial' && (
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Cobro extraordinario:</label>
-                  <select
-                    value={selectedCobroId}
-                    onChange={e => {
-                      setSelectedCobroId(e.target.value);
-                      const c = cobrosList.find(item => item.id === e.target.value);
-                      if (c) setCustomMonto(c.monto);
-                    }}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 outline-none font-semibold"
-                  >
-                    {cobrosList.filter(c => c.socioId === activePaymentModal.id && !c.pagado).map(c => (
-                      <option key={c.id} value={c.id}>{c.titulo} (${c.monto.toLocaleString('es-CL')})</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
+              {/* MONTO A PAGAR */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Monto Pagado ($ CLP) *</label>
+                <label className="block font-bold text-slate-700 mb-1">Monto a Cancelar ($ CLP) *</label>
                 <input
                   type="number"
                   required
                   value={customMonto}
                   onChange={e => setCustomMonto(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 font-mono font-bold outline-none"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-mono font-bold text-sm outline-none focus:border-emerald-600 focus:bg-white"
                 />
               </div>
 
+              {/* REFERENCIA */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Referencia o N° Transacción *</label>
                 <input
                   type="text"
                   required
-                  placeholder="Ej: Transferencia 984012 Mercado Pago"
+                  placeholder="Ej: Transferencia 984012 Mercado Pago / BancoEstado"
                   value={comprobanteRef}
                   onChange={e => setComprobanteRef(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 outline-none"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 outline-none focus:border-emerald-600 focus:bg-white"
                 />
               </div>
 
+              {/* ADJUNTAR COMPROBANTE */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Adjuntar Comprobante (Opcional)</label>
                 <input
@@ -1196,15 +1291,26 @@ Correo tesorería: ag.pruaned@gmail.com`;
                     const file = e.target.files[0];
                     if (file) setComprobanteFile(file);
                   }}
-                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700"
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
                 />
               </div>
 
+              {/* BOTONES ACCIÓN */}
               <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
-                <button type="button" onClick={() => setActivePaymentModal(null)} className="px-4 py-2 font-bold rounded-xl border border-slate-200 text-slate-700">Cancelar</button>
-                <button type="submit" disabled={isProcessingPayment} className="px-5 py-2 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow disabled:opacity-60">
+                <button
+                  type="button"
+                  onClick={() => setActivePaymentModal(null)}
+                  className="px-4 py-2 font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessingPayment}
+                  className="px-5 py-2 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow disabled:opacity-60 transition-all"
+                >
                   <Check className="w-3.5 h-3.5" />
-                  {isProcessingPayment ? 'Sincronizando...' : 'Confirmar Pago'}
+                  {isProcessingPayment ? 'Sincronizando...' : `Confirmar Pago${customMonto ? ` ($${Number(customMonto).toLocaleString('es-CL')})` : ''}`}
                 </button>
               </div>
             </form>
