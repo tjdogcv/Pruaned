@@ -61,9 +61,13 @@ export default function MiPerfil() {
   const cuotaMensual = financialSettings?.cuotaMensualActual || 5000;
   const cuotaIncorp = (currentSocio?.cuotaIncorporacionPagada || currentSocio?.estadoCuota === 'Exento') ? 0 : (financialSettings?.cuotaIncorporacionActual || 35000);
 
-  // Cobros especiales pendientes
-  const misCobrosPendientes = cobrosList.filter(c => c.socioId === currentSocio.id && !c.pagado);
-  const totalCobrosEspeciales = misCobrosPendientes.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0);
+  // Cobros extraordinarios pendientes (excluyendo cuota ordinaria para evitar duplicar con mesesAdeudados)
+  const misCobrosExtraordinarios = cobrosList.filter(c => c.socioId === currentSocio.id && !c.pagado && !c.titulo.toLowerCase().startsWith('cuota'));
+  const totalCobrosExtraordinarios = misCobrosExtraordinarios.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0);
+
+  // Cuotas mensuales ordinarias emitidas impagas
+  const pendingCuotasEmitidas = cobrosList.filter(c => c.socioId === currentSocio.id && !c.pagado && c.titulo.toLowerCase().startsWith('cuota'));
+  const mesesDeuda = Math.max(currentSocio.mesesAdeudados || 0, pendingCuotasEmitidas.length);
 
   // Cálculo de deuda
   const currentDate = new Date();
@@ -71,7 +75,7 @@ export default function MiPerfil() {
   const isFeeActive = currentDate >= feeStartDate;
   const deudaCalculada = (currentSocio.estadoCuota === 'Exento' || (currentSocio.estadoCuota && currentSocio.estadoCuota.includes('Desvinculado'))) 
     ? 0 
-    : ((isFeeActive ? (currentSocio.mesesAdeudados || 0) * cuotaMensual : 0) + cuotaIncorp + totalCobrosEspeciales);
+    : ((isFeeActive ? mesesDeuda * cuotaMensual : 0) + cuotaIncorp + totalCobrosExtraordinarios);
 
   // Subir y comprimir foto de perfil con Supabase Storage
   const handleFotoUpload = async (e) => {

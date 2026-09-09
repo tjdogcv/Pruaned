@@ -145,25 +145,38 @@ Correo tesorería: ag.pruaned@gmail.com`;
   // KPIs del padrón y cobranza
   const activeSociosList = sociosList.filter(s => s.email !== 'ag.pruaned@gmail.com');
   const totalSocios = activeSociosList.length;
-  const sociosAlDia = activeSociosList.filter(s => s.estadoCuota === 'Al Día').length;
-  const sociosEnMora = activeSociosList.filter(s => s.estadoCuota === 'En Mora').length;
   const sociosRenunciados = activeSociosList.filter(s => s.estadoCuota?.includes('Desvinculado') || s.estadoCuota?.includes('Renuncia')).length;
   
+  // Socios que tienen 2 o más meses adeudados o marcados formalmente como En Mora
+  const sociosEnMora = activeSociosList.filter(s => {
+    if (s.estadoCuota?.includes('Desvinculado') || s.estadoCuota === 'Exento' || s.categoria === 'Socio Honorario') return false;
+    const pendingCuotasEmitidas = cobrosList.filter(c => c.socioId === s.id && !c.pagado && c.titulo.toLowerCase().startsWith('cuota')).length;
+    const meses = Math.max(s.mesesAdeudados || 0, pendingCuotasEmitidas);
+    return s.estadoCuota === 'En Mora' || meses >= 2;
+  }).length;
+  const sociosAlDia = Math.max(0, totalSocios - sociosEnMora - sociosRenunciados);
+
   // Total recaudado históricamente por cuotas
   const totalRecaudadoHistorico = activeSociosList.reduce((acc, s) => {
     const pagos = (s.historialPagos || []).reduce((pAcc, p) => pAcc + (Number(p.monto) || 0), 0);
     return acc + pagos;
   }, 0);
 
-  // Total deuda actual del padrón
+  // Total deuda actual del padrón (sin duplicar cuotas ordinarias con cobros)
   const totalDeudaPadron = activeSociosList.reduce((acc, s) => {
     if (s.estadoCuota === 'Exento' || s.estadoCuota?.includes('Desvinculado') || s.categoria === 'Socio Honorario') return acc;
     const esAntiguo = s.fechaIngreso && new Date(s.fechaIngreso).getFullYear() < 2026;
     const cuotaIncorp = (s.cuotaIncorporacionPagada || esAntiguo) ? 0 : (s.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000);
     const cuotaMensual = s.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
-    const meses = s.mesesAdeudados || 0;
-    const pendingCobros = cobrosList.filter(c => c.socioId === s.id && !c.pagado).reduce((pAcc, c) => pAcc + (Number(c.monto) || 0), 0);
-    return acc + cuotaIncorp + (meses * cuotaMensual) + pendingCobros;
+    
+    // Cuotas mensuales emitidas impagas
+    const pendingCuotasEmitidas = cobrosList.filter(c => c.socioId === s.id && !c.pagado && c.titulo.toLowerCase().startsWith('cuota'));
+    const meses = Math.max(s.mesesAdeudados || 0, pendingCuotasEmitidas.length);
+    
+    // Extraordinarios impagos (no cuotas mensuales)
+    const extraCobros = cobrosList.filter(c => c.socioId === s.id && !c.pagado && !c.titulo.toLowerCase().startsWith('cuota')).reduce((pAcc, c) => pAcc + (Number(c.monto) || 0), 0);
+    
+    return acc + cuotaIncorp + (meses * cuotaMensual) + extraCobros;
   }, 0);
 
   const recaudacionMensualEsperada = activeSociosList
@@ -383,10 +396,11 @@ Correo tesorería: ag.pruaned@gmail.com`;
       const cuotaIncorpPagadaReal = s.cuotaIncorporacionPagada || esAntiguo;
       const cuotaIncorp = cuotaIncorpPagadaReal ? 0 : (s.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000);
       const cuotaMensual = s.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
-      const mesesDeuda = s.mesesAdeudados || 0;
+      const cuotasMensualesEmitidas = cobrosList.filter(c => c.socioId === s.id && !c.pagado && c.titulo.toLowerCase().startsWith('cuota'));
+      const extraCobros = cobrosList.filter(c => c.socioId === s.id && !c.pagado && !c.titulo.toLowerCase().startsWith('cuota')).reduce((acc, c) => acc + (c.monto || 0), 0);
+      const mesesDeuda = Math.max(s.mesesAdeudados || 0, cuotasMensualesEmitidas.length);
       const montoMeses = (s.estadoCuota === 'Exento' || s.estadoCuota?.includes('Desvinculado') || s.categoria === 'Socio Honorario') ? 0 : (mesesDeuda * cuotaMensual);
-      const pendingCobros = cobrosList.filter(c => c.socioId === s.id && !c.pagado).reduce((acc, c) => acc + (c.monto || 0), 0);
-      const deuda = (s.estadoCuota === 'Exento' || s.estadoCuota?.includes('Desvinculado') || s.categoria === 'Socio Honorario') ? 0 : cuotaIncorp + montoMeses + pendingCobros;
+      const deuda = (s.estadoCuota === 'Exento' || s.estadoCuota?.includes('Desvinculado') || s.categoria === 'Socio Honorario') ? 0 : cuotaIncorp + montoMeses + extraCobros;
 
       return `"${s.rut}","${s.nombre}","${s.categoria}","${s.estadoCuota}","${mesesDeuda}","${deuda}","${s.ultimaCuotaPagada || 'N/R'}","${cuotaIncorpPagadaReal ? 'SI' : 'NO'}","${s.permisoGestionVoluntarios ? 'SI' : 'NO'}"`;
     }).join("\n");
@@ -601,7 +615,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
                     <th className="py-3 px-4">Socio / Identificación</th>
                     <th className="py-3 px-4">Cuota Mensual</th>
                     <th className="py-3 px-4">Incorporación</th>
-                    <th className="py-3 px-4">Meses en Mora</th>
+                    <th className="py-3 px-4">Cuota Social</th>
                     <th className="py-3 px-4">Extraordinarios</th>
                     <th className="py-3 px-4">Total Deuda CLP</th>
                     <th className="py-3 px-4 text-right">Gestión de Cobro</th>
@@ -620,11 +634,17 @@ Correo tesorería: ag.pruaned@gmail.com`;
                       const cuotaIncorpPagadaReal = socio.cuotaIncorporacionPagada || esAntiguo;
                       const cuotaIncorp = cuotaIncorpPagadaReal ? 0 : (socio.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000);
                       const cuotaMensual = socio.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
-                      const mesesDeuda = socio.mesesAdeudados || 0;
+
+                      // Cuotas ordinarias mensuales emitidas impagas
+                      const cuotasMensualesEmitidas = cobrosList.filter(c => c.socioId === socio.id && !c.pagado && c.titulo.toLowerCase().startsWith('cuota'));
+                      // Cobros extraordinarios (rifas, eventos, etc.)
+                      const pendingExtraordinarios = cobrosList.filter(c => c.socioId === socio.id && !c.pagado && !c.titulo.toLowerCase().startsWith('cuota'));
+                      const montoPendingExtraordinarios = pendingExtraordinarios.reduce((acc, c) => acc + (Number(c.monto) || 0), 0);
+
+                      // Meses adeudados de cuota ordinaria
+                      const mesesDeuda = Math.max(socio.mesesAdeudados || 0, cuotasMensualesEmitidas.length);
                       const montoMeses = (socio.estadoCuota === 'Exento' || socio.estadoCuota?.includes('Desvinculado') || socio.categoria === 'Socio Honorario') ? 0 : (mesesDeuda * cuotaMensual);
-                      const pendingCobros = cobrosList.filter(c => c.socioId === socio.id && !c.pagado);
-                      const montoPendingCobros = pendingCobros.reduce((acc, c) => acc + (Number(c.monto) || 0), 0);
-                      const deudaTotal = (socio.estadoCuota === 'Exento' || socio.estadoCuota?.includes('Desvinculado') || socio.categoria === 'Socio Honorario') ? 0 : cuotaIncorp + montoMeses + montoPendingCobros;
+                      const deudaTotal = (socio.estadoCuota === 'Exento' || socio.estadoCuota?.includes('Desvinculado') || socio.categoria === 'Socio Honorario') ? 0 : cuotaIncorp + montoMeses + montoPendingExtraordinarios;
 
                       return (
                         <tr key={socio.id} className="hover:bg-slate-50 transition-colors">
@@ -671,12 +691,29 @@ Correo tesorería: ag.pruaned@gmail.com`;
                           </td>
 
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                               mesesDeuda === 0 
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                                : mesesDeuda === 1
+                                ? 'bg-blue-50 text-blue-800 border-blue-200'
                                 : 'bg-rose-50 text-rose-800 border-rose-200'
                             }`}>
-                              {mesesDeuda === 0 ? '0 meses' : `${mesesDeuda} mes(es)`}
+                              {mesesDeuda === 0 ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span>Al día</span>
+                                </>
+                              ) : mesesDeuda === 1 ? (
+                                <>
+                                  <Clock className="w-3 h-3 text-blue-600" />
+                                  <span>1 cuota pend.</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="w-3 h-3 text-rose-600" />
+                                  <span>{mesesDeuda} meses en mora</span>
+                                </>
+                              )}
                             </span>
                             {socio.ultimaCuotaPagada && (
                               <span className="block text-[9px] text-slate-400 mt-0.5">Últ: {socio.ultimaCuotaPagada}</span>
@@ -684,12 +721,12 @@ Correo tesorería: ag.pruaned@gmail.com`;
                           </td>
 
                           <td className="py-3 px-4">
-                            {pendingCobros.length > 0 ? (
-                              <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-mono font-bold text-[10px] border border-amber-200">
-                                {pendingCobros.length} pend. (${montoPendingCobros.toLocaleString('es-CL')})
+                            {pendingExtraordinarios.length > 0 ? (
+                              <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-800 font-mono font-bold text-[10px] border border-purple-200">
+                                {pendingExtraordinarios.length} pend. (${montoPendingExtraordinarios.toLocaleString('es-CL')})
                               </span>
                             ) : (
-                              <span className="text-[10px] text-slate-400">Sin cargos</span>
+                              <span className="text-[10px] text-slate-400 font-medium">—</span>
                             )}
                           </td>
 
