@@ -198,6 +198,11 @@ export default function ComunicacionesMasivas() {
 
   const handleSend = async (e) => {
     e.preventDefault();
+    if (!templateId.trim()) {
+      setShowConfig(true);
+      alert('Debes configurar e ingresar el ID de la plantilla de EmailJS para correos masivos antes de realizar el envío.');
+      return;
+    }
     if (!subject.trim() || !body.trim()) return;
     if (destinatariosValidos.length === 0) {
       alert('No hay destinatarios con correo válido en la selección actual.');

@@ -71,20 +71,36 @@ export const sendPagoEmail = async (pagoData, socioData) => {
   }
 };
 
+const TEMPLATE_ID_PAGO_VALIDADO = "template_pago_validado";
+const TEMPLATE_ID_AVISO_COBRO = "template_aviso_cobro";
+
 /**
  * Notifica al socio que su comprobante de pago fue validado y su cuenta quedó 'Al Día'
+ * IMPORTANTE: No reutiliza template_mxedl3t (que es exclusivo para resolución de postulaciones de nuevos miembros).
  */
 export const sendPagoValidadoEmail = async (socioData, montoValidado) => {
   if (!socioData?.email || socioData.email.includes('anonimizado')) return;
   
+  const configuredTemplate = typeof window !== 'undefined' 
+    ? (window.localStorage.getItem('pruaned_emailjs_template_pago') || null) 
+    : null;
+
+  // Si no hay plantilla específica de pagos creada en EmailJS, evitamos enviar la carta de postulación
+  if (!configuredTemplate) {
+    console.info("[Email] Omitiendo notificación automática de pago: requiere plantilla específica de recibo en EmailJS para no confundir con aprobación de postulante.");
+    return null;
+  }
+
   try {
     return await emailjs.send(
       EMAILJS_SERVICE_ID,
-      TEMPLATE_ID_APPROVAL,
+      configuredTemplate,
       {
         to_email: socioData.email,
-        nombre_postulante: socioData.nombre,
-        mensaje_personalizado: `Tu comprobante de pago por $${Number(montoValidado || 0).toLocaleString('es-CL')} ha sido validado exitosamente por Tesorería. Tu cuenta gremial se encuentra ahora Al Día.`
+        to_name: socioData.nombre,
+        socio_nombre: socioData.nombre,
+        monto: Number(montoValidado || 0).toLocaleString('es-CL'),
+        mensaje: `Tu comprobante de pago por $${Number(montoValidado || 0).toLocaleString('es-CL')} CLP ha sido validado exitosamente por Tesorería. Tu cuenta gremial se encuentra ahora Al Día.`
       },
       EMAILJS_PUBLIC_KEY
     );
@@ -100,15 +116,26 @@ export const sendPagoValidadoEmail = async (socioData, montoValidado) => {
 export const sendAvisoCobroEmail = async (socioData, deudaDetalle = {}) => {
   if (!socioData?.email || socioData.email.includes('anonimizado')) return;
   
+  const configuredTemplate = typeof window !== 'undefined' 
+    ? (window.localStorage.getItem('pruaned_emailjs_template_aviso') || null) 
+    : null;
+
+  if (!configuredTemplate) {
+    console.info("[Email] Omitiendo envío de aviso de cobro: no hay plantilla específica de cobranza configurada en EmailJS.");
+    return null;
+  }
+
   try {
     const totalCLP = Number(deudaDetalle.montoTotal || 0).toLocaleString('es-CL');
     return await emailjs.send(
       EMAILJS_SERVICE_ID,
-      TEMPLATE_ID_APPROVAL,
+      configuredTemplate,
       {
         to_email: socioData.email,
-        nombre_postulante: socioData.nombre,
-        mensaje_personalizado: `Estimado/a ${socioData.nombre}, le recordamos desde Tesorería PRUANED A.G. que registra compromisos sociales pendientes por $${totalCLP} CLP (${deudaDetalle.detalle || 'Cuotas ordinarias'}).\n\nPuede transferir a:\nBanco: Mercado Pago\nTipo: Cuenta Vista\nN° Cuenta: 1046032015\nRUT: 65.272.406-K\nTitular: PRUANED A.G.\nCorreo: ag.pruaned@gmail.com\n\nFavor enviar el comprobante para regularizar su estado de cuota.`
+        to_name: socioData.nombre,
+        socio_nombre: socioData.nombre,
+        monto_deuda: totalCLP,
+        detalle_deuda: deudaDetalle.detalle || 'Cuotas ordinarias pendientes'
       },
       EMAILJS_PUBLIC_KEY
     );

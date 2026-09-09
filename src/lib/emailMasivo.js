@@ -18,7 +18,7 @@ export const getMassivoTemplateId = () => {
     const saved = window.localStorage.getItem('pruaned_emailjs_template_masivo');
     if (saved && saved.trim()) return saved.trim();
   }
-  return 'template_mxedl3t';
+  return '';
 };
 
 export const setMassivoTemplateId = (templateId) => {
