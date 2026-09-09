@@ -82,130 +82,127 @@ export default function PadronSocios() {
   const [isEmittingMonthly, setIsEmittingMonthly] = useState(false);
   const [monthlyFeeName, setMonthlyFeeName] = useState('');
 
-  // Estado del modal de pago avanzado (dinámico según compromisos pendientes reales)
-  const [selectedCommitmentId, setSelectedCommitmentId] = useState('');
-  const [customConcepto, setCustomConcepto] = useState('');
-  const [paymentType, setPaymentType] = useState('mensual');
+  // Estado del modal de pago avanzado
+  const [paymentType, setPaymentType] = useState('mensual'); // 'mensual' | 'incorporacion' | 'cobro_especial' | 'libre'
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedCobroId, setSelectedCobroId] = useState('');
+  const [customConcepto, setCustomConcepto] = useState('');
   const [customMonto, setCustomMonto] = useState('');
   const [comprobanteRef, setComprobanteRef] = useState('');
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // Compromisos pendientes específicos del socio activo en el modal de pago
-  const pendingCommitments = React.useMemo(() => {
+  // 1. Cuotas sociales mensuales pendientes del socio (exclusivamente cuotas ordinarias de membresía)
+  const cuotasMensualesPendientes = React.useMemo(() => {
     if (!activePaymentModal) return [];
-    const items = [];
-
-    // 1. Cobros en tabla cobros (cuotas mensuales y extraordinarias)
-    const socioCobros = cobrosList.filter(c => c.socioId === activePaymentModal.id && !c.pagado);
-    const cuotasMensuales = socioCobros.filter(c => c.titulo.toLowerCase().startsWith('cuota'));
-    const extraordinarios = socioCobros.filter(c => !c.titulo.toLowerCase().startsWith('cuota'));
-
-    // Añadir cuotas mensuales pendientes
-    cuotasMensuales.forEach(c => {
-      items.push({
+    const fromCobros = cobrosList.filter(
+      c => c.socioId === activePaymentModal.id && !c.pagado && c.titulo.toLowerCase().startsWith('cuota')
+    );
+    if (fromCobros.length > 0) {
+      return fromCobros.map(c => ({
         id: c.id,
-        tipo: 'mensual',
         titulo: c.titulo,
         monto: Number(c.monto),
-        cobroId: c.id,
-        tipoLabel: 'Cuota Social Mensual',
-        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
-      });
-    });
-
-    // Fallback: Si el socio tiene meses adeudados pero no tenía fila en cobrosList
-    if (cuotasMensuales.length === 0 && (activePaymentModal.mesesAdeudados || 0) > 0 && activePaymentModal.categoria !== 'Socio Honorario' && !activePaymentModal.estadoCuota?.includes('Desvinculado')) {
-      const cuotaMensual = activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
-      items.push({
-        id: 'cuota_septiembre_2026_fallback',
-        tipo: 'mensual',
+        cobroId: c.id
+      }));
+    }
+    // Fallback: si tiene mesesAdeudados > 0 pero no tenía cobro emitido
+    if ((activePaymentModal.mesesAdeudados || 0) > 0 && activePaymentModal.categoria !== 'Socio Honorario' && !activePaymentModal.estadoCuota?.includes('Desvinculado')) {
+      const cuotaMonto = activePaymentModal.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
+      return [{
+        id: 'cuota_septiembre_2026_default',
         titulo: 'Cuota Septiembre 2026',
-        monto: Number(cuotaMensual),
-        cobroId: null,
-        tipoLabel: 'Cuota Social Mensual',
-        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
-      });
+        monto: Number(cuotaMonto),
+        cobroId: null
+      }];
     }
-
-    // Añadir extraordinarios pendientes
-    extraordinarios.forEach(c => {
-      items.push({
-        id: c.id,
-        tipo: 'cobro_especial',
-        titulo: c.titulo,
-        monto: Number(c.monto),
-        cobroId: c.id,
-        tipoLabel: 'Cobro Extraordinario',
-        badgeColor: 'bg-purple-100 text-purple-800 border-purple-200'
-      });
-    });
-
-    // Añadir Cuota de Incorporación si está pendiente
-    const esAntiguo = activePaymentModal.fechaIngreso && new Date(activePaymentModal.fechaIngreso).getFullYear() < 2026;
-    const incorpPendiente = !(activePaymentModal.cuotaIncorporacionPagada || esAntiguo);
-    if (incorpPendiente && activePaymentModal.categoria !== 'Socio Honorario' && !activePaymentModal.estadoCuota?.includes('Desvinculado')) {
-      const montoIncorp = activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000;
-      items.push({
-        id: 'incorporacion',
-        tipo: 'incorporacion',
-        titulo: 'Cuota de Incorporación',
-        monto: Number(montoIncorp),
-        cobroId: null,
-        tipoLabel: 'Cuota de Incorporación',
-        badgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
-      });
-    }
-
-    return items;
+    return [];
   }, [activePaymentModal, cobrosList, financialSettings]);
 
-  // Al abrir modal de pago, seleccionar automáticamente el primer compromiso pendiente del socio
+  // 2. Cobros extraordinarios pendientes del socio (rifas, cuotas especiales, etc. — NUNCA cuotas sociales)
+  const extraordinariosPendientes = React.useMemo(() => {
+    if (!activePaymentModal) return [];
+    return cobrosList.filter(
+      c => c.socioId === activePaymentModal.id && !c.pagado && !c.titulo.toLowerCase().startsWith('cuota')
+    ).map(c => ({
+      id: c.id,
+      titulo: c.titulo,
+      monto: Number(c.monto),
+      cobroId: c.id
+    }));
+  }, [activePaymentModal, cobrosList]);
+
+  // 3. Cuota de incorporación
+  const esAntiguo = activePaymentModal?.fechaIngreso && new Date(activePaymentModal.fechaIngreso).getFullYear() < 2026;
+  const cuotaIncorpPendiente = activePaymentModal ? !(activePaymentModal.cuotaIncorporacionPagada || esAntiguo) : false;
+
+  // Al abrir modal de pago, inicializar tipo de pago y valores
   useEffect(() => {
     if (activePaymentModal) {
       setComprobanteRef('');
       setComprobanteFile(null);
 
-      if (pendingCommitments.length > 0) {
-        const first = pendingCommitments[0];
-        setSelectedCommitmentId(first.id);
-        setPaymentType(first.tipo);
-        setCustomMonto(first.monto);
+      if (cuotasMensualesPendientes.length > 0) {
+        setPaymentType('mensual');
+        const first = cuotasMensualesPendientes[0];
         setSelectedCobroId(first.cobroId || '');
         setSelectedMonth(first.titulo);
-        setCustomConcepto(first.titulo);
-      } else {
-        setSelectedCommitmentId('abono_libre');
-        setPaymentType('libre');
-        setCustomMonto('');
+        setCustomMonto(first.monto);
+      } else if (extraordinariosPendientes.length > 0) {
+        setPaymentType('cobro_especial');
+        const first = extraordinariosPendientes[0];
+        setSelectedCobroId(first.id);
+        setSelectedMonth(first.titulo);
+        setCustomMonto(first.monto);
+      } else if (cuotaIncorpPendiente && activePaymentModal.categoria !== 'Socio Honorario') {
+        setPaymentType('incorporacion');
         setSelectedCobroId('');
-        setSelectedMonth('');
+        setSelectedMonth('Cuota Incorporación');
+        setCustomMonto(activePaymentModal.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000);
+      } else {
+        setPaymentType('libre');
+        setSelectedCobroId('');
+        setSelectedMonth('Abono Libre');
+        setCustomMonto('');
         setCustomConcepto('Abono Libre');
       }
     }
-  }, [activePaymentModal, pendingCommitments]);
+  }, [activePaymentModal]);
 
-  // Manejar cambio de compromiso en el selector
-  const handleSelectCommitment = (id) => {
-    setSelectedCommitmentId(id);
-    if (id === 'abono_libre') {
-      setPaymentType('libre');
+  // Cambiar pestaña del tipo de pago
+  const handleSwitchPaymentType = (type) => {
+    setPaymentType(type);
+    if (type === 'mensual') {
+      if (cuotasMensualesPendientes.length > 0) {
+        const first = cuotasMensualesPendientes[0];
+        setSelectedCobroId(first.cobroId || '');
+        setSelectedMonth(first.titulo);
+        setCustomMonto(first.monto);
+      } else {
+        setSelectedCobroId('');
+        setSelectedMonth('Cuota Septiembre 2026');
+        setCustomMonto(activePaymentModal?.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000);
+      }
+    } else if (type === 'cobro_especial') {
+      if (extraordinariosPendientes.length > 0) {
+        const first = extraordinariosPendientes[0];
+        setSelectedCobroId(first.id);
+        setSelectedMonth(first.titulo);
+        setCustomMonto(first.monto);
+      } else {
+        setSelectedCobroId('');
+        setSelectedMonth('');
+        setCustomMonto('');
+      }
+    } else if (type === 'incorporacion') {
       setSelectedCobroId('');
+      setSelectedMonth('Cuota Incorporación');
+      setCustomMonto(activePaymentModal?.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000);
+    } else {
+      setSelectedCobroId('');
+      setSelectedMonth('Abono Libre');
       setCustomMonto('');
-      setSelectedMonth('');
       setCustomConcepto('Abono Libre');
-      return;
-    }
-
-    const item = pendingCommitments.find(c => c.id === id);
-    if (item) {
-      setPaymentType(item.tipo);
-      setCustomMonto(item.monto);
-      setSelectedCobroId(item.cobroId || '');
-      setSelectedMonth(item.titulo);
-      setCustomConcepto(item.titulo);
     }
   };
 
@@ -404,34 +401,33 @@ Correo tesorería: ag.pruaned@gmail.com`;
 
       const refFinal = comprobanteRef.trim() || (uploadedUrl ? 'Comprobante adjunto' : 'Validado por Tesorería');
       
-      const selectedItem = pendingCommitments.find(c => c.id === selectedCommitmentId);
-      const isIncorporacion = selectedCommitmentId === 'incorporacion' || paymentType === 'incorporacion';
-      const isCobroExtraordinario = (selectedItem && selectedItem.tipo === 'cobro_especial') || paymentType === 'cobro_especial';
-      const isMensual = (selectedItem && selectedItem.tipo === 'mensual') || paymentType === 'mensual';
-
       let paymentPayload = {
         monto: Number(customMonto),
         comprobanteUrl: uploadedUrl || refFinal,
-        tipo: isIncorporacion ? 'incorporacion' : (isCobroExtraordinario ? 'cobro_especial' : (isMensual ? 'mensual' : 'libre')),
-        cobroId: selectedItem?.cobroId || (selectedCobroId || null)
+        tipo: paymentType,
+        cobroId: selectedCobroId || null
       };
 
       let nextEstado = activePaymentModal.estadoCuota;
       let nextMesesAdeudados = Number(activePaymentModal.mesesAdeudados || 0);
       let isCuotaIncorp = false;
 
-      if (isIncorporacion) {
+      if (paymentType === 'incorporacion') {
         isCuotaIncorp = true;
         paymentPayload.isCuotaIncorporacion = true;
         paymentPayload.concepto = 'Cuota de Incorporación';
         paymentPayload.mes = 'Cuota Incorporación';
-      } else if (isCobroExtraordinario) {
-        paymentPayload.concepto = selectedItem?.titulo || customConcepto || 'Cobro Extraordinario';
+      } else if (paymentType === 'cobro_especial') {
+        const targetCobro = extraordinariosPendientes.find(c => c.id === selectedCobroId);
+        paymentPayload.concepto = targetCobro ? targetCobro.titulo : (selectedMonth || 'Cobro Extraordinario');
         paymentPayload.mes = paymentPayload.concepto;
-      } else if (isMensual) {
-        const tituloCuota = selectedItem?.titulo || selectedMonth || 'Cuota Septiembre 2026';
+        paymentPayload.cobroId = targetCobro?.id || selectedCobroId || null;
+      } else if (paymentType === 'mensual') {
+        const targetCuota = cuotasMensualesPendientes.find(c => (c.cobroId && c.cobroId === selectedCobroId) || c.titulo === selectedMonth);
+        const tituloCuota = targetCuota?.titulo || selectedMonth || 'Cuota Septiembre 2026';
         paymentPayload.concepto = tituloCuota;
         paymentPayload.mes = tituloCuota;
+        paymentPayload.cobroId = targetCuota?.cobroId || selectedCobroId || null;
         nextMesesAdeudados = Math.max(0, nextMesesAdeudados - 1);
         nextEstado = nextMesesAdeudados === 0 ? 'Al Día' : 'En Mora';
       } else {
@@ -1182,79 +1178,169 @@ Correo tesorería: ag.pruaned@gmail.com`;
             </div>
 
             <form onSubmit={handleConfirmPayment} className="space-y-4 text-xs">
-              {/* SELECTOR DE COMPROMISOS PENDIENTES DEL SOCIO */}
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-800">
-                  Cuota o Cobro Pendiente a Cancelar:
-                </label>
+              {/* SELECTOR DE TIPO DE CONCEPTO */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1.5">Concepto a Pagar:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchPaymentType('mensual')}
+                    className={`p-2.5 rounded-xl border text-left font-bold transition-all flex flex-col justify-between ${
+                      paymentType === 'mensual'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 ring-2 ring-emerald-600/20'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-xs">Cuota Social Mensual</span>
+                    <span className={`text-[10px] font-semibold mt-1 ${cuotasMensualesPendientes.length > 0 ? 'text-blue-700' : 'text-slate-400'}`}>
+                      {cuotasMensualesPendientes.length > 0 ? `${cuotasMensualesPendientes.length} cuota(s) pendiente(s)` : 'Al día'}
+                    </span>
+                  </button>
 
-                {pendingCommitments.length === 0 ? (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 space-y-1">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      El socio no registra cuotas ni cobros pendientes.
-                    </div>
-                    <p className="text-[11px] text-emerald-700">
-                      Se encuentra al día con sus compromisos. Si deseas registrar un pago adelantado o aporte voluntario, utiliza la opción "Abono Libre".
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <select
-                      value={selectedCommitmentId}
-                      onChange={e => handleSelectCommitment(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-bold outline-none focus:border-emerald-600 focus:bg-white text-xs cursor-pointer shadow-sm"
-                    >
-                      <optgroup label="Compromisos Pendientes de Este Socio">
-                        {pendingCommitments.map(c => (
-                          <option key={c.id} value={c.id}>
-                            [{c.tipoLabel.toUpperCase()}] {c.titulo} — ${c.monto.toLocaleString('es-CL')} CLP
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Otras Modalidades">
-                        <option value="abono_libre">
-                          [OTRO] Abono Libre / Pago Personalizado
-                        </option>
-                      </optgroup>
-                    </select>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchPaymentType('incorporacion')}
+                    className={`p-2.5 rounded-xl border text-left font-bold transition-all flex flex-col justify-between ${
+                      paymentType === 'incorporacion'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 ring-2 ring-emerald-600/20'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-xs">Cuota de Incorporación</span>
+                    <span className={`text-[10px] font-semibold mt-1 ${cuotaIncorpPendiente ? 'text-amber-700' : 'text-slate-400'}`}>
+                      {cuotaIncorpPendiente ? 'Pendiente ($30.000)' : 'Al día / Exento'}
+                    </span>
+                  </button>
 
-                    {/* Tarjeta con detalle del concepto seleccionado */}
-                    {selectedCommitmentId !== 'abono_libre' && (
-                      <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                            Concepto Seleccionado
-                          </span>
-                          <span className="font-extrabold text-slate-900 text-sm">
-                            {pendingCommitments.find(c => c.id === selectedCommitmentId)?.titulo}
-                          </span>
-                        </div>
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${
-                          pendingCommitments.find(c => c.id === selectedCommitmentId)?.badgeColor || 'bg-slate-100 text-slate-700 border-slate-200'
-                        }`}>
-                          {pendingCommitments.find(c => c.id === selectedCommitmentId)?.tipoLabel}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchPaymentType('cobro_especial')}
+                    className={`p-2.5 rounded-xl border text-left font-bold transition-all flex flex-col justify-between ${
+                      paymentType === 'cobro_especial'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 ring-2 ring-emerald-600/20'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-xs">Cobro Extraordinario</span>
+                    <span className={`text-[10px] font-semibold mt-1 ${extraordinariosPendientes.length > 0 ? 'text-purple-700' : 'text-slate-400'}`}>
+                      {extraordinariosPendientes.length > 0 ? `${extraordinariosPendientes.length} pendiente(s)` : 'Sin cobros pend.'}
+                    </span>
+                  </button>
 
-                {/* Si no hay compromisos pendientes o eligió Abono Libre */}
-                {(pendingCommitments.length === 0 || selectedCommitmentId === 'abono_libre') && (
-                  <div className="pt-1">
-                    <label className="block font-bold text-slate-700 mb-1">Descripción / Glosa del Abono:</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ej: Pago adelantado Cuota Octubre 2026"
-                      value={customConcepto}
-                      onChange={e => setCustomConcepto(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 font-semibold outline-none focus:border-emerald-600 focus:bg-white"
-                    />
-                  </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchPaymentType('libre')}
+                    className={`p-2.5 rounded-xl border text-left font-bold transition-all flex flex-col justify-between ${
+                      paymentType === 'libre'
+                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 ring-2 ring-emerald-600/20'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-xs">Abono Libre</span>
+                    <span className="text-[10px] font-semibold mt-1 text-slate-400">
+                      Monto / Adelantado
+                    </span>
+                  </button>
+                </div>
               </div>
+
+              {/* 1. SELECCIÓN DE CUOTA SOCIAL MENSUAL (EXCLUSIVAMENTE CUOTAS ORDINARIAS PENDIENTES) */}
+              {paymentType === 'mensual' && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Cuota Social Mensual Pendiente:
+                  </label>
+                  {cuotasMensualesPendientes.length === 0 ? (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2 font-medium">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      <span>El socio está al día con sus cuotas sociales mensuales (no registra deudas de cuotas).</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedCobroId || selectedMonth}
+                      onChange={e => {
+                        const selected = cuotasMensualesPendientes.find(c => (c.cobroId && c.cobroId === e.target.value) || c.titulo === e.target.value);
+                        if (selected) {
+                          setSelectedCobroId(selected.cobroId || '');
+                          setSelectedMonth(selected.titulo);
+                          setCustomMonto(selected.monto);
+                        }
+                      }}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 outline-none font-bold text-xs cursor-pointer focus:border-emerald-600 focus:bg-white shadow-sm"
+                    >
+                      {cuotasMensualesPendientes.map(c => (
+                        <option key={c.id} value={c.cobroId || c.titulo}>
+                          {c.titulo} (${c.monto.toLocaleString('es-CL')})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {/* 2. SELECCIÓN DE COBRO EXTRAORDINARIO (RIFAS, APORTES ESPECIALES, NUNCA CUOTA SOCIAL) */}
+              {paymentType === 'cobro_especial' && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Cobro Extraordinario Pendiente:
+                  </label>
+                  {extraordinariosPendientes.length === 0 ? (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-xs flex items-center gap-2 font-medium">
+                      <AlertCircle className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      <span>El socio no registra cobros extraordinarios pendientes (rifas, cuotas extraordinarias de eventos, etc.).</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedCobroId}
+                      onChange={e => {
+                        setSelectedCobroId(e.target.value);
+                        const c = extraordinariosPendientes.find(item => item.id === e.target.value);
+                        if (c) {
+                          setSelectedMonth(c.titulo);
+                          setCustomMonto(c.monto);
+                        }
+                      }}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 outline-none font-bold text-xs cursor-pointer focus:border-emerald-600 focus:bg-white shadow-sm"
+                    >
+                      {extraordinariosPendientes.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.titulo} (${Number(c.monto).toLocaleString('es-CL')})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {/* 3. INFORMACIÓN DE CUOTA DE INCORPORACIÓN */}
+              {paymentType === 'incorporacion' && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <DollarSign className="w-4 h-4 text-amber-700" />
+                    Cuota de Incorporación Institucional ($30.000 CLP)
+                  </div>
+                  <p className="text-[11px] text-amber-800 font-medium">
+                    {cuotaIncorpPendiente
+                      ? 'Compromiso reglamentario único de ingreso pendiente de regularización.'
+                      : 'El socio ya registra su cuota de incorporación pagada o regularizada.'}
+                  </p>
+                </div>
+              )}
+
+              {/* 4. GLOSA DE ABONO LIBRE */}
+              {paymentType === 'libre' && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Descripción / Glosa del Abono Libre *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Aporte voluntario / Pago cuotas por adelantado"
+                    value={customConcepto}
+                    onChange={e => setCustomConcepto(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-slate-900 font-semibold outline-none focus:border-emerald-600 focus:bg-white"
+                  />
+                </div>
+              )}
 
               {/* MONTO A PAGAR */}
               <div>
