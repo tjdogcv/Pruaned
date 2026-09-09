@@ -68,13 +68,13 @@ export const AuthProvider = ({ children }) => {
   const [securityLogs, setSecurityLogs] = useState(() => INITIAL_SECURITY_LOGS.map(normalizeAuditLog));
   const addSecurityLog = (eventType, userEmail, severity = 'INFO') => {
     setSecurityLogs((previous) => logSecurityEvent(previous, eventType, userEmail, severity));
-    if (isSupabaseReady()) {
+    if (isSupabaseReady() && currentUser) {
       const newLog = logSecurityEvent([], eventType, userEmail, severity)[0];
       supabase.from('auditoria_logs').insert([{
         fecha: newLog.date, accion: newLog.label, usuario: newLog.user, severidad: newLog.severity
       }]).then(({ error }) => {
-        if (error) console.error('Error guardando log de auditoría:', error);
-      }).catch((error) => console.error('Error guardando log de auditoría:', error));
+        if (error) { /* Silenciar error si RLS requiere rol autenticado */ }
+      }).catch(() => {});
     }
   };
 
