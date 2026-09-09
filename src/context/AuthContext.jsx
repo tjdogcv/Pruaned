@@ -34,6 +34,29 @@ import { useVolunteerApplicationsDomain } from './useVolunteerApplicationsDomain
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
 const AuthContext = createContext();
 
+const detectRecoveryInUrl = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const pathname = window.location.pathname || '';
+    const hasRecovery =
+      hash.includes('type=recovery') ||
+      search.includes('type=recovery') ||
+      (hash.includes('access_token') && (hash.includes('type=recovery') || hash.includes('recovery'))) ||
+      pathname === '/recuperar-clave' ||
+      pathname === '/recuperar';
+
+    if (hasRecovery) {
+      window.sessionStorage?.setItem('pruaned_recovery_flow', 'true');
+      return true;
+    }
+    return window.sessionStorage?.getItem('pruaned_recovery_flow') === 'true';
+  } catch {
+    return false;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const supabaseReady = isSupabaseReady();
   const persistedSession = supabaseReady ? null : loadLegacySession(localStorage);
@@ -41,6 +64,20 @@ export const AuthProvider = ({ children }) => {
   const [is2FAVerified, setIs2FAVerified] = useState(!!persistedSession);
   const [isAuthRestoring, setIsAuthRestoring] = useState(supabaseReady);
   const [activeTab, setActiveTab] = useState('home');
+
+  // Control centralizado de recuperación de contraseña y modal de autenticación
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(detectRecoveryInUrl);
+  const [authModalOpen, setAuthModalOpen] = useState(() => detectRecoveryInUrl());
+  const [authModalMode, setAuthModalMode] = useState(() => detectRecoveryInUrl() ? 'update_password' : 'login');
+
+  const openAuthModal = React.useCallback((mode = 'login') => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = React.useCallback(() => {
+    setAuthModalOpen(false);
+  }, []);
 
   // Firmas Digitales Oficiales (Presidente y Secretario)
   const [firmasOficiales, setFirmasOficiales] = useState(INITIAL_FIRMAS);
@@ -386,8 +423,18 @@ export const AuthProvider = ({ children }) => {
 
         if (isValidationCurrent()) {
           clearLegacySession(localStorage);
-          setCurrentUser(await resolveSupabaseIdentity(user.email));
-          setIs2FAVerified(true);
+          const isRecoveryActive =
+            isPasswordRecovery ||
+            (typeof window !== 'undefined' && (
+              window.sessionStorage?.getItem('pruaned_recovery_flow') === 'true' ||
+              window.location.hash.includes('type=recovery') ||
+              window.location.search.includes('type=recovery')
+            ));
+
+          if (!isRecoveryActive) {
+            setCurrentUser(await resolveSupabaseIdentity(user.email));
+            setIs2FAVerified(true);
+          }
         }
       } catch {
         if (isValidationCurrent()) clearCurrentAuthentication();
@@ -407,10 +454,26 @@ export const AuthProvider = ({ children }) => {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+        setAuthModalMode('update_password');
+        setAuthModalOpen(true);
+        try {
+          if (typeof window !== 'undefined') {
+            window.sessionStorage?.setItem('pruaned_recovery_flow', 'true');
+          }
+        } catch (_) {}
+      }
       if (event === 'INITIAL_SESSION') queueValidation();
       if (event === 'TOKEN_REFRESHED') queueValidation(true);
       if (event === 'SIGNED_OUT') {
         clearCurrentAuthentication();
+        setIsPasswordRecovery(false);
+        try {
+          if (typeof window !== 'undefined') {
+            window.sessionStorage?.removeItem('pruaned_recovery_flow');
+          }
+        } catch (_) {}
       }
     });
 
@@ -528,6 +591,16 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseReady()) {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw new Error("Error actualizando contraseña: " + error.message);
+      setIsPasswordRecovery(false);
+      try {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage?.removeItem('pruaned_recovery_flow');
+          if (window.history?.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+        }
+      } catch (_) {}
       return true;
     }
     // Mock mode
@@ -1278,6 +1351,12 @@ export const AuthProvider = ({ children }) => {
       setIs2FAVerified,
       activeTab,
       setActiveTab,
+      isPasswordRecovery,
+      setIsPasswordRecovery,
+      authModalOpen,
+      authModalMode,
+      openAuthModal,
+      closeAuthModal,
       // Firmas Digitales
       firmasOficiales,
       updateFirmaOficial,

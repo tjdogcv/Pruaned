@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { Hero } from './components/Hero';
@@ -45,57 +45,72 @@ function PublicLayout({ children, onOpenAuth }) {
 }
 
 function HomePage() {
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState('login');
+  const { authModalOpen, authModalMode, openAuthModal, closeAuthModal, isPasswordRecovery } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (location.hash.includes('type=recovery') || location.search.includes('type=recovery')) {
-      setAuthMode('update_password');
-      setIsAuthModalOpen(true);
+    const isRecovery =
+      isPasswordRecovery ||
+      (typeof window !== 'undefined' && window.sessionStorage?.getItem('pruaned_recovery_flow') === 'true') ||
+      location.hash.includes('type=recovery') ||
+      location.search.includes('type=recovery') ||
+      location.pathname === '/recuperar-clave' ||
+      location.pathname === '/recuperar';
+
+    if (isRecovery) {
+      openAuthModal('update_password');
     } else if (location.search.includes('login=required') || location.search.includes('login=true')) {
-      setAuthMode('login');
-      setIsAuthModalOpen(true);
+      if (!isRecovery) {
+        openAuthModal('login');
+      }
     }
-  }, [location.search, location.hash]);
+  }, [location.search, location.hash, location.pathname, isPasswordRecovery, openAuthModal]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-['+Plus+Jakarta+Sans'] text-slate-900">
-      <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
+      <Navbar onOpenAuth={() => openAuthModal('login')} />
       <a className="skip-link" href="#contenido-principal">Saltar al contenido principal</a>
       <main id="contenido-principal" className="flex-1">
-        <Hero onOpenAuth={() => setIsAuthModalOpen(true)} onNavigate={(path) => navigate(path)} />
+        <Hero onOpenAuth={() => openAuthModal('login')} onNavigate={(path) => navigate(path)} />
         <PublicPathways />
         <Institutional />
         <NewsSection />
         <DocumentsSection />
       </main>
       <Footer />
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} initialMode={authMode} />
+      <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} initialMode={authModalMode} />
     </div>
   );
 }
 
-function PublicPageWrapper({ component: Component, componentProps }) {
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState('login');
+function PublicPageWrapper({ component: Component, componentProps, defaultAuthMode }) {
+  const { authModalOpen, authModalMode, openAuthModal, closeAuthModal, isPasswordRecovery } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
-    if (location.hash.includes('type=recovery') || location.search.includes('type=recovery')) {
-      setAuthMode('update_password');
-      setIsAuthModalOpen(true);
+    const isRecovery =
+      isPasswordRecovery ||
+      (typeof window !== 'undefined' && window.sessionStorage?.getItem('pruaned_recovery_flow') === 'true') ||
+      location.hash.includes('type=recovery') ||
+      location.search.includes('type=recovery') ||
+      location.pathname === '/recuperar-clave' ||
+      location.pathname === '/recuperar' ||
+      defaultAuthMode === 'update_password';
+
+    if (isRecovery) {
+      openAuthModal('update_password');
     } else if (location.search.includes('login=required') || location.search.includes('login=true')) {
-      setAuthMode('login');
-      setIsAuthModalOpen(true);
+      if (!isRecovery) {
+        openAuthModal('login');
+      }
     }
-  }, [location.search, location.hash]);
+  }, [location.search, location.hash, location.pathname, isPasswordRecovery, openAuthModal, defaultAuthMode]);
 
   return (
-    <PublicLayout onOpenAuth={() => setIsAuthModalOpen(true)}>
+    <PublicLayout onOpenAuth={() => openAuthModal('login')}>
       <Component {...(componentProps || {})} />
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} initialMode={authMode} />
+      <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} initialMode={authModalMode} />
     </PublicLayout>
   );
 }
@@ -104,6 +119,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/recuperar" element={<HomePage />} />
+      <Route path="/recuperar-clave" element={<HomePage />} />
       <Route path="/institucional" element={<PublicPageWrapper component={Institutional} />} />
       <Route path="/noticias" element={<PublicPageWrapper component={NewsSection} />} />
       <Route path="/documentos" element={<PublicPageWrapper component={DocumentsSection} />} />

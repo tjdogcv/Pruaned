@@ -167,7 +167,9 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
           return;
         }
         await updatePassword(password);
-        setSuccessMsg('Contraseña actualizada correctamente. Ya puedes iniciar sesión.');
+        setSuccessMsg('¡Contraseña actualizada exitosamente! Ya puedes iniciar sesión con tu nueva clave.');
+        setPassword('');
+        setConfirmPassword('');
         setMode('login');
       }
     } catch (error) {
@@ -214,6 +216,16 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
           <h3 className="text-2xl font-extrabold font-['Outfit']">
             {mode === 'forgot_password' ? 'Recuperar Clave' : mode === 'update_password' ? 'Nueva Contraseña' : 'Portal Seguro PRUANED'}
           </h3>
+          {mode === 'update_password' && (
+            <p className="text-xs text-slate-300">
+              Ingresa tu nueva contraseña para restablecer tu acceso a la plataforma.
+            </p>
+          )}
+          {mode === 'forgot_password' && (
+            <p className="text-xs text-slate-300">
+              Ingresa tu correo y te enviaremos un enlace seguro para restablecer tu clave.
+            </p>
+          )}
           
           {(mode === 'login' || mode === 'register' || mode === 'login_otp') && (
             <div className="flex bg-slate-800 p-1 rounded-xl w-full mx-auto mt-4">
@@ -322,6 +334,18 @@ export const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
                     className="text-[11px] text-blue-400 hover:text-blue-300"
                   >
                     ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
+
+              {mode === 'forgot_password' && (
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
+                    className="text-[11px] text-blue-400 hover:text-blue-300"
+                  >
+                    ← Volver a Iniciar Sesión
                   </button>
                 </div>
               )}
