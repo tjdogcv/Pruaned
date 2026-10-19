@@ -361,12 +361,36 @@ const deleteCobro = async (cobroId) => {
   addSecurityLog(`COBRO_${cobroId}_DELETED`, currentUser?.email, 'WARN');
 };
 
+const generarCobroMensualMasivo = async (titulo, montoDefault = 5000) => {
+    if (isSupabaseReady()) {
+      try {
+        const { data, error } = await supabase.rpc('generar_cobro_mensual_masivo', {
+          p_titulo_cobro: titulo,
+          p_monto_default: Number(montoDefault)
+        });
+        if (!error && data && data.status === 'success') {
+          // Recargar cobros desde Supabase para sincronizar estado
+          const { data: newCobros } = await supabase.from('cobros').select('*');
+          if (newCobros) {
+            setCobrosList(snakeToCamel(newCobros));
+          }
+          addSecurityLog(`EMISION_MASIVA_COBROS_${titulo}`, currentUser?.email, 'INFO');
+          return { rpcUsed: true, ...data };
+        }
+      } catch (err) {
+        console.warn('RPC generar_cobro_mensual_masivo fallback:', err);
+      }
+    }
+    return { rpcUsed: false };
+  };
+
   return {
     donacionesList, setDonacionesList, publicDonationsList, setPublicDonationsList, addDonacion, deleteDonacion,
     financialSettings, setFinancialSettings, updateFinancialSettings,
     expensesList, setExpensesList, addExpense, deleteExpense,
     financialCategories, setFinancialCategories, addFinancialCategory, archiveFinancialCategory,
     financialAccounts, setFinancialAccounts, addFinancialAccount, removeFinancialAccount, updateFinancialAccountRut,
-    cobrosList, setCobrosList, addCobrosBatch, markCobroPaid, deleteCobro, balancesList, setBalancesList
+    cobrosList, setCobrosList, addCobrosBatch, markCobroPaid, deleteCobro, balancesList, setBalancesList,
+    generarCobroMensualMasivo
   };
 };

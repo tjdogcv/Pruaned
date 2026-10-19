@@ -63,6 +63,7 @@ export default function ComunicacionesMasivas() {
   // Helper para verificar si un socio ha renunciado o está desvinculado (REGLA DE ORO)
   const isSocioRenunciado = (s) => {
     if (!s) return false;
+    if (s.estadoSocio === 'Renunciante') return true;
     const estadoCuota = (s.estadoCuota || '').toLowerCase();
     const estado = (s.estado || '').toLowerCase();
     const motivo = (s.motivoRenuncia || '').trim();
@@ -87,7 +88,9 @@ export default function ComunicacionesMasivas() {
 
   // Helper para verificar si un socio activo está moroso
   const isSocioMoroso = (s) => {
-    if (isSocioRenunciado(s) || s.estadoCuota === 'Exento' || s.categoria === 'Socio Honorario') return false;
+    if (isSocioRenunciado(s)) return false;
+    if (s.estadoCuota === 'Exento' || s.categoria === 'Socio Honorario') return false;
+    if (s.estadoCuota === 'En Gracia' || s.estadoSocio === 'Excluido de Cobro') return false;
     const estadoCuota = (s.estadoCuota || '').toLowerCase();
     const pendingCuotasEmitidas = cobrosList.filter(
       c => c.socioId === s.id && !c.pagado && c.titulo?.toLowerCase().startsWith('cuota')

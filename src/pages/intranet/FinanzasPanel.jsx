@@ -257,7 +257,19 @@ export default function FinanzasPanel() {
       };
 
       if (newCobro.asignacion === 'A todos') {
-        const sociosActivos = sociosList.filter(s => s.estadoCuota !== 'Exento' && !s.estadoCuota?.includes('Desvinculado') && s.email !== 'ag.pruaned@gmail.com');
+        const sociosActivos = sociosList.filter(s => {
+          if (s.email === 'ag.pruaned@gmail.com') return false;
+          if (s.estadoSocio === 'Renunciante' || s.estadoSocio === 'Suspendido' || s.estadoSocio === 'Excluido de Cobro') return false;
+          if (s.estadoCuota === 'Exento' || s.estadoCuota === 'Excluido de Cobro' || s.estadoCuota?.includes('Desvinculado')) return false;
+          if (s.estadoCuota === 'En Gracia') {
+            if (!s.graciaHasta) return false;
+            const hasta = new Date(s.graciaHasta);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            return hasta < hoy;
+          }
+          return true;
+        });
         sociosActivos.forEach(s => {
           arrayToBatch = arrayToBatch.concat(generateForSocio(s));
         });

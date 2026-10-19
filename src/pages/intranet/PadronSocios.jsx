@@ -22,6 +22,7 @@ import {
   ChevronRight, 
   X, 
   Shield,
+  ShieldAlert,
   Copy,
   Wallet,
   Send,
@@ -41,6 +42,10 @@ export default function PadronSocios() {
     financialSettings = {}, 
     cobrosList = [],
     addCobrosBatch,
+    generarCobroMensualMasivo,
+    asignarMesesGracia,
+    revocarMesesGracia,
+    updateEstadoSocio,
     markCobroPaid,
     deleteCobro,
     canManageCategoriesAndCargos,
@@ -77,6 +82,26 @@ export default function PadronSocios() {
   const [retroMotivo, setRetroMotivo] = useState('');
   const [retroActa, setRetroActa] = useState('');
   const [isRetroSaving, setIsRetroSaving] = useState(false);
+
+  // Modal de Excepciones y Meses de Gracia
+  const [activeExcepcionModal, setActiveExcepcionModal] = useState(null);
+  const [excepcionEstadoSocio, setExcepcionEstadoSocio] = useState('Activo');
+  const [excepcionEstadoCuota, setExcepcionEstadoCuota] = useState('Al Día');
+  const [excepcionGraciaMotivo, setExcepcionGraciaMotivo] = useState('');
+  const [excepcionGraciaDesde, setExcepcionGraciaDesde] = useState('');
+  const [excepcionGraciaHasta, setExcepcionGraciaHasta] = useState('');
+  const [excepcionGraciaActa, setExcepcionGraciaActa] = useState('');
+  const [isSavingExcepcion, setIsSavingExcepcion] = useState(false);
+
+  const openExcepcionModal = (socio) => {
+    setActiveExcepcionModal(socio);
+    setExcepcionEstadoSocio(socio.estadoSocio || 'Activo');
+    setExcepcionEstadoCuota(socio.estadoCuota || 'Al Día');
+    setExcepcionGraciaMotivo(socio.graciaMotivo || '');
+    setExcepcionGraciaDesde(socio.graciaDesde || new Date().toISOString().split('T')[0]);
+    setExcepcionGraciaHasta(socio.graciaHasta || '');
+    setExcepcionGraciaActa(socio.graciaRespaldoActa || '');
+  };
 
   // Emisión rápida de cuota mensual
   const [isEmittingMonthly, setIsEmittingMonthly] = useState(false);
@@ -239,6 +264,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
   const activeSociosList = sociosList.filter(s => s.email !== 'ag.pruaned@gmail.com');
   const totalSocios = activeSociosList.length;
   const isSocioRenunciado = (s) => !!(
+    s.estadoSocio === 'Renunciante' ||
     s.estadoCuota?.includes('Desvinculado') || 
     s.estadoCuota?.includes('Renuncia') || 
     s.motivoRenuncia || 
@@ -246,17 +272,36 @@ Correo tesorería: ag.pruaned@gmail.com`;
     s.fechaRetiroOficial
   );
 
+  const isSocioEnGracia = (s) => {
+    if (s.estadoCuota !== 'En Gracia') return false;
+    if (!s.graciaHasta) return true;
+    const hasta = new Date(s.graciaHasta);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return hasta >= hoy;
+  };
+
+  const isSocioExcluidoCobro = (s) => {
+    return s.estadoSocio === 'Excluido de Cobro' || s.estadoCuota === 'Exento' || s.estadoCuota === 'Excluido de Cobro';
+  };
+
+  const isSocioExonerado = (s) => {
+    return isSocioRenunciado(s) || s.categoria === 'Socio Honorario' || isSocioEnGracia(s) || isSocioExcluidoCobro(s) || s.estadoSocio === 'Suspendido';
+  };
+
   const totalSociosActivos = activeSociosList.filter(s => !isSocioRenunciado(s)).length;
   const sociosRenunciados = activeSociosList.filter(isSocioRenunciado).length;
+  const sociosEnGraciaCount = activeSociosList.filter(isSocioEnGracia).length;
+  const sociosExcluidosCount = activeSociosList.filter(s => !isSocioRenunciado(s) && isSocioExcluidoCobro(s)).length;
   
   // Socios activos que tienen 2 o más meses adeudados o marcados formalmente como En Mora
   const sociosEnMora = activeSociosList.filter(s => {
-    if (isSocioRenunciado(s) || s.estadoCuota === 'Exento' || s.categoria === 'Socio Honorario') return false;
+    if (isSocioExonerado(s)) return false;
     const pendingCuotasEmitidas = cobrosList.filter(c => c.socioId === s.id && !c.pagado && c.titulo.toLowerCase().startsWith('cuota')).length;
     const meses = Math.max(s.mesesAdeudados || 0, pendingCuotasEmitidas);
     return s.estadoCuota === 'En Mora' || meses >= 2;
   }).length;
-  const sociosAlDia = Math.max(0, totalSociosActivos - sociosEnMora);
+  const sociosAlDia = Math.max(0, totalSociosActivos - sociosEnMora - sociosEnGraciaCount - sociosExcluidosCount);
 
   // Total recaudado históricamente por cuotas
   const totalRecaudadoHistorico = activeSociosList.reduce((acc, s) => {
@@ -264,9 +309,9 @@ Correo tesorería: ag.pruaned@gmail.com`;
     return acc + pagos;
   }, 0);
 
-  // Total deuda actual del padrón (sin duplicar cuotas ordinarias con cobros y excluyendo renunciados)
+  // Total deuda actual del padrón (sin duplicar cuotas ordinarias con cobros y excluyendo exonerados)
   const totalDeudaPadron = activeSociosList.reduce((acc, s) => {
-    if (isSocioRenunciado(s) || s.estadoCuota === 'Exento' || s.categoria === 'Socio Honorario') return acc;
+    if (isSocioExonerado(s)) return acc;
     const esAntiguo = s.fechaIngreso && new Date(s.fechaIngreso).getFullYear() < 2026;
     const cuotaIncorp = (s.cuotaIncorporacionPagada || esAntiguo) ? 0 : (s.montoCuotaIncorporacion || financialSettings.cuotaIncorporacionActual || 30000);
     const cuotaMensual = s.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000;
@@ -282,8 +327,45 @@ Correo tesorería: ag.pruaned@gmail.com`;
   }, 0);
 
   const recaudacionMensualEsperada = activeSociosList
-    .filter(s => s.categoria !== 'Socio Honorario' && !isSocioRenunciado(s))
+    .filter(s => !isSocioExonerado(s))
     .reduce((acc, s) => acc + Number(s.montoCuotaMensual || financialSettings.cuotaMensualActual || 5000), 0);
+
+  // Guardar cambios en el modal de excepciones
+  const handleSaveExcepcion = async (e) => {
+    e.preventDefault();
+    if (!activeExcepcionModal) return;
+    setIsSavingExcepcion(true);
+    try {
+      if (excepcionEstadoCuota === 'En Gracia') {
+        if (!excepcionGraciaMotivo.trim()) {
+          alert('Por favor indica el motivo de la gracia o exoneración.');
+          setIsSavingExcepcion(false);
+          return;
+        }
+        await asignarMesesGracia(activeExcepcionModal.id, {
+          motivo: excepcionGraciaMotivo.trim(),
+          desde: excepcionGraciaDesde,
+          hasta: excepcionGraciaHasta || null,
+          acta: excepcionGraciaActa.trim() || null
+        });
+      } else if (activeExcepcionModal.estadoCuota === 'En Gracia' && excepcionEstadoCuota !== 'En Gracia') {
+        await revocarMesesGracia(activeExcepcionModal.id, excepcionEstadoCuota);
+      } else if (excepcionEstadoCuota !== activeExcepcionModal.estadoCuota) {
+        await updateSocioCuota(activeExcepcionModal.id, excepcionEstadoCuota);
+      }
+
+      if (excepcionEstadoSocio !== (activeExcepcionModal.estadoSocio || 'Activo')) {
+        await updateEstadoSocio(activeExcepcionModal.id, excepcionEstadoSocio);
+      }
+
+      alert('✓ Situación de excepción y estado operativo actualizados correctamente.');
+      setActiveExcepcionModal(null);
+    } catch (err) {
+      alert('Error guardando excepción: ' + err.message);
+    } finally {
+      setIsSavingExcepcion(false);
+    }
+  };
 
   // Filtrado de socios
   const filteredSocios = activeSociosList.filter(s => {
@@ -297,7 +379,10 @@ Correo tesorería: ag.pruaned@gmail.com`;
     const matchesSearch = s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.rut.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (s.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesEstado = selectedEstado === 'TODOS' || s.estadoCuota === selectedEstado;
+    const matchesEstado = selectedEstado === 'TODOS' || 
+                          (selectedEstado === 'En Gracia' ? isSocioEnGracia(s) : false) ||
+                          (selectedEstado === 'Excluido de Cobro' ? isSocioExcluidoCobro(s) : false) ||
+                          s.estadoCuota === selectedEstado;
     const matchesCat = selectedCategory === 'TODAS' || s.categoria === selectedCategory;
     return matchesSearch && matchesEstado && matchesCat;
   });
@@ -305,16 +390,27 @@ Correo tesorería: ag.pruaned@gmail.com`;
   const totalPages = Math.max(1, Math.ceil(filteredSocios.length / itemsPerPage));
   const paginatedSocios = filteredSocios.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Emisión rápida de cuota mensual a todos los socios activos (excluye renunciados)
+  // Emisión rápida de cuota mensual a todos los socios activos (excluye exonerados y en gracia)
   const handleEmitirCuotaMesATodos = async () => {
     if (!monthlyFeeName.trim()) return;
-    const sociosActivos = activeSociosList.filter(s => s.categoria !== 'Socio Honorario' && !isSocioRenunciado(s));
+    const sociosAfectos = activeSociosList.filter(s => !isSocioExonerado(s));
+    const exonerados = activeSociosList.filter(isSocioExonerado);
     
-    if (!confirm(`¿Emitir "${monthlyFeeName}" a ${sociosActivos.length} socios activos?`)) return;
+    const confirmMsg = `¿Emitir "${monthlyFeeName}" a ${sociosAfectos.length} socios activos afectos?\n\n(Se omitirán automáticamente ${exonerados.length} socio(s) por encontrarse En Gracia, Exentos, Excluidos o Renunciantes)`;
+    if (!confirm(confirmMsg)) return;
 
     setIsEmittingMonthly(true);
     try {
-      const batch = sociosActivos.map(s => {
+      if (generarCobroMensualMasivo) {
+        const rpcResult = await generarCobroMensualMasivo(monthlyFeeName.trim(), 5000);
+        if (rpcResult && rpcResult.rpcUsed) {
+          alert(`✓ Cobros emitidos exitosamente en la base de datos:\n• Socios procesados: ${rpcResult.socios_procesados}\n• Exonerados (Gracia / Exentos / Renunciantes): ${rpcResult.socios_exonerados}\n• Cobros ya existentes (omitidos): ${rpcResult.cobros_ya_existentes || 0}`);
+          return;
+        }
+      }
+
+      // Fallback a inserción por lotes en el cliente respetando exclusiones
+      const batch = sociosAfectos.map(s => {
         const monto = s.montoCuotaMensual || financialSettings.cuotasPorCategoria?.[s.categoria] || financialSettings.cuotaMensualActual || 5000;
         return {
           socioId: s.id,
@@ -326,7 +422,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
       });
 
       await addCobrosBatch(batch);
-      alert(`✓ Se emitieron exitosamente ${batch.length} cobros correspondientes a "${monthlyFeeName}".`);
+      alert(`✓ Se emitieron exitosamente ${batch.length} cobro(s) para "${monthlyFeeName}". (${exonerados.length} socios exonerados omitidos).`);
     } catch (err) {
       alert('Error emitiendo cuotas: ' + err.message);
     } finally {
@@ -596,7 +692,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
       {activeMainTab === 'cobros' && (
         <div className="space-y-6">
           {/* TARJETAS DE COBRANZA */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="bg-white p-4 rounded-2xl border border-emerald-200 bg-emerald-50/20 shadow-sm space-y-1">
               <div className="flex items-center justify-between text-emerald-700">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Socios al Día</span>
@@ -613,6 +709,15 @@ Correo tesorería: ag.pruaned@gmail.com`;
               </div>
               <div className="text-2xl font-extrabold text-rose-800 font-['Outfit']">{sociosEnMora}</div>
               <p className="text-[10px] text-rose-700 font-medium">Cuotas sociales pendientes</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-amber-200 bg-amber-50/20 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-amber-800">
+                <span className="text-[11px] font-bold uppercase tracking-wider">En Gracia / Exentos</span>
+                <Shield className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="text-2xl font-extrabold text-amber-900 font-['Outfit']">{sociosEnGraciaCount + sociosExcluidosCount}</div>
+              <p className="text-[10px] text-amber-700 font-medium">{sociosEnGraciaCount} gracia · {sociosExcluidosCount} excluidos</p>
             </div>
 
             <div className="bg-white p-4 rounded-2xl border border-rose-200 bg-rose-50/30 shadow-sm space-y-1">
@@ -634,7 +739,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
               <div className="text-xl sm:text-2xl font-extrabold text-blue-900 font-mono">
                 ${recaudacionMensualEsperada.toLocaleString('es-CL')}
               </div>
-              <p className="text-[10px] text-blue-700 font-medium">Proyección mensual</p>
+              <p className="text-[10px] text-blue-700 font-medium">Proyección mensual afectos</p>
             </div>
           </div>
 
@@ -647,7 +752,7 @@ Correo tesorería: ag.pruaned@gmail.com`;
                 </div>
                 <h3 className="text-base font-bold text-slate-900 font-['Outfit']">Emitir Cuota Social Ordinaria</h3>
                 <p className="text-slate-600">
-                  Genera la cuota del mes para todos los socios activos (según el tarifario de $5.000 / mes).
+                  Genera la cuota del mes para todos los socios activos afectos (omite automáticamente a socios en gracia, exentos y renunciantes).
                 </p>
               </div>
 
@@ -693,7 +798,9 @@ Correo tesorería: ag.pruaned@gmail.com`;
                 <option value="TODOS">Todos los estados de cuota</option>
                 <option value="Al Día">Solo Al Día</option>
                 <option value="En Mora">Solo En Mora</option>
-                <option value="Exento">Exentos</option>
+                <option value="En Gracia">En Gracia (Pausa arancelaria)</option>
+                <option value="Excluido de Cobro">Excluidos de Cobro / Exentos</option>
+                <option value="Exento">Exentos Estatutarios</option>
               </select>
 
               <select
@@ -804,35 +911,55 @@ Correo tesorería: ag.pruaned@gmail.com`;
                           </td>
 
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              mesesDeuda === 0 
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
-                                : mesesDeuda === 1
-                                ? 'bg-blue-50 text-blue-800 border-blue-200'
-                                : 'bg-rose-50 text-rose-800 border-rose-200'
-                            }`}>
-                              {mesesDeuda === 0 ? (
-                                <>
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                  <span>Al día</span>
-                                </>
-                              ) : mesesDeuda === 1 ? (
-                                <>
-                                  <Clock className="w-3 h-3 text-blue-600" />
-                                  <span>1 cuota pend.</span>
-                                </>
-                              ) : (
-                                <>
-                                  <AlertCircle className="w-3 h-3 text-rose-600" />
-                                  <span>{mesesDeuda} meses en mora</span>
-                                </>
-                              )}
-                            </span>
-                            {mesesDeuda === 1 ? (
-                              <span className="block text-[9px] text-blue-700 font-semibold mt-0.5">Cuota Septiembre 2026</span>
-                            ) : socio.ultimaCuotaPagada ? (
-                              <span className="block text-[9px] text-slate-400 mt-0.5">Últ: {socio.ultimaCuotaPagada}</span>
-                            ) : null}
+                            {isSocioEnGracia(socio) ? (
+                              <div>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 text-amber-900 border-amber-300 shadow-sm" title={socio.graciaMotivo || 'Exoneración temporal de cuotas'}>
+                                  <Shield className="w-3 h-3 text-amber-600" />
+                                  <span>En Gracia</span>
+                                </span>
+                                {socio.graciaHasta ? (
+                                  <span className="block text-[9px] text-amber-800 font-semibold mt-0.5">Hasta: {socio.graciaHasta}</span>
+                                ) : (
+                                  <span className="block text-[9px] text-amber-700 mt-0.5">Pausa activa</span>
+                                )}
+                              </div>
+                            ) : isSocioExcluidoCobro(socio) ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-purple-50 text-purple-800 border-purple-200">
+                                <span>{socio.estadoSocio === 'Excluido de Cobro' ? 'Excluido Cobro' : 'Exento'}</span>
+                              </span>
+                            ) : (
+                              <>
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  mesesDeuda === 0 
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                                    : mesesDeuda === 1
+                                    ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                    : 'bg-rose-50 text-rose-800 border-rose-200'
+                                }`}>
+                                  {mesesDeuda === 0 ? (
+                                    <>
+                                      <Check className="w-3 h-3 text-emerald-600" />
+                                      <span>Al día</span>
+                                    </>
+                                  ) : mesesDeuda === 1 ? (
+                                    <>
+                                      <Clock className="w-3 h-3 text-blue-600" />
+                                      <span>1 cuota pend.</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertCircle className="w-3 h-3 text-rose-600" />
+                                      <span>{mesesDeuda} meses en mora</span>
+                                    </>
+                                  )}
+                                </span>
+                                {mesesDeuda === 1 ? (
+                                  <span className="block text-[9px] text-blue-700 font-semibold mt-0.5">Cuota Septiembre 2026</span>
+                                ) : socio.ultimaCuotaPagada ? (
+                                  <span className="block text-[9px] text-slate-400 mt-0.5">Últ: {socio.ultimaCuotaPagada}</span>
+                                ) : null}
+                              </>
+                            )}
                           </td>
 
                           <td className="py-3 px-4">
@@ -859,13 +986,22 @@ Correo tesorería: ag.pruaned@gmail.com`;
                             {canManageFinances && (
                               <>
                                 <button
+                                  onClick={() => openExcepcionModal(socio)}
+                                  title="Gestionar meses de gracia y estado operativo"
+                                  className="p-1.5 hover:bg-amber-100 rounded-lg text-amber-800 border border-amber-300 transition-colors inline-flex items-center gap-1 text-[11px] font-bold"
+                                >
+                                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                                  <span className="hidden xl:inline">Gracia</span>
+                                </button>
+
+                                <button
                                   onClick={() => setActivePaymentModal(socio)}
                                   className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-sm transition-colors"
                                 >
                                   Registrar Pago
                                 </button>
 
-                                {deudaTotal > 0 && (
+                                {deudaTotal > 0 && !isSocioExonerado(socio) && (
                                   <button
                                     onClick={() => handleEnviarAvisoCobro(socio, deudaTotal)}
                                     disabled={isSendingAviso === socio.id}
@@ -1518,6 +1654,141 @@ Correo tesorería: ag.pruaned@gmail.com`;
               <button type="button" onClick={() => { setActiveApproveRenunciaModal(null); setAcuerdoNumero(''); }} className="px-4 py-2 font-bold rounded-xl border border-slate-200 text-slate-700">Cancelar</button>
               <button type="submit" className="px-4 py-2 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5" /> Aprobar Desvinculación Oficial
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* =========================================================
+          MODAL: GESTIÓN DE EXCEPCIONES, GRACIA Y ESTADO OPERATIVO
+      ========================================================= */}
+      {activeExcepcionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in font-['Plus_Jakarta_Sans']">
+          <form onSubmit={handleSaveExcepcion} className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-4 border border-slate-200 text-xs">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-800 border border-amber-200">
+                  <ShieldAlert className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-950 font-['Outfit']">Gestión de Excepción y Gracia</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">{activeExcepcionModal.nombre} ({activeExcepcionModal.rut})</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveExcepcionModal(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5">
+              {/* Estado Operativo del Socio */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">Estado Operativo del Socio (Padrón)</label>
+                <select
+                  value={excepcionEstadoSocio}
+                  onChange={e => setExcepcionEstadoSocio(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold outline-none"
+                >
+                  <option value="Activo">Activo (Membresía regular)</option>
+                  <option value="Suspendido">Suspendido (Sanción / Medida temporal)</option>
+                  <option value="Excluido de Cobro">Excluido de Cobro (Exoneración gremial)</option>
+                  <option value="Renunciante">Renunciante (Proceso DL 2.757)</option>
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Los socios en estado <em>Excluido de Cobro</em> o <em>Renunciante</em> quedan fuera de cualquier emisión masiva mensual.
+                </p>
+              </div>
+
+              {/* Estado de Cuota / Arancelario */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">Régimen Arancelario / Cuota</label>
+                <select
+                  value={excepcionEstadoCuota}
+                  onChange={e => setExcepcionEstadoCuota(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold outline-none"
+                >
+                  <option value="Al Día">Al Día</option>
+                  <option value="En Mora">En Mora</option>
+                  <option value="En Gracia">En Gracia (Pausa temporal sin morosidad)</option>
+                  <option value="Exento">Exento (Liberado por estatuto / directiva)</option>
+                </select>
+              </div>
+
+              {/* Campos condicionales si está En Gracia */}
+              {excepcionEstadoCuota === 'En Gracia' && (
+                <div className="p-3.5 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-3 animate-fade-in">
+                  <div className="flex items-center gap-1.5 text-amber-900 font-bold text-[11px]">
+                    <Clock className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Configuración del Período de Gracia</span>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Motivo de Exoneración / Justificación *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej: Postgrado en el extranjero / Licencia médica / Art. 42"
+                      value={excepcionGraciaMotivo}
+                      onChange={e => setExcepcionGraciaMotivo(e.target.value)}
+                      className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Fecha Desde</label>
+                      <input
+                        type="date"
+                        value={excepcionGraciaDesde}
+                        onChange={e => setExcepcionGraciaDesde(e.target.value)}
+                        className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Fecha Hasta (Opcional)</label>
+                      <input
+                        type="date"
+                        value={excepcionGraciaHasta}
+                        onChange={e => setExcepcionGraciaHasta(e.target.value)}
+                        className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">N° de Acta o Respaldo Directorio</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Acta Directorio Ord. N° 06-2026"
+                      value={excepcionGraciaActa}
+                      onChange={e => setExcepcionGraciaActa(e.target.value)}
+                      className="w-full bg-white border border-amber-300 rounded-xl p-2 text-slate-900 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActiveExcepcionModal(null)}
+                className="px-4 py-2 font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingExcepcion}
+                className="px-5 py-2 font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1.5 shadow disabled:opacity-60 transition-all"
+              >
+                <Check className="w-3.5 h-3.5" />
+                {isSavingExcepcion ? 'Guardando...' : 'Aplicar Excepción'}
               </button>
             </div>
           </form>

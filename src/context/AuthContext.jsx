@@ -129,7 +129,8 @@ export const AuthProvider = ({ children }) => {
     expensesList, setExpensesList, addExpense, deleteExpense,
     financialCategories, setFinancialCategories, addFinancialCategory, archiveFinancialCategory,
     financialAccounts, setFinancialAccounts, addFinancialAccount, removeFinancialAccount, updateFinancialAccountRut,
-    cobrosList, setCobrosList, addCobrosBatch, markCobroPaid, deleteCobro, balancesList, setBalancesList
+    cobrosList, setCobrosList, addCobrosBatch, markCobroPaid, deleteCobro, balancesList, setBalancesList,
+    generarCobroMensualMasivo
   } = financeDomain;
   const [postulacionesList, setPostulacionesList] = useState([]);
 
@@ -197,12 +198,18 @@ export const AuthProvider = ({ children }) => {
                 s.fechaSolicitudRenuncia ||
                 s.fechaRetiroOficial ||
                 s.fechaRenuncia ||
-                (s.estadoCuota && (s.estadoCuota.includes('Desvinculad') || s.estadoCuota.includes('Renuncia')))
+                (s.estadoCuota && (s.estadoCuota.includes('Desvinculad') || s.estadoCuota.includes('Renuncia'))) ||
+                s.estadoSocio === 'Renunciante'
               );
               return {
                 ...s,
+                estadoSocio: s.estadoSocio || (isRenunciado ? 'Renunciante' : 'Activo'),
                 estadoCuota: isRenunciado ? 'Desvinculado / Retiro Aprobado DL 2757' : s.estadoCuota,
-                historialPagos: s.historialPagos || []
+                historialPagos: s.historialPagos || [],
+                graciaMotivo: s.graciaMotivo || null,
+                graciaDesde: s.graciaDesde || null,
+                graciaHasta: s.graciaHasta || null,
+                graciaRespaldoActa: s.graciaRespaldoActa || null
               };
             });
             setSociosList(mappedSocios);
@@ -1131,6 +1138,88 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const asignarMesesGracia = async (socioId, { motivo, desde, hasta, acta }) => {
+    const fechaDesde = desde || new Date().toISOString().split('T')[0];
+    const fechaHasta = hasta || null;
+    const respaldoActa = acta || null;
+
+    if (isSupabaseReady()) {
+      try {
+        const { error: rpcErr } = await supabase.rpc('asignar_meses_gracia', {
+          p_socio_id: socioId,
+          p_motivo: motivo,
+          p_desde: fechaDesde,
+          p_hasta: fechaHasta,
+          p_acta: respaldoActa
+        });
+        if (rpcErr) {
+          // Fallback a UPDATE directo
+          await supabase.from('socios').update({
+            estado_cuota: 'En Gracia',
+            gracia_motivo: motivo,
+            gracia_desde: fechaDesde,
+            gracia_hasta: fechaHasta,
+            gracia_respaldo_acta: respaldoActa
+          }).eq('id', socioId);
+        }
+      } catch (err) {
+        console.error('Error assigning gracia in Supabase:', err);
+      }
+    }
+
+    setSociosList(prev => prev.map(s => {
+      if (s.id === socioId) {
+        return {
+          ...s,
+          estadoCuota: 'En Gracia',
+          graciaMotivo: motivo,
+          graciaDesde: fechaDesde,
+          graciaHasta: fechaHasta,
+          graciaRespaldoActa: respaldoActa
+        };
+      }
+      return s;
+    }));
+    addSecurityLog(`MESES_GRACIA_ASIGNADOS_SOCIO_${socioId}`, currentUser?.email, 'INFO');
+  };
+
+  const revocarMesesGracia = async (socioId, nuevoEstadoCuota = 'Al Día') => {
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('socios').update({
+          estado_cuota: nuevoEstadoCuota,
+          gracia_hasta: new Date().toISOString().split('T')[0]
+        }).eq('id', socioId);
+      } catch (err) {
+        console.error('Error revoking gracia in Supabase:', err);
+      }
+    }
+    setSociosList(prev => prev.map(s => {
+      if (s.id === socioId) {
+        return {
+          ...s,
+          estadoCuota: nuevoEstadoCuota
+        };
+      }
+      return s;
+    }));
+    addSecurityLog(`MESES_GRACIA_REVOCADOS_SOCIO_${socioId}`, currentUser?.email, 'INFO');
+  };
+
+  const updateEstadoSocio = async (socioId, nuevoEstadoSocio) => {
+    if (isSupabaseReady()) {
+      try {
+        await supabase.from('socios').update({
+          estado_socio: nuevoEstadoSocio
+        }).eq('id', socioId);
+      } catch (err) {
+        console.error('Error updating estado_socio in Supabase:', err);
+      }
+    }
+    setSociosList(prev => prev.map(s => s.id === socioId ? { ...s, estadoSocio: nuevoEstadoSocio } : s));
+    addSecurityLog(`ESTADO_SOCIO_${socioId}_UPDATED_A_${nuevoEstadoSocio}`, currentUser?.email, 'INFO');
+  };
+
   const updateSocioCuota = async (socioId, newEstado, newComprobante = null, isSuspensionRequest = false, isCuotaIncorporacion = false, paymentDetails = {}) => {
     let updatedSocioObj = null;
     const hoy = new Date().toISOString().split('T')[0];
@@ -1459,6 +1548,10 @@ export const AuthProvider = ({ children }) => {
       restoreDocument,
       sociosList,
       updateSocioCuota,
+      generarCobroMensualMasivo,
+      asignarMesesGracia,
+      revocarMesesGracia,
+      updateEstadoSocio,
       voluntariosList,
       updateVolunteerCert,
       updateVoluntarioDisponibilidad,
