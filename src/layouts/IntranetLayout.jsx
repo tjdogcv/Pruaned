@@ -13,7 +13,11 @@ import {
   Shield,
   Users,
   Wallet,
-  X
+  X,
+  Crown,
+  UserPlus,
+  User,
+  History
 } from 'lucide-react';
 import { PRUANEDLogo } from '../assets/PRUANEDLogo';
 import { useAuth } from '../context/AuthContext';
@@ -160,18 +164,18 @@ export function IntranetLayout() {
   const { currentUser, isMasterUser, isDirectiva, canManageVoluntarios, isLmsManager } = auth;
   const navItems = [
     { path: '/intranet/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'principal' },
+    { path: '/intranet/perfil', label: 'Mi Perfil', icon: User, group: 'principal' },
     { path: '/intranet/voluntarios', label: 'Mi voluntariado', icon: GraduationCap, group: 'principal' },
     { path: '/intranet/voluntarios/aula', label: 'Aula virtual', icon: GraduationCap, group: 'principal' },
     { path: '/intranet/documentos', label: 'Documentos de socios', icon: FileText, group: 'principal', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
     { path: '/intranet/voluntarios/gestion/aula', label: 'Administrar aula virtual', icon: PencilRuler, group: 'principal', show: isLmsManager },
-    { path: '/intranet/perfil', label: 'Mi Perfil', icon: Users, group: 'principal' },
     { path: '/intranet/socios', label: 'Padrón de Socios', icon: Users, group: 'gestion', show: currentUser?.role === 'socio' || isMasterUser || isDirectiva },
-    { path: '/intranet/postulaciones-socios', label: 'Postulaciones de socios', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },
-    { path: '/intranet/directorio', label: 'Directorio', icon: ClipboardList, group: 'gestion', show: isMasterUser || isDirectiva },
+    { path: '/intranet/postulaciones-socios', label: 'Postulaciones de socios', icon: UserPlus, group: 'gestion', show: isMasterUser || isDirectiva },
+    { path: '/intranet/directorio', label: 'Directorio y Firmas', icon: Crown, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/finanzas', label: 'Finanzas', icon: Wallet, group: 'gestion', show: isMasterUser || isDirectiva },
     { path: '/intranet/voluntarios/gestion', label: 'Inscripciones de voluntariado', icon: ClipboardList, group: 'gestion', show: canManageVoluntarios },
-    { path: '/intranet/admin', label: 'Contenidos', icon: FileText, group: 'administracion', show: isMasterUser || isDirectiva },
-    { path: '/intranet/auditoria', label: 'Auditoría', icon: ClipboardList, group: 'administracion', show: isMasterUser || isDirectiva },
+    { path: '/intranet/admin', label: 'Contenidos Web', icon: FileText, group: 'administracion', show: isMasterUser || isDirectiva },
+    { path: '/intranet/auditoria', label: 'Auditoría', icon: History, group: 'administracion', show: isMasterUser || isDirectiva },
     { path: '/intranet/comunicaciones', label: 'Comunicaciones', icon: Mail, group: 'administracion', show: isMasterUser || isDirectiva },
     { path: '/intranet/seguridad', label: 'Seguridad', icon: Shield, group: 'administracion', show: isMasterUser }
   ].filter(({ show }) => show !== false);
