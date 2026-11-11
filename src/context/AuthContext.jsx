@@ -977,6 +977,95 @@ export const AuthProvider = ({ children }) => {
     addSecurityLog(`UPDATE_VOLUNTEER_AVAILABILITY_${volId}`, currentUser?.email, "INFO");
   };
 
+  const updateVoluntarioPerfil = async (volId, perfilData) => {
+    if (isSupabaseReady()) {
+      try {
+        await supabase
+          .from('voluntarios')
+          .update({
+            telefono: perfilData.telefono,
+            region: perfilData.region,
+            comuna: perfilData.comuna,
+            domicilio: perfilData.domicilio,
+            profesion: perfilData.profesion,
+            foto_perfil: perfilData.fotoPerfil
+          })
+          .eq('id', volId);
+      } catch (err) {
+        console.error('Error actualizando perfil de voluntario en Supabase', err);
+      }
+    }
+
+    setVoluntariosList(prev => prev.map(v => {
+      if (v.id === volId) {
+        return {
+          ...v,
+          telefono: perfilData.telefono || v.telefono,
+          region: perfilData.region || v.region,
+          comuna: perfilData.comuna || v.comuna,
+          domicilio: perfilData.domicilio || v.domicilio,
+          profesion: perfilData.profesion || v.profesion,
+          fotoPerfil: perfilData.fotoPerfil || v.fotoPerfil
+        };
+      }
+      return v;
+    }));
+
+    addSecurityLog(`UPDATE_VOLUNTEER_PROFILE_${volId}`, currentUser?.email, 'INFO');
+  };
+
+  const cambiarEmailMiembro = async ({ tipo, id, emailNuevo, motivo = 'Pérdida de acceso a correo anterior' }) => {
+    if (!isMasterUser && !isDirectiva) {
+      throw new Error('Sólo administradores o miembros de la Directiva Nacional pueden cambiar correos.');
+    }
+    const cleanEmail = (emailNuevo || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      throw new Error('El correo electrónico ingresado no es válido.');
+    }
+
+    // Comprobar colisión local en padrones
+    const existeEnSocios = sociosList.some(s => s.id !== id && s.email?.toLowerCase() === cleanEmail);
+    const existeEnVoluntarios = voluntariosList.some(v => v.id !== id && v.email?.toLowerCase() === cleanEmail);
+    if (existeEnSocios || existeEnVoluntarios) {
+      throw new Error('El correo ingresado ya se encuentra registrado por otro socio o voluntario en el padrón.');
+    }
+
+    if (isSupabaseReady()) {
+      try {
+        const { error } = await supabase.rpc('pruaned_admin_change_member_email', {
+          p_tipo: tipo,
+          p_id: id,
+          p_new_email: cleanEmail,
+          p_motivo: motivo
+        });
+
+        if (error) {
+          console.warn('RPC pruaned_admin_change_member_email falló o no existe, aplicando actualización directa:', error);
+          const table = tipo === 'socio' ? 'socios' : 'voluntarios';
+          const { error: updateErr } = await supabase
+            .from(table)
+            .update({ email: cleanEmail })
+            .eq('id', id);
+          if (updateErr) throw updateErr;
+        }
+      } catch (err) {
+        console.error('Error al cambiar email en Supabase:', err);
+        throw new Error(err.message || 'No fue posible actualizar el correo en el servidor.');
+      }
+    }
+
+    // Actualizar estado local reactivamente
+    if (tipo === 'socio') {
+      setSociosList(prev => prev.map(s => s.id === id ? { ...s, email: cleanEmail } : s));
+    } else {
+      setVoluntariosList(prev => prev.map(v => v.id === id ? { ...v, email: cleanEmail } : v));
+    }
+
+    addSecurityLog(`ADMIN_CHANGE_EMAIL_${tipo.toUpperCase()}_${id}_TO_${cleanEmail}`, currentUser?.email, 'WARN');
+
+    return { ok: true, emailNuevo: cleanEmail };
+  };
+
   const addPostulacion = async (postulacionData) => {
     addSecurityLog(`NEW_SOCIO_APPLICATION_${postulacionData.rut}`, postulacionData.email, "INFO");
     if (supabaseReady) {
@@ -1555,6 +1644,8 @@ export const AuthProvider = ({ children }) => {
       voluntariosList,
       updateVolunteerCert,
       updateVoluntarioDisponibilidad,
+      updateVoluntarioPerfil,
+      cambiarEmailMiembro,
       coursesList,
       securityLogs
     }}>

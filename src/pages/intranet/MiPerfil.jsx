@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { PrivacyDataPolicy } from '../../components/PrivacyDataPolicy';
 import { CredencialDigitalModal } from '../../components/CredencialDigitalModal';
@@ -16,26 +16,40 @@ export default function MiPerfil() {
   const { 
     currentUser, 
     sociosList = [], 
+    voluntariosList = [],
     updateSocioPerfil, 
+    updateVoluntarioPerfil,
     updateSocioCuota,
     financialSettings = {},
     cobrosList = [],
     isMasterUser
   } = useAuth();
 
-  const currentSocio = isMasterUser 
-    ? { id: 'admin-master', nombre: 'Administrador Maestro', email: 'ag.pruaned@gmail.com', rut: 'ADMIN-0', categoria: 'Sistema', profesion: 'Soporte Gremial', fotoPerfil: '', estadoCuota: 'Al Día', mesesAdeudados: 0, historialPagos: [] } 
-    : (sociosList.find(s => s.email?.toLowerCase() === currentUser?.email?.toLowerCase()) || {
+  const socioEncontrado = sociosList.find(s => s.email?.toLowerCase() === currentUser?.email?.toLowerCase());
+  const voluntarioEncontrado = voluntariosList.find(v => v.email?.toLowerCase() === currentUser?.email?.toLowerCase());
+  const isVolunteerOnly = Boolean(voluntarioEncontrado && !socioEncontrado);
+
+  const currentSocio = isMasterUser && !socioEncontrado
+    ? { id: 'admin-master', nombre: 'Administrador Maestro', email: currentUser?.email || 'ag.pruaned@gmail.com', rut: 'ADMIN-0', categoria: 'Sistema', profesion: 'Soporte Gremial', fotoPerfil: '', estadoCuota: 'Al Día', mesesAdeudados: 0, historialPagos: [], cuotaIncorporacionPagada: true } 
+    : (socioEncontrado || (voluntarioEncontrado ? {
+        ...voluntarioEncontrado,
+        categoria: 'Voluntario Activo',
+        estadoCuota: 'Exento',
+        cuotaIncorporacionPagada: true,
+        mesesAdeudados: 0,
+        historialPagos: []
+      } : {
         id: 'socio-temp',
-        nombre: currentUser?.name || 'Socio PRUANED',
+        nombre: currentUser?.name || 'Miembro PRUANED',
         email: currentUser?.email || '',
         rut: 'No registrado',
         categoria: 'Socio Activo',
         profesion: 'Profesional',
         estadoCuota: 'Al Día',
+        cuotaIncorporacionPagada: true,
         mesesAdeudados: 0,
         historialPagos: []
-      });
+      }));
 
   const [editEmail, setEditEmail] = useState(currentSocio?.email || '');
   const [editTelefono, setEditTelefono] = useState(currentSocio?.telefono || '');
@@ -47,6 +61,20 @@ export default function MiPerfil() {
   const [editProfesion, setEditProfesion] = useState(currentSocio?.profesion || '');
   const [editFotoPerfil, setEditFotoPerfil] = useState(currentSocio?.fotoPerfil || '');
   const [isSavingPerfil, setIsSavingPerfil] = useState(false);
+
+  useEffect(() => {
+    if (currentSocio) {
+      setEditEmail(currentSocio.email || '');
+      setEditTelefono(currentSocio.telefono || '');
+      setEditDomicilio(currentSocio.domicilio || '');
+      setEditComuna(currentSocio.comuna || '');
+      setEditRegion(currentSocio.region || '');
+      setEditFechaNacimiento(currentSocio.fechaNacimiento || '');
+      setEditEstadoCivil(currentSocio.estadoCivil || '');
+      setEditProfesion(currentSocio.profesion || '');
+      setEditFotoPerfil(currentSocio.fotoPerfil || '');
+    }
+  }, [currentSocio?.id, currentSocio?.email, currentSocio?.telefono, currentSocio?.domicilio, currentSocio?.comuna, currentSocio?.region, currentSocio?.fechaNacimiento, currentSocio?.estadoCivil, currentSocio?.profesion, currentSocio?.fotoPerfil]);
 
   const [activePaymentModal, setActivePaymentModal] = useState(false);
   const [comprobanteInput, setComprobanteInput] = useState('');
@@ -106,7 +134,11 @@ export default function MiPerfil() {
         profesion: editProfesion,
         fotoPerfil: editFotoPerfil
       };
-      await updateSocioPerfil(currentSocio.id, perfilData);
+      if (isVolunteerOnly && updateVoluntarioPerfil) {
+        await updateVoluntarioPerfil(currentSocio.id, perfilData);
+      } else if (updateSocioPerfil) {
+        await updateSocioPerfil(currentSocio.id, perfilData);
+      }
       alert('✓ Perfil actualizado correctamente');
     } catch (err) {
       alert('Error al guardar perfil: ' + err.message);
@@ -373,10 +405,10 @@ export default function MiPerfil() {
                   <span className="font-bold">${cuotaIncorp.toLocaleString('es-CL')}</span>
                 </div>
               )}
-              {totalCobrosEspeciales > 0 && (
+              {totalCobrosExtraordinarios > 0 && (
                 <div className="flex justify-between items-center text-xs text-purple-900">
                   <span>Cobros extraordinarios:</span>
-                  <span className="font-bold">${totalCobrosEspeciales.toLocaleString('es-CL')}</span>
+                  <span className="font-bold">${totalCobrosExtraordinarios.toLocaleString('es-CL')}</span>
                 </div>
               )}
               <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-bold">

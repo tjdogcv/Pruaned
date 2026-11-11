@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { sendPagoEmail, sendPagoValidadoEmail, sendAvisoCobroEmail } from '../../lib/emailConfig';
 import { uploadToSupabaseStorage } from '../../lib/storage';
+import { ModalCambioEmail } from '../../components/ModalCambioEmail';
 import { 
   Users, 
   DollarSign, 
@@ -70,6 +71,7 @@ export default function PadronSocios() {
 
   // Modales
   const [activePaymentModal, setActivePaymentModal] = useState(null);
+  const [cambioEmailModalData, setCambioEmailModalData] = useState(null);
   const [activeSocioModal, setActiveSocioModal] = useState(null);
   const [activeApproveRenunciaModal, setActiveApproveRenunciaModal] = useState(null);
   const [acuerdoNumero, setAcuerdoNumero] = useState('');
@@ -1543,6 +1545,20 @@ Correo tesorería: ag.pruaned@gmail.com`;
       {/* =========================================================
           MODAL: FICHA / ESTADO DE CUENTA COMPLETO
       ========================================================= */}
+      {cambioEmailModalData && (
+        <ModalCambioEmail
+          miembro={cambioEmailModalData.miembro}
+          tipo={cambioEmailModalData.tipo}
+          onClose={() => setCambioEmailModalData(null)}
+          onSuccess={(newEmail) => {
+            if (activeSocioModal && activeSocioModal.id === cambioEmailModalData.miembro.id) {
+              setActiveSocioModal(prev => prev ? { ...prev, email: newEmail } : null);
+            }
+            setCambioEmailModalData(null);
+          }}
+        />
+      )}
+
       {activeSocioModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in font-['Plus_Jakarta_Sans']">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
@@ -1567,7 +1583,19 @@ Correo tesorería: ag.pruaned@gmail.com`;
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-              <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Email</span>{activeSocioModal.email || 'N/R'}</div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Email</span>
+                <span className="font-medium text-slate-900">{activeSocioModal.email || 'N/R'}</span>
+                {(isMasterUser || isDirectiva) && (
+                  <button
+                    type="button"
+                    onClick={() => setCambioEmailModalData({ miembro: activeSocioModal, tipo: 'socio' })}
+                    className="mt-1 px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
+                  >
+                    <Mail className="w-2.5 h-2.5 text-amber-700" /> Cambiar Correo
+                  </button>
+                )}
+              </div>
               <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Teléfono</span>{activeSocioModal.telefono || 'N/R'}</div>
               <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Profesión</span>{activeSocioModal.profesion || 'N/R'}</div>
               <div><span className="text-slate-400 block text-[10px] uppercase font-bold">Fecha Ingreso</span>{activeSocioModal.fechaIngreso || 'N/R'}</div>
