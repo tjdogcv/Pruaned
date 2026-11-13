@@ -12,7 +12,16 @@ const dataURItoBlob = (dataURI) => {
   return new Blob([u8arr], { type: mime });
 };
 
-export const uploadToSupabaseStorage = async (bucketName, fileName, base64OrFile, contentType = 'image/webp') => {
+const BUCKET_ALIASES = {
+  documentosSocios: 'documentos-socios',
+  cartasIntension: 'cartas-intencion',
+  documentosPublicos: 'documentos-publicos',
+  firmasOficiales: 'firmas-oficiales'
+};
+
+export const uploadToSupabaseStorage = async (bucketName, fileName, base64OrFile, contentType = 'application/octet-stream') => {
+  const targetBucket = BUCKET_ALIASES[bucketName] || bucketName;
+
   if (!isSupabaseReady()) {
     return typeof base64OrFile === 'string' ? base64OrFile : '';
   }
@@ -24,24 +33,24 @@ export const uploadToSupabaseStorage = async (bucketName, fileName, base64OrFile
 
     const filePath = `${Date.now()}_${fileName}`;
     const { data, error } = await supabase.storage
-      .from(bucketName)
+      .from(targetBucket)
       .upload(filePath, fileBody, {
         contentType,
         upsert: true
       });
 
     if (error) {
-      console.warn(`[Storage] No se pudo subir a bucket '${bucketName}', usando fallback:`, error.message);
+      console.warn(`[Storage] No se pudo subir a bucket '${targetBucket}', usando fallback:`, error.message);
       return typeof base64OrFile === 'string' ? base64OrFile : '';
     }
 
     const { data: publicUrlData } = supabase.storage
-      .from(bucketName)
+      .from(targetBucket)
       .getPublicUrl(filePath);
 
     return publicUrlData.publicUrl;
   } catch (err) {
-    console.warn(`[Storage] Excepción en subida a '${bucketName}':`, err);
+    console.warn(`[Storage] Excepción en subida a '${targetBucket}':`, err);
     return typeof base64OrFile === 'string' ? base64OrFile : '';
   }
 };
