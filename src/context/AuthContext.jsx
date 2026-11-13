@@ -674,6 +674,8 @@ export const AuthProvider = ({ children }) => {
     refreshPostulacionesVoluntariado,
     addPostulacionVoluntario,
     updatePostulacionVoluntariadoEstado,
+    updatePostulacionVoluntariadoData,
+    updateVoluntarioData,
     solicitarIngresoSocioDesdeVoluntariado,
     updateSolicitudIngresoSocioDesdeVoluntariado
   } = volunteerApplicationsDomain;
@@ -1600,6 +1602,8 @@ export const AuthProvider = ({ children }) => {
       refreshPostulacionesVoluntariado,
       addPostulacionVoluntario,
       updatePostulacionVoluntariadoEstado,
+      updatePostulacionVoluntariadoData,
+      updateVoluntarioData,
       solicitarIngresoSocioDesdeVoluntariado,
       updateSolicitudIngresoSocioDesdeVoluntariado,
       solicitarRenunciaSocio,

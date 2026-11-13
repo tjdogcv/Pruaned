@@ -14,6 +14,86 @@ const TEMPLATE_ID_REJECTION = "template_qwammao";
 /**
  * Envía correo de notificación de Nueva Postulación de Socio
  */
+export const sendPostulacionVoluntarioEmail = async (postulacionData = {}) => {
+  if (EMAILJS_PUBLIC_KEY === "TU_PUBLIC_KEY") return Promise.resolve("Simulated");
+  const nombre = postulacionData.nombreCompleto || "Postulante";
+  const extrasCount = Array.isArray(postulacionData.certificacionesExtras) ? postulacionData.certificacionesExtras.length : 0;
+  const estadoCert = postulacionData.certificadoAcademicoUrl
+    ? "Adjunto en plataforma"
+    : (postulacionData.enviaraCertificadoPorCorreo ? "Pendiente: postulante lo enviará por correo" : "No adjuntado");
+  const resumen = [
+    "Nueva postulación al Voluntariado Permanente PRUANED:",
+    `• Nombre: ${nombre}`,
+    `• RUT: ${postulacionData.rut || "No informado"}`,
+    `• Correo: ${postulacionData.email || "No informado"} | Teléfono: ${postulacionData.telefono || "No informado"}`,
+    `• Ubicación: ${postulacionData.comuna || "-"}, ${postulacionData.region || "-"}`,
+    `• Condición / Profesión: ${postulacionData.condicionAcademica || "-"} (${postulacionData.profesionEspecialidad || "-"})`,
+    `• Disponibilidad / Activación: ${postulacionData.disponibilidad || "-"} | ${postulacionData.disponibilidadRespuesta || "-"}`,
+    `• Transporte propio: ${postulacionData.transportePropio || "No informado"}`,
+    `• Certificado académico: ${estadoCert} | Certificaciones extras: ${extrasCount}`
+  ].join("\n");
+
+  try {
+    return await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      TEMPLATE_ID_APPROVAL,
+      {
+        to_email: "ag.pruaned@gmail.com",
+        to_name: "Coordinación de Voluntariado PRUANED",
+        nombre_postulante: nombre,
+        subject: `Nueva Postulación Voluntariado Permanente: ${nombre}`,
+        asunto: `Nueva Postulación Voluntariado Permanente: ${nombre}`,
+        message: resumen,
+        body_html: resumen,
+        mensaje_personalizado: "Revisa esta ficha completa en pruaned.cl/intranet/voluntarios/gestion."
+      },
+      EMAILJS_PUBLIC_KEY
+    );
+  } catch (error) {
+    console.warn("No se pudo notificar a coordinación sobre postulación de voluntariado:", error);
+    return null;
+  }
+};
+
+export const sendVolunteerConfirmationEmail = async (postulacionData = {}) => {
+  if (EMAILJS_PUBLIC_KEY === "TU_PUBLIC_KEY" || !postulacionData?.email) return Promise.resolve("Simulated");
+  const nombre = postulacionData.nombreCompleto || "Postulante";
+  const notaCertificado = postulacionData.certificadoAcademicoUrl
+    ? "• Tu certificado académico ya quedó adjunto en tu ficha para revisión."
+    : "• Recordatorio documental: si eres estudiante adjunta o envíanos tu Certificado de Alumno Regular vigente; si eres profesional o técnico/a, tu Certificado de Título al correo ag.pruaned@gmail.com indicando tu nombre y RUT.";
+  const cuerpo = [
+    `Hola ${nombre},`,
+    "Hemos recibido correctamente tu postulación para integrarte al Voluntariado Permanente de PRUANED A.G.",
+    notaCertificado,
+    "¿Qué sigue ahora?",
+    "1. Coordinación de Voluntariado revisará tus antecedentes, capacidades operativas y disponibilidad.",
+    "2. De aprobarse tu ingreso, recibirás las indicaciones para activar tu acceso al Aula Virtual / LMS y completar tu inducción inicial.",
+    "3. Como voluntario/a permanente activo/a podrás participar en despliegues y actividades de la asociación y, cuando cumplas requisitos, proyectar tu postulación como Socio/a Activo/a.",
+    "Si necesitas completar certificaciones adicionales o actualizar algún dato, escríbenos a ag.pruaned@gmail.com."
+  ].join("\n\n");
+
+  try {
+    return await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      TEMPLATE_ID_APPROVAL,
+      {
+        to_email: postulacionData.email,
+        to_name: nombre,
+        nombre_postulante: nombre,
+        subject: "Postulación recibida - Voluntariado Permanente PRUANED A.G.",
+        asunto: "Postulación recibida - Voluntariado Permanente PRUANED A.G.",
+        message: cuerpo,
+        body_html: cuerpo,
+        mensaje_personalizado: "Gracias por sumarte al Voluntariado Permanente de PRUANED A.G."
+      },
+      EMAILJS_PUBLIC_KEY
+    );
+  } catch (error) {
+    console.warn("No se pudo enviar confirmación al postulante de voluntariado:", error);
+    return null;
+  }
+};
+
 export const sendPostulacionEmail = async (postulacionData) => {
   if (EMAILJS_PUBLIC_KEY === "TU_PUBLIC_KEY") {
     console.warn("EmailJS no está configurado. Simulado envío de postulación.");

@@ -126,11 +126,122 @@ export const useVolunteerApplicationsDomain = ({
     return { ok: true, data };
   }, [refreshPostulacionesVoluntariado, setSociosList, supabaseReady]);
 
+  const updatePostulacionVoluntariadoData = useCallback(async (id, updates = {}) => {
+    if (!supabaseReady || !supabase) {
+      return emptyResult({ code: 'SUPABASE_UNAVAILABLE', message: 'La edición de fichas requiere una conexión segura.' });
+    }
+
+    const { data, error } = await supabase.rpc('pruaned_update_volunteer_application', {
+      p_application_id: id,
+      p_updates: updates
+    });
+    if (error) return emptyResult(error);
+
+    const application = normalizeApplication(data);
+    setPostulacionesVoluntariadoList((previous) =>
+      previous.map((item) => (item.id === application.id ? application : item))
+    );
+
+    if (application.voluntarioId && typeof setVoluntariosList === 'function') {
+      const form = application.formularioCompleto || {};
+      setVoluntariosList((previous) =>
+        previous.map((vol) => {
+          if (vol.id !== application.voluntarioId) return vol;
+          return {
+            ...vol,
+            nombre: application.nombreCompleto || vol.nombre,
+            rut: application.rut || vol.rut,
+            email: application.email || vol.email,
+            telefono: application.telefono || vol.telefono,
+            region: application.region || vol.region,
+            especialidad: application.profesionEspecialidad || vol.especialidad,
+            disponibilidadRespuesta: form.disponibilidadRespuesta || form.disponibilidad || vol.disponibilidadRespuesta,
+            recursosPropios: Array.isArray(form.recursos)
+              ? form.recursos.join(', ')
+              : (form.recursosPropios || vol.recursosPropios),
+            laboresQuePuedeRealizar: Array.isArray(form.labores)
+              ? form.labores.join(', ')
+              : (form.laboresQuePuedeRealizar || vol.laboresQuePuedeRealizar),
+            datosPostulacion: {
+              ...(vol.datosPostulacion || {}),
+              formulario: {
+                ...(vol.datosPostulacion?.formulario || {}),
+                ...form
+              }
+            }
+          };
+        })
+      );
+    }
+
+    return { ok: true, data: application };
+  }, [setVoluntariosList, supabaseReady]);
+
+  const updateVoluntarioData = useCallback(async (volunteerId, updates = {}) => {
+    if (!supabaseReady || !supabase) {
+      let updatedLocal = null;
+      if (typeof setVoluntariosList === 'function') {
+        setVoluntariosList((previous) =>
+          previous.map((vol) => {
+            if (vol.id !== volunteerId) return vol;
+            const prevForm = vol.datosPostulacion?.formulario || {};
+            const nextForm = { ...prevForm, ...updates };
+            updatedLocal = {
+              ...vol,
+              nombre: updates.nombreCompleto || updates.nombre || vol.nombre,
+              rut: updates.rut || vol.rut,
+              email: updates.email || vol.email,
+              telefono: updates.telefono ?? vol.telefono,
+              region: updates.region ?? vol.region,
+              especialidad: updates.profesionEspecialidad || updates.especialidad || vol.especialidad,
+              nivelAcreditacion: updates.nivelAcreditacion || vol.nivelAcreditacion,
+              estado: updates.estado || vol.estado,
+              disponibilidadRespuesta: updates.disponibilidadRespuesta ?? vol.disponibilidadRespuesta,
+              recursosPropios: Array.isArray(updates.recursos)
+                ? updates.recursos.join(', ')
+                : (updates.recursosPropios ?? vol.recursosPropios),
+              laboresQuePuedeRealizar: Array.isArray(updates.labores)
+                ? updates.labores.join(', ')
+                : (updates.laboresQuePuedeRealizar ?? vol.laboresQuePuedeRealizar),
+              ultimaActualizacionDisponibilidad: new Date().toISOString(),
+              datosPostulacion: {
+                ...(vol.datosPostulacion || {}),
+                formulario: nextForm
+              }
+            };
+            return updatedLocal;
+          })
+        );
+      }
+      return { ok: true, data: updatedLocal };
+    }
+
+    const { data, error } = await supabase.rpc('pruaned_update_volunteer_profile', {
+      p_volunteer_id: volunteerId,
+      p_updates: updates
+    });
+    if (error) return emptyResult(error);
+
+    const volunteer = snakeToCamel(data);
+    if (typeof setVoluntariosList === 'function') {
+      setVoluntariosList((previous) =>
+        previous.map((vol) => (vol.id === volunteer.id ? volunteer : vol))
+      );
+    }
+    if (canManageVoluntarios) {
+      await refreshPostulacionesVoluntariado();
+    }
+
+    return { ok: true, data: volunteer };
+  }, [canManageVoluntarios, refreshPostulacionesVoluntariado, setVoluntariosList, supabaseReady]);
+
   return {
     postulacionesVoluntariadoList,
     refreshPostulacionesVoluntariado,
     addPostulacionVoluntario,
     updatePostulacionVoluntariadoEstado,
+    updatePostulacionVoluntariadoData,
+    updateVoluntarioData,
     solicitarIngresoSocioDesdeVoluntariado,
     updateSolicitudIngresoSocioDesdeVoluntariado
   };

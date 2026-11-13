@@ -1,6 +1,110 @@
-const hasValue = (value) => value !== undefined && value !== null && value !== '';
+export const hasFieldValue = (value) => {
+  if (value === undefined || value === null || value === '') return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+};
 
 const toObject = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+
+export const REGIONES_CHILE = [
+  'Arica y Parinacota',
+  'Tarapacá',
+  'Antofagasta',
+  'Atacama',
+  'Coquimbo',
+  'Valparaíso',
+  'Metropolitana de Santiago',
+  "Libertador General Bernardo O'Higgins",
+  'Maule',
+  'Ñuble',
+  'Biobío',
+  'La Araucanía',
+  'Los Ríos',
+  'Los Lagos',
+  'Aysén del General Carlos Ibáñez del Campo',
+  'Magallanes y de la Antártica Chilena'
+];
+
+export const VOLUNTEER_OPTIONS = {
+  condicionAcademica: [
+    'Estudiante de Medicina Veterinaria',
+    'Estudiante de carrera técnica / afín animal',
+    'Profesional Médico/a Veterinario/a',
+    'Técnico/a Veterinario/a o afín',
+    'Otro profesional / apoyo operativo'
+  ],
+  proyeccionSocio: [
+    'Sí, me interesa proyectarme a futuro como Socio/a Activo/a',
+    'Por ahora prefiero aportar como Voluntario/a Permanente',
+    'Me gustaría evaluarlo más adelante'
+  ],
+  disponibilidadMensual: [
+    'Menos de 4 horas al mes',
+    '4 a 8 horas al mes',
+    'Más de 8 horas al mes',
+    'Fines de semana o turnos puntuales'
+  ],
+  disponibilidadRespuesta: [
+    'Inmediata (menos de 6 horas)',
+    'Mismo día (6 a 24 horas)',
+    'En 24 a 48 horas',
+    'Solo fines de semana o coordinación remota'
+  ],
+  transportePropio: [
+    'Sí, vehículo 4x4 / camioneta',
+    'Sí, vehículo particular / citycar',
+    'Motocicleta / bicicleta',
+    'No cuento con vehículo propio (requiero traslado o apoyo remoto)'
+  ],
+  desplazamientoTerritorial: [
+    'Solo mi comuna',
+    'Dentro de mi provincia / región',
+    'Regiones vecinas',
+    'Todo el país según requerimiento'
+  ],
+  labores: [
+    'Atención clínica y triage en terreno',
+    'Manejo de albergues / refugios temporales',
+    'Bienestar animal y etología en crisis',
+    'Vacunación, registro y trazabilidad',
+    'Logística, bodega y acopio de insumos',
+    'Transporte y movilización en terreno',
+    'Comunicaciones, RRSS y educación comunitaria',
+    'Apoyo administrativo, coordinación y enlace',
+    'Apoyo remoto (fichas, seguimiento y difusión)'
+  ],
+  areasInteres: [
+    'Respuesta en emergencias',
+    'Bienestar animal',
+    'Salud pública y prevención',
+    'Logística y acopio',
+    'Comunicaciones',
+    'Apoyo administrativo',
+    'Capacitación'
+  ],
+  especiesComodas: [
+    'Animales de compañía (perros y gatos)',
+    'Equinos y ganado mayor (bovinos, ovinos, caprinos)',
+    'Aves de corral y fauna productiva menor',
+    'Fauna silvestre y exóticos',
+    'Solo apoyo no clínico (logística, administración o comunicaciones)'
+  ],
+  formacionCertificada: [
+    'SCI-100 / Sistema de Comando de Incidentes',
+    'Primeros auxilios veterinarios en desastres',
+    'Manejo e inmovilización de fauna silvestre',
+    'Primeros auxilios psicológicos / trabajo comunitario',
+    'Manejo defensivo / conducción 4x4 / radiofrecuencia'
+  ],
+  recursos: [
+    'Botiquín o insumos',
+    'Vehículo propio',
+    'Espacio de acopio',
+    'Equipamiento EPP / terreno',
+    'Transporte / jaulas / caniles',
+    'Ninguno por ahora'
+  ]
+};
 
 export const applicationForm = (application = {}) => ({
   ...toObject(application.formularioCompleto),
@@ -14,8 +118,50 @@ export const volunteerForm = (volunteer = {}) => ({
   ...volunteer
 });
 
+export const extractVolunteerDocuments = (source = {}) => {
+  const form = {
+    ...toObject(source.formularioCompleto),
+    ...toObject(source.formulario_completo),
+    ...toObject(source.datosPostulacion?.formulario),
+    ...toObject(source.datos_postulacion?.formulario),
+    ...source
+  };
+
+  const academicUrl = firstValue(form, ['certificadoAcademicoUrl', 'certificado_academico_url'], '');
+  const academicName = firstValue(
+    form,
+    ['certificadoAcademicoNombre', 'certificado_academico_nombre'],
+    academicUrl ? 'Certificado académico adjunto' : ''
+  );
+  const pendingByEmail = Boolean(firstValue(form, ['enviaraCertificadoPorCorreo', 'enviara_certificado_por_correo'], false));
+
+  const rawExtras = firstValue(form, ['certificacionesExtras', 'certificaciones_extras'], []);
+  const extraCerts = Array.isArray(rawExtras)
+    ? rawExtras
+      .filter((item) => item && (item.url || item.nombre))
+      .map((item, idx) => ({
+        id: item.id || `cert-extra-${idx}`,
+        nombre: item.nombre || `Certificación adicional ${idx + 1}`,
+        url: item.url || '',
+        tamano: item.tamano || null,
+        fecha: item.fecha || null
+      }))
+    : [];
+
+  const academicCert = academicUrl || academicName
+    ? { nombre: academicName || 'Certificado académico', url: academicUrl }
+    : null;
+
+  return {
+    academicCert,
+    pendingByEmail,
+    extraCerts,
+    totalCount: (academicCert?.url ? 1 : 0) + extraCerts.filter((item) => item.url).length
+  };
+};
+
 export const displayValue = (value, fallback = 'No informado') => {
-  if (!hasValue(value)) return fallback;
+  if (!hasFieldValue(value)) return fallback;
   if (Array.isArray(value)) return value.length ? value.join(', ') : fallback;
   if (typeof value === 'boolean') return value ? 'Sí' : 'No';
   if (typeof value === 'object') return Object.entries(value)
@@ -26,14 +172,14 @@ export const displayValue = (value, fallback = 'No informado') => {
 
 export const firstValue = (source, keys, fallback) => {
   for (const key of keys) {
-    if (hasValue(source?.[key])) return source[key];
+    if (hasFieldValue(source?.[key])) return source[key];
   }
   return fallback;
 };
 
 export const APPLICATION_FIELD_GROUPS = [
   {
-    title: 'Identificación y contacto',
+    title: 'Identificación y ubicación',
     fields: [
       ['Nombre completo', ['nombreCompleto', 'nombre']],
       ['RUT', ['rut']],
@@ -41,27 +187,47 @@ export const APPLICATION_FIELD_GROUPS = [
       ['Correo electrónico', ['email']],
       ['Teléfono', ['telefono']],
       ['Región', ['region']],
-      ['Comuna', ['comuna']]
+      ['Comuna', ['comuna']],
+      ['Domicilio / sector', ['domicilio', 'direccion'], { optional: true }],
+      ['Redes sociales / LinkedIn', ['redesSociales', 'instagram'], { optional: true }]
     ]
   },
   {
-    title: 'Perfil y disponibilidad',
+    title: 'Formación y condición académica',
     fields: [
+      ['Condición actual', ['condicionAcademica'], { optional: true }],
       ['Profesión o especialidad', ['profesionEspecialidad', 'profesion', 'especialidad']],
-      ['Experiencia', ['experiencia']],
-      ['Disponibilidad', ['disponibilidad', 'tiempoDisponible', 'disponibilidadRespuesta']],
-      ['Áreas de interés', ['areasInteres', 'areas_interes']],
-      ['Recursos propios', ['recursos', 'recursosPropios', 'recursos_propios']],
-      ['Labores que puede realizar', ['laboresQuePuedeRealizar', 'labores_que_puede_realizar']],
-      ['Motivación', ['motivacion', 'razonesIntegracion']]
+      ['Institución de estudios', ['institucionEstudios', 'institucion'], { optional: true }],
+      ['Nivel de estudios', ['nivelEstudios'], { optional: true }],
+      ['Formación y cursos certificados', ['formacionCertificada'], { optional: true }],
+      ['Experiencia previa', ['experiencia']]
     ]
   },
   {
-    title: 'Consentimientos y antecedentes',
+    title: 'Capacidades operativas y disponibilidad',
     fields: [
+      ['Disponibilidad mensual', ['disponibilidad', 'tiempoDisponible']],
+      ['Tiempo de activación ante alerta', ['disponibilidadRespuesta', 'disponibilidad_respuesta'], { optional: true }],
+      ['Transporte propio', ['transportePropio', 'transporte_propio'], { optional: true }],
+      ['Alcance de desplazamiento', ['desplazamientoTerritorial', 'desplazamiento_territorial'], { optional: true }],
+      ['Labores operativas y de apoyo', ['labores', 'laboresQuePuedeRealizar', 'labores_que_puede_realizar']],
+      ['Especies con las que se siente cómodo/a', ['especiesComodas', 'especies_comodas'], { optional: true }],
+      ['Restricciones o especies a evitar', ['especiesEvitarRestricciones', 'especies_evitar_restricciones'], { optional: true }],
+      ['Áreas de interés', ['areasInteres', 'areas_interes'], { optional: true }],
+      ['Recursos propios', ['recursos', 'recursosPropios', 'recursos_propios'], { optional: true }]
+    ]
+  },
+  {
+    title: 'Proyección, ética y antecedentes',
+    fields: [
+      ['Motivación', ['motivacion', 'razonesIntegracion']],
+      ['Proyección a Socio/a PRUANED', ['proyeccionSocio', 'proyeccion_socio'], { optional: true }],
+      ['Trabajo bajo protocolos y cadena de mando (SCI)', ['trabajoProtocolosSCI'], { optional: true }],
+      ['Respeto de límites legales del ejercicio', ['respetoLimitesProfesionales'], { optional: true }],
+      ['Disposición a capacitación LMS', ['dispuestoCapacitarseLMS'], { optional: true }],
       ['Aceptación de términos', ['aceptaTerminos', 'aceptaLeyDatos']],
-      ['Antecedentes relevantes', ['antecedentes']],
-      ['Observación de revisión', ['observacionRevision', 'reviewNote']]
+      ['Antecedentes relevantes', ['antecedentes'], { optional: true }],
+      ['Observación de revisión', ['observacionRevision', 'reviewNote'], { optional: true }]
     ]
   }
 ];
