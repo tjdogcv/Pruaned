@@ -1,125 +1,237 @@
-import React, { useRef } from 'react';
-import { PRUANEDLogo } from '../assets/PRUANEDLogo';
-import { ShieldCheck, Printer, X, UserCheck, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  Printer,
+  QrCode,
+  ShieldCheck,
+  Sparkles,
+  UserCheck,
+  X
+} from 'lucide-react';
+import {
+  buildCredentialData,
+  downloadCredentialPng,
+  printCredentialCard,
+  renderCredentialDataUrl
+} from '../lib/credentialRenderer';
 
-export const CredencialDigitalModal = ({ socio, onClose }) => {
-  if (!socio) return null;
+export function CredencialDigitalModal({ socio, member, type, onClose }) {
+  const targetMember = member || socio;
+  const [rendered, setRendered] = useState(null);
+  const [rendering, setRendering] = useState(true);
+  const [renderError, setRenderError] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
-  const handlePrint = () => {
-    window.print();
+  const previewData = useMemo(() => {
+    if (!targetMember) return null;
+    return buildCredentialData({
+      member: targetMember,
+      type,
+      origin: typeof window !== 'undefined' ? window.location.origin : 'https://pruaned.cl'
+    });
+  }, [targetMember, type]);
+
+  useEffect(() => {
+    if (!targetMember) return undefined;
+    let cancelled = false;
+    setRendering(true);
+    setRenderError('');
+
+    renderCredentialDataUrl({ member: targetMember, type })
+      .then((result) => {
+        if (!cancelled) {
+          setRendered(result);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Error generando credencial PRUANED:', err);
+          setRenderError('No fue posible generar la vista previa de la credencial.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRendering(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [targetMember, type]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  if (!targetMember || !previewData) return null;
+
+  const isVolunteer = previewData.type === 'voluntario';
+  const { widthMm, heightMm, widthPx, heightPx } = previewData.spec;
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await downloadCredentialPng({
+        member: targetMember,
+        type,
+        preRendered: rendered
+      });
+    } finally {
+      setDownloading(false);
+    }
   };
 
-  const rutFormatted = socio.rut || 'No informado';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(`https://pruaned.cl/verificar/PRU-SOC-${socio.rut || socio.id}`)}&color=0f172a&bgcolor=ffffff`;
-
-  const initials = socio.nombre
-    ? socio.nombre.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-    : 'SO';
+  const handlePrint = () => {
+    if (!rendered?.dataUrl) return;
+    printCredentialCard(rendered);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-['Plus_Jakarta_Sans']">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-6 relative border border-slate-200">
-        
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isVolunteer ? 'Credencial Oficial de Voluntario/a PRUANED' : 'Credencial Oficial de Socio/a PRUANED'}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
+    >
+      <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl border border-slate-200 relative overflow-hidden my-auto">
         <button
+          type="button"
           onClick={onClose}
-          className="absolute right-5 top-5 p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+          aria-label="Cerrar credencial"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div>
-          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-900 font-bold text-[10px] rounded-full uppercase tracking-wider">
-            Acreditación Operativa
-          </span>
-          <h3 className="text-xl font-bold text-slate-900 font-['Outfit'] mt-1 flex items-center gap-2">
-            <UserCheck className="w-5 h-5 text-emerald-600" /> Credencial Oficial de Socio
-          </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Identificación oficial para operativos en terreno, emergencias y eventos gremiales.
-          </p>
-        </div>
-
-        {/* --- TARJETA DE CREDENCIAL IMPRIMIBLE --- */}
-        <div id="printable-credential" className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 text-white rounded-2xl p-6 shadow-xl border border-slate-700 relative overflow-hidden space-y-5">
-          
-          {/* Header de la tarjeta */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="bg-white p-1 rounded-lg">
-                <PRUANEDLogo className="h-6 w-auto" showText={false} />
-              </div>
-              <div>
-                <div className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 leading-none">PRUANED A.G.</div>
-                <div className="text-xs font-bold text-slate-300">Asociación Gremial Nacional</div>
-              </div>
-            </div>
-            <span className="text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full">
-              Socio Activo
+        <div className="p-5 sm:p-7 space-y-5">
+          {/* Encabezado del modal */}
+          <div className="pr-10">
+            <span
+              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1.5 ${
+                isVolunteer
+                  ? 'bg-blue-100 text-blue-900'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
+              {isVolunteer ? <Sparkles className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+              {isVolunteer ? 'Voluntariado Permanente · Terreno' : 'Acreditación Gremial · Socio'}
             </span>
+            <h2 className="text-xl font-extrabold text-slate-900">
+              {isVolunteer ? 'Credencial Oficial de Voluntario/a' : 'Credencial Oficial de Socio'}
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Tamaño estándar máximo de tarjeta de crédito CR80 ({widthMm.toFixed(2)} mm × {heightMm.toFixed(2)} mm) con validación QR en vivo.
+            </p>
           </div>
 
-          {/* Cuerpo: Foto + Datos + QR */}
-          <div className="flex items-center gap-4">
-            {/* Foto de perfil */}
-            <div className="w-20 h-24 rounded-xl overflow-hidden bg-slate-800 border-2 border-emerald-500 flex-shrink-0 flex items-center justify-center">
-              {socio.fotoPerfil ? (
-                <img src={socio.fotoPerfil} alt={socio.nombre} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-2xl font-black text-emerald-400">{initials}</span>
+          {/* Contenedor a escala real máxima de tarjeta de crédito */}
+          <div className="bg-slate-100/90 border border-slate-200 rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center gap-3">
+            <div
+              className="relative rounded-[3.18mm] overflow-hidden shadow-xl ring-1 ring-slate-900/10 bg-white flex items-center justify-center"
+              style={{
+                width: `${widthMm}mm`,
+                maxWidth: '100%',
+                aspectRatio: `${widthPx} / ${heightPx}`
+              }}
+            >
+              {rendering && (
+                <div className="flex flex-col items-center justify-center gap-2 text-slate-400 p-4 text-center">
+                  <div className="w-7 h-7 border-2 border-slate-300 border-t-blue-900 rounded-full animate-spin" />
+                  <span className="text-[11px] font-semibold">Generando credencial CR80...</span>
+                </div>
+              )}
+
+              {!rendering && renderError && (
+                <p className="text-xs text-rose-600 font-semibold text-center p-4">{renderError}</p>
+              )}
+
+              {!rendering && rendered?.dataUrl && (
+                <img
+                  src={rendered.dataUrl}
+                  alt={`Credencial ${isVolunteer ? 'de Voluntario/a' : 'de Socio'} PRUANED de ${previewData.fullName} (${previewData.code})`}
+                  className="w-full h-full object-contain block select-none"
+                />
               )}
             </div>
 
-            {/* Datos */}
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="text-sm font-bold text-white leading-snug truncate">
-                {socio.nombre}
-              </div>
-              <div className="text-xs text-slate-300 font-mono font-bold">
-                RUT: {rutFormatted}
-              </div>
-              <div className="text-[11px] text-emerald-300 truncate">
-                {socio.profesion || 'Profesional Socio'}
-              </div>
-              <div className="text-[10px] text-slate-400">
-                Región: {socio.region || 'Chile'}
-              </div>
-            </div>
-
-            {/* Código QR */}
-            <div className="w-20 h-20 bg-white p-1 rounded-xl flex-shrink-0 flex flex-col items-center justify-center shadow">
-              <img src={qrUrl} alt="QR Verificación" className="w-16 h-16" />
-              <span className="text-[7px] font-extrabold text-slate-900 tracking-tighter">VERIFICAR</span>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-500">
+              <span className="inline-flex items-center gap-1 font-semibold text-slate-700 bg-white px-2.5 py-1 rounded-full border border-slate-200">
+                <QrCode className="w-3.5 h-3.5 text-blue-800" />
+                {previewData.code}
+              </span>
+              <span className="inline-flex items-center gap-1 font-medium bg-white px-2.5 py-1 rounded-full border border-slate-200">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                300 DPI listos para impresión 1:1
+              </span>
+              <a
+                href={`/verificar/${encodeURIComponent(previewData.code)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-900 bg-white px-2.5 py-1 rounded-full border border-blue-200 transition-colors"
+              >
+                Probar verificación QR <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           </div>
 
-          {/* Footer de la tarjeta */}
-          <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[9px] text-slate-400">
-            <span>Registro: PRU-SOC-{socio.id?.slice(0, 8) || '2026'}</span>
-            <span className="flex items-center gap-1 text-emerald-400 font-bold">
-              <CheckCircle2 className="w-3 h-3" /> {socio.estadoCuota || 'Al Día'}
-            </span>
+          {/* Aviso útil si aún no tiene foto de perfil */}
+          {!previewData.photoUrl && (
+            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900">
+              <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p>
+                Tu credencial aún no tiene fotografía cargada. Sube tu foto de perfil desde{' '}
+                <strong>{isVolunteer ? 'Mi Portal de Voluntario o Mi Perfil' : 'Mi Perfil'}</strong>{' '}
+                para que aparezca automáticamente antes de imprimirla.
+              </p>
+            </div>
+          )}
+
+          {/* Acciones de descarga, impresión y cierre */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="order-3 sm:order-1 px-4 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors"
+            >
+              Cerrar
+            </button>
+
+            <div className="order-1 sm:order-2 flex flex-col sm:flex-row gap-2.5">
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={rendering || downloading || !rendered?.dataUrl}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl shadow-sm transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {downloading ? 'Preparando PNG...' : 'Descargar credencial (PNG)'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                disabled={rendering || !rendered?.dataUrl}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-blue-900 hover:bg-blue-800 disabled:opacity-50 rounded-xl shadow-sm transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                Imprimir / Guardar PDF (CR80)
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Acciones */}
-        <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50"
-          >
-            Cerrar
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="px-5 py-2 text-xs font-bold rounded-xl bg-blue-900 hover:bg-blue-800 text-white flex items-center gap-2 shadow"
-          >
-            <Printer className="w-4 h-4" /> Imprimir / Guardar PDF
-          </button>
-        </div>
-
       </div>
     </div>
   );
-};
+}
+
+export default CredencialDigitalModal;

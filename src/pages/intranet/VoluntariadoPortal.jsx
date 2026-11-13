@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Camera,
   Check,
   CheckCircle2,
   Clock3,
   GraduationCap,
   HeartHandshake,
   Loader2,
+  QrCode,
   Save,
   Send,
   ShieldCheck,
@@ -14,8 +16,11 @@ import {
   UserRoundCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { CredencialDigitalModal } from '../../components/CredencialDigitalModal';
 import { VolunteerDocumentsSection } from '../../components/VolunteerDocumentsSection';
 import { useAuth } from '../../context/AuthContext';
+import { compressImage } from '../../lib/imageCompression';
+import { uploadToSupabaseStorage } from '../../lib/storage';
 import {
   VOLUNTEER_OPTIONS,
   extractVolunteerDocuments,
@@ -84,8 +89,14 @@ export default function VoluntariadoPortal() {
     voluntariosList = [],
     postulacionesVoluntariadoList = [],
     updateVoluntarioData,
+    updateVoluntarioPerfil,
     solicitarIngresoSocioDesdeVoluntariado
   } = useAuth();
+
+  const photoInputRef = useRef(null);
+  const [isCredentialOpen, setIsCredentialOpen] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoFeedback, setPhotoFeedback] = useState({ type: '', message: '' });
 
   const volunteer = voluntariosList.find(
     (item) => item.email?.toLowerCase() === currentUser?.email?.toLowerCase()
@@ -230,20 +241,102 @@ export default function VoluntariadoPortal() {
 
   const updatedAtLabel = formatDate(volunteer?.ultimaActualizacionDisponibilidad);
 
+  const handlePhotoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (event.target) event.target.value = '';
+    if (!file || !volunteer?.id) return;
+
+    setPhotoUploading(true);
+    setPhotoFeedback({ type: '', message: '' });
+    try {
+      const compressed = await compressImage(file, { maxWidth: 640, maxHeight: 800, quality: 0.86 });
+      const filePath = `voluntarios/${volunteer.id}_${Date.now()}.jpg`;
+      const publicUrl = await uploadToSupabaseStorage('perfiles', filePath, compressed, 'image/jpeg');
+      const finalUrl = publicUrl || compressed;
+
+      if (typeof updateVoluntarioPerfil === 'function') {
+        await updateVoluntarioPerfil(volunteer.id, { fotoPerfil: finalUrl });
+      }
+      setPhotoFeedback({ type: 'success', message: 'Fotografía actualizada en tu credencial.' });
+    } catch (err) {
+      console.error('Error subiendo fotografía de voluntario:', err);
+      setPhotoFeedback({ type: 'error', message: 'No pudimos actualizar la fotografía. Inténtalo nuevamente.' });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   return (
     <section className="space-y-7 font-['Plus_Jakarta_Sans'] text-slate-900">
       <header className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-xl sm:p-9">
         <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
-        <div className="relative max-w-3xl">
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-300">
-            <HeartHandshake className="h-4 w-4" aria-hidden="true" /> Voluntariado Permanente PRUANED
-          </span>
-          <h2 className="mt-4 font-['Outfit'] text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Hola, {currentUser?.name?.split(' ')[0] || 'voluntario/a'}.
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            Este es tu espacio operativo y formativo permanente en PRUANED: mantén actualizada tu disponibilidad, accede al Aula Virtual y proyecta tu crecimiento dentro de la organización.
-          </p>
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-300">
+              <HeartHandshake className="h-4 w-4" aria-hidden="true" /> Voluntariado Permanente PRUANED
+            </span>
+            <h2 className="mt-4 font-['Outfit'] text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Hola, {currentUser?.name?.split(' ')[0] || 'voluntario/a'}.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-300">
+              Este es tu espacio operativo y formativo permanente en PRUANED: mantén actualizada tu disponibilidad, descarga tu credencial con QR, accede al Aula Virtual y proyecta tu crecimiento dentro de la organización.
+            </p>
+          </div>
+
+          {volunteer && (
+            <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end gap-3 shrink-0">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 p-3 backdrop-blur-sm">
+                <div className="h-14 w-12 overflow-hidden rounded-xl border border-white/20 bg-slate-800 flex items-center justify-center shrink-0">
+                  {volunteer.fotoPerfil ? (
+                    <img
+                      src={volunteer.fotoPerfil}
+                      alt={`Foto de perfil de ${volunteer.nombre || currentUser?.name || 'voluntario'}`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Camera className="h-5 w-5 text-slate-400" aria-hidden="true" />
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    aria-label="Seleccionar fotografía de perfil para credencial"
+                  />
+                  <button
+                    type="button"
+                    disabled={photoUploading}
+                    onClick={() => photoInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-bold text-white transition disabled:opacity-60"
+                  >
+                    {photoUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                    {photoUploading ? 'Subiendo foto...' : volunteer.fotoPerfil ? 'Cambiar foto credencial' : 'Subir foto credencial'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCredentialOpen(true)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-3 py-1.5 text-xs font-extrabold text-slate-950 transition shadow-sm"
+                  >
+                    <QrCode className="h-3.5 w-3.5" aria-hidden="true" />
+                    Mi Credencial (QR)
+                  </button>
+                </div>
+              </div>
+              {photoFeedback.message && (
+                <p
+                  role="status"
+                  className={`text-xs font-semibold ${
+                    photoFeedback.type === 'error' ? 'text-rose-300' : 'text-emerald-300'
+                  }`}
+                >
+                  {photoFeedback.message}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -706,6 +799,14 @@ export default function VoluntariadoPortal() {
             </form>
           )}
         </section>
+      )}
+
+      {isCredentialOpen && volunteer && (
+        <CredencialDigitalModal
+          member={volunteer}
+          type="voluntario"
+          onClose={() => setIsCredentialOpen(false)}
+        />
       )}
     </section>
   );

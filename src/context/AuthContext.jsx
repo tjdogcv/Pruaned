@@ -979,39 +979,78 @@ export const AuthProvider = ({ children }) => {
     addSecurityLog(`UPDATE_VOLUNTEER_AVAILABILITY_${volId}`, currentUser?.email, "INFO");
   };
 
-  const updateVoluntarioPerfil = async (volId, perfilData) => {
+  const updateVoluntarioPerfil = async (volId, perfilData = {}) => {
+    const existingVol = voluntariosList.find(v => v.id === volId);
+    const nextTelefono = perfilData.telefono !== undefined ? perfilData.telefono : existingVol?.telefono;
+    const nextRegion = perfilData.region !== undefined ? perfilData.region : existingVol?.region;
+    const nextFoto = perfilData.fotoPerfil !== undefined ? perfilData.fotoPerfil : existingVol?.fotoPerfil;
+
     if (isSupabaseReady()) {
       try {
-        await supabase
+        const rowUpdate = { updated_at: new Date().toISOString() };
+        if (nextTelefono !== undefined) rowUpdate.telefono = nextTelefono;
+        if (nextRegion !== undefined) rowUpdate.region = nextRegion;
+        if (nextFoto !== undefined) rowUpdate.foto_perfil = nextFoto;
+
+        const { error: rowError } = await supabase
           .from('voluntarios')
-          .update({
-            telefono: perfilData.telefono,
-            region: perfilData.region,
-            comuna: perfilData.comuna,
-            domicilio: perfilData.domicilio,
-            profesion: perfilData.profesion,
-            foto_perfil: perfilData.fotoPerfil
-          })
+          .update(rowUpdate)
           .eq('id', volId);
+
+        if (rowError) {
+          console.error('Error actualizando columnas base de voluntario en Supabase:', rowError);
+        }
+
+        const fichaUpdates = {};
+        if (nextTelefono !== undefined) fichaUpdates.telefono = nextTelefono;
+        if (nextRegion !== undefined) fichaUpdates.region = nextRegion;
+        if (perfilData.comuna !== undefined) fichaUpdates.comuna = perfilData.comuna;
+        if (perfilData.domicilio !== undefined) fichaUpdates.domicilio = perfilData.domicilio;
+        if (perfilData.profesion !== undefined) {
+          fichaUpdates.profesionEspecialidad = perfilData.profesion;
+          fichaUpdates.profesion = perfilData.profesion;
+        }
+        if (Object.keys(fichaUpdates).length > 0 && typeof updateVoluntarioData === 'function') {
+          await updateVoluntarioData(volId, fichaUpdates);
+        }
       } catch (err) {
         console.error('Error actualizando perfil de voluntario en Supabase', err);
       }
     }
 
     setVoluntariosList(prev => prev.map(v => {
-      if (v.id === volId) {
-        return {
-          ...v,
-          telefono: perfilData.telefono || v.telefono,
-          region: perfilData.region || v.region,
-          comuna: perfilData.comuna || v.comuna,
-          domicilio: perfilData.domicilio || v.domicilio,
-          profesion: perfilData.profesion || v.profesion,
-          fotoPerfil: perfilData.fotoPerfil || v.fotoPerfil
-        };
-      }
-      return v;
+      if (v.id !== volId) return v;
+      const prevForm = v.datosPostulacion?.formulario || v.datos_postulacion?.formulario || {};
+      const nextForm = {
+        ...prevForm,
+        ...(nextTelefono !== undefined ? { telefono: nextTelefono } : {}),
+        ...(nextRegion !== undefined ? { region: nextRegion } : {}),
+        ...(perfilData.comuna !== undefined ? { comuna: perfilData.comuna } : {}),
+        ...(perfilData.domicilio !== undefined ? { domicilio: perfilData.domicilio } : {}),
+        ...(perfilData.profesion !== undefined ? { profesionEspecialidad: perfilData.profesion, profesion: perfilData.profesion } : {})
+      };
+      return {
+        ...v,
+        telefono: nextTelefono ?? v.telefono,
+        region: nextRegion ?? v.region,
+        comuna: perfilData.comuna ?? v.comuna,
+        domicilio: perfilData.domicilio ?? v.domicilio,
+        profesion: perfilData.profesion ?? v.profesion,
+        fotoPerfil: nextFoto ?? v.fotoPerfil,
+        datosPostulacion: {
+          ...(v.datosPostulacion || {}),
+          formulario: nextForm
+        }
+      };
     }));
+
+    if (
+      nextFoto &&
+      existingVol?.email &&
+      currentUser?.email?.toLowerCase() === existingVol.email.toLowerCase()
+    ) {
+      setCurrentUser(prev => (prev ? { ...prev, fotoPerfil: nextFoto } : prev));
+    }
 
     addSecurityLog(`UPDATE_VOLUNTEER_PROFILE_${volId}`, currentUser?.email, 'INFO');
   };

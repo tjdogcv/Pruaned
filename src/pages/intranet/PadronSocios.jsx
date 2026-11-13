@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { sendPagoEmail, sendPagoValidadoEmail, sendAvisoCobroEmail } from '../../lib/emailConfig';
 import { uploadToSupabaseStorage } from '../../lib/storage';
 import { ModalCambioEmail } from '../../components/ModalCambioEmail';
+import { CredencialDigitalModal } from '../../components/CredencialDigitalModal';
 import { 
   Users, 
   DollarSign, 
@@ -18,7 +19,8 @@ import {
   FileCheck2, 
   ToggleLeft, 
   ToggleRight, 
-  Mail, 
+  Mail,
+  QrCode, 
   ChevronLeft, 
   ChevronRight, 
   X, 
@@ -73,6 +75,7 @@ export default function PadronSocios() {
   const [activePaymentModal, setActivePaymentModal] = useState(null);
   const [cambioEmailModalData, setCambioEmailModalData] = useState(null);
   const [activeSocioModal, setActiveSocioModal] = useState(null);
+  const [credencialSocioModal, setCredencialSocioModal] = useState(null);
   const [activeApproveRenunciaModal, setActiveApproveRenunciaModal] = useState(null);
   const [acuerdoNumero, setAcuerdoNumero] = useState('');
 
@@ -1648,13 +1651,28 @@ Correo tesorería: ag.pruaned@gmail.com`;
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCredencialSocioModal(activeSocioModal)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors"
+              >
+                <QrCode className="w-3.5 h-3.5" /> Ver / Descargar Credencial (QR)
+              </button>
               <button onClick={() => setActiveSocioModal(null)} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl">
                 Cerrar
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {credencialSocioModal && (
+        <CredencialDigitalModal
+          member={credencialSocioModal}
+          type="socio"
+          onClose={() => setCredencialSocioModal(null)}
+        />
       )}
 
       {/* MODAL: APROBAR RENUNCIA */}

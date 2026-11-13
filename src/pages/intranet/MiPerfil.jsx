@@ -6,6 +6,7 @@ import { CertificadoAfiliacionModal } from '../../components/CertificadoAfiliaci
 import { sendPagoEmail } from '../../lib/emailConfig';
 import { compressImage } from '../../lib/imageCompression';
 import { uploadToSupabaseStorage } from '../../lib/storage';
+import { volunteerForm } from '../../lib/volunteerPresentation';
 import { 
   CheckCircle2, AlertCircle, Clock, Download, 
   Receipt, Save, User, Camera, Mail, Phone, MapPin, 
@@ -28,11 +29,16 @@ export default function MiPerfil() {
   const socioEncontrado = sociosList.find(s => s.email?.toLowerCase() === currentUser?.email?.toLowerCase());
   const voluntarioEncontrado = voluntariosList.find(v => v.email?.toLowerCase() === currentUser?.email?.toLowerCase());
   const isVolunteerOnly = Boolean(voluntarioEncontrado && !socioEncontrado);
+  const volForm = voluntarioEncontrado ? volunteerForm(voluntarioEncontrado) : null;
 
   const currentSocio = isMasterUser && !socioEncontrado
     ? { id: 'admin-master', nombre: 'Administrador Maestro', email: currentUser?.email || 'ag.pruaned@gmail.com', rut: 'ADMIN-0', categoria: 'Sistema', profesion: 'Soporte Gremial', fotoPerfil: '', estadoCuota: 'Al Día', mesesAdeudados: 0, historialPagos: [], cuotaIncorporacionPagada: true } 
     : (socioEncontrado || (voluntarioEncontrado ? {
+        ...volForm,
         ...voluntarioEncontrado,
+        comuna: volForm?.comuna || voluntarioEncontrado.comuna || '',
+        domicilio: volForm?.domicilio || volForm?.direccion || voluntarioEncontrado.domicilio || '',
+        profesion: volForm?.profesionEspecialidad || volForm?.profesion || volForm?.especialidad || voluntarioEncontrado.profesion || '',
         categoria: 'Voluntario Activo',
         estadoCuota: 'Exento',
         cuotaIncorporacionPagada: true,
@@ -237,7 +243,7 @@ export default function MiPerfil() {
             onClick={() => setIsCredencialModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all"
           >
-            <UserCheck className="w-4 h-4" /> Credencial Oficial con QR
+            <UserCheck className="w-4 h-4" /> {isVolunteerOnly ? 'Credencial de Voluntario/a (QR)' : 'Credencial de Socio (QR)'}
           </button>
           <button
             type="button"
@@ -516,6 +522,8 @@ export default function MiPerfil() {
       {isCredencialModalOpen && (
         <CredencialDigitalModal
           socio={currentSocio}
+          member={currentSocio}
+          type={isVolunteerOnly ? 'voluntario' : 'socio'}
           onClose={() => setIsCredencialModalOpen(false)}
         />
       )}

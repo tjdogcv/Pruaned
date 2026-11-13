@@ -6,12 +6,14 @@ import {
   MailCheck,
   MapPin,
   Pencil,
+  QrCode,
   Save,
   ShieldCheck,
   Truck,
   UserRound,
   X
 } from 'lucide-react';
+import { CredencialDigitalModal } from './CredencialDigitalModal';
 import { formatChileanRut, isValidChileanRut } from '../lib/authData';
 import {
   APPLICATION_FIELD_GROUPS,
@@ -123,6 +125,7 @@ export function VolunteerProfileDialog({ volunteer, hasAccount, onClose, onCambi
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
+  const [showCredentialModal, setShowCredentialModal] = useState(false);
 
   useEffect(() => {
     setEditing(false);
@@ -245,6 +248,13 @@ export function VolunteerProfileDialog({ volunteer, hasAccount, onClose, onCambi
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCredentialModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900 hover:bg-blue-100"
+            >
+              <QrCode className="h-3.5 w-3.5" /> Credencial (QR)
+            </button>
             {onUpdateVolunteer && !editing && (
               <button
                 type="button"
@@ -679,6 +689,14 @@ export function VolunteerProfileDialog({ volunteer, hasAccount, onClose, onCambi
           </div>
         )}
       </div>
+
+      {showCredentialModal && (
+        <CredencialDigitalModal
+          member={volunteer}
+          type="voluntario"
+          onClose={() => setShowCredentialModal(false)}
+        />
+      )}
     </div>
   );
 }
