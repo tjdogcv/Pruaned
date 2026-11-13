@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, ExternalLink, Scale, ShieldCheck, 
-  ArrowLeft, ArrowRight, Send, AlertCircle, FileText, RotateCcw,
-  Upload, Trash2, Paperclip, Download, Plus, Check, FileCheck
+  ArrowLeft, ArrowRight, Send, AlertCircle, FileText, RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { PrivacyDataPolicy } from './PrivacyDataPolicy';
 import { sendPostulacionEmail } from '../lib/emailConfig';
 import { createAntiSpamSession, validateSubmission } from '../lib/antiSpam';
-import { uploadToSupabaseStorage } from '../lib/storage';
 
 const OPTIONS = {
   formacionCertificada: [
@@ -142,10 +140,6 @@ const initialFormData = {
   redesSociales: '',
   profesion: '',
   nivelEstudios: '',
-  condicionAcademica: '',
-  certificadoAcademicoNombre: '',
-  certificadoAcademicoUrl: '',
-  certificacionesExtras: [],
   experienciaPrevia: '',
   formacionCertificada: [],
   razonesIntegracion: '',
@@ -159,8 +153,6 @@ const initialFormData = {
   tipoApoyoUtil: '',
   cartaIntencion: '',
   cartaIntencionArchivo: null,
-  cartaIntencionNombre: '',
-  cartaIntencionUrl: '',
   declaracionVeracidad: '',
   autorizacionDatos: '',
   aceptaLeyDatos: '',
@@ -380,7 +372,7 @@ export const PostulacionSocio = () => {
     } else if (sectionNumber === 2) {
       const requiredInputs = [
         'nombreCompleto', 'rut', 'fechaNacimiento', 'domicilio', 'comuna',
-        'telefono', 'email', 'profesion', 'condicionAcademica', 'experienciaPrevia',
+        'telefono', 'email', 'profesion', 'experienciaPrevia',
         'razonesIntegracion', 'aporteEsperado', 'haParticipadoOrgs',
         'tiempoDisponible', 'experienciasComplejas', 'necesitaApoyoBienestar',
         'cartaIntencion', 'declaracionVeracidad', 'autorizacionDatos'
@@ -391,13 +383,6 @@ export const PostulacionSocio = () => {
           errors[field] = true;
         }
       });
-
-      // Validación condicional del certificado (Estudiante o Profesional)
-      const esEstudiante = formData.condicionAcademica?.includes('Estudiante');
-      const esProfesional = formData.condicionAcademica?.includes('Profesional');
-      if ((esEstudiante || esProfesional) && !formData.certificadoAcademicoNombre && !formData.certificadoAcademicoUrl) {
-        errors.certificadoAcademico = true;
-      }
 
       if (!formData.formacionCertificada?.length) {
         errors.formacionCertificada = true;
@@ -510,11 +495,7 @@ export const PostulacionSocio = () => {
         id: `POST-${Date.now().toString().slice(-6)}`,
         fechaEnvio: new Date().toISOString().split('T')[0],
         estado: 'Pendiente Revisión Directorio',
-        cartaIntencionNombre: formData.cartaIntencionNombre || cartaIntencionArchivo?.name || 'Texto de carta de intención proporcionado',
-        cartaIntencionUrl: formData.cartaIntencionUrl || '',
-        certificadoAcademicoNombre: formData.certificadoAcademicoNombre || '',
-        certificadoAcademicoUrl: formData.certificadoAcademicoUrl || '',
-        certificacionesExtras: formData.certificacionesExtras || []
+        cartaIntencionNombre: cartaIntencionArchivo?.name || 'Texto de carta de intención proporcionado'
       };
 
       const result = await addPostulacion(postulacionFinal);
@@ -751,244 +732,6 @@ export const PostulacionSocio = () => {
               <ShortTextInput name="nivelEstudios" value={formData.nivelEstudios} onChange={updateField} placeholder="Técnico, Universitario, Posgrado, etc." />
             </QuestionCard>
 
-            {/* Tarjeta de Orientación Oficial para Documentación */}
-            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-slate-50 border border-blue-200 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 bg-blue-600 text-white rounded-xl flex-shrink-0 mt-0.5 shadow-sm">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-sm sm:text-base font-bold text-slate-900 font-['Outfit']">
-                    Acreditación Académica y Certificaciones para Nuevos Socios
-                  </h4>
-                  <p className="text-xs text-slate-700 leading-relaxed">
-                    Para que el Directorio Nacional pueda evaluar y resolver formalmente tu postulación de membresía, solicitamos acreditar tus antecedentes de acuerdo con tu situación:
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                    <div className="p-3 bg-white/85 rounded-xl border border-blue-100 space-y-1 shadow-xs">
-                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-blue-700 block">
-                        🎓 Si eres Estudiante
-                      </span>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        Adjunta tu <strong>Certificado de Alumno Regular vigente</strong> emitido por tu universidad, instituto o centro técnico.
-                      </p>
-                    </div>
-                    <div className="p-3 bg-white/85 rounded-xl border border-blue-100 space-y-1 shadow-xs">
-                      <span className="text-[11px] font-extrabold uppercase tracking-wide text-indigo-700 block">
-                        📜 Si eres Profesional / Técnico
-                      </span>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        Adjunta tu <strong>Certificado de Título</strong> (o certificado de grado / registro oficial de la Superintendencia).
-                      </p>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-amber-50/90 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
-                    <ShieldCheck className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <p className="leading-relaxed">
-                      <strong>Certificaciones adicionales (Opcional):</strong> Si cuentas con diplomados, cursos o capacitaciones en emergencias, manejo animal, primeros auxilios, rescate o SENAPRED, puedes adjuntar <em>1 o más documentos</em> para sumar a tu evaluación.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Condición Académica y Profesional Actual */}
-            <QuestionCard 
-              label="Condición académica y profesional actual" 
-              required 
-              error={formErrors.condicionAcademica}
-              description="Selecciona tu situación actual para adjuntar el certificado de respaldo correspondiente."
-            >
-              <RadioGroup
-                name="condicionAcademica"
-                options={[
-                  'Estudiante (adjuntar Certificado de Alumno Regular)',
-                  'Profesional / Técnico titulado (adjuntar Certificado de Título)',
-                  'Egresado / En trámite de titulación',
-                  'Otro oficio u ocupación'
-                ]}
-                value={formData.condicionAcademica}
-                onChange={updateField}
-              />
-            </QuestionCard>
-
-            {/* Carga del Certificado de Título o Alumno Regular */}
-            <QuestionCard
-              label={
-                formData.condicionAcademica?.includes('Estudiante')
-                  ? 'Certificado de Alumno Regular vigente'
-                  : formData.condicionAcademica?.includes('Profesional')
-                  ? 'Certificado de Título profesional o técnico'
-                  : 'Certificado de acreditación formativa o título (según corresponda)'
-              }
-              required={formData.condicionAcademica?.includes('Estudiante') || formData.condicionAcademica?.includes('Profesional')}
-              error={formErrors.certificadoAcademico}
-              description={
-                formData.condicionAcademica?.includes('Estudiante')
-                  ? 'Adjunta tu Certificado de Alumno Regular emitido por tu casa de estudios en formato PDF o imagen (máx. 15MB).'
-                  : formData.condicionAcademica?.includes('Profesional')
-                  ? 'Adjunta copia de tu Certificado de Título profesional o técnico en formato PDF o imagen (máx. 15MB).'
-                  : 'Puedes adjuntar una constancia o documento de respaldo formativo (PDF o imagen, máx. 15MB).'
-              }
-            >
-              <div className="space-y-3">
-                {formData.certificadoAcademicoNombre ? (
-                  <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between gap-3 animate-fade-in">
-                    <div className="flex items-center gap-2.5 overflow-hidden">
-                      <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
-                        <FileCheck className="w-4 h-4" />
-                      </div>
-                      <div className="truncate">
-                        <p className="text-xs font-bold text-slate-800 truncate">{formData.certificadoAcademicoNombre}</p>
-                        <p className="text-[10px] text-blue-700 font-semibold">Documento cargado correctamente</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {formData.certificadoAcademicoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (formData.certificadoAcademicoUrl.startsWith('data:')) {
-                              try {
-                                const arr = formData.certificadoAcademicoUrl.split(',');
-                                const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
-                                const bstr = atob(arr[1]);
-                                let n = bstr.length;
-                                const u8arr = new Uint8Array(n);
-                                while (n--) u8arr[n] = bstr.charCodeAt(n);
-                                const blob = new Blob([u8arr], { type: mime });
-                                window.open(URL.createObjectURL(blob), '_blank');
-                                return;
-                              } catch (e) {
-                                console.warn(e);
-                              }
-                            }
-                            window.open(formData.certificadoAcademicoUrl, '_blank', 'noopener,noreferrer');
-                          }}
-                          className="p-1.5 text-xs text-blue-700 hover:bg-blue-100 rounded-lg font-bold flex items-center gap-1"
-                          title="Vista previa del documento"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleRemoveAcademicCert}
-                        className="p-1.5 text-xs text-rose-600 hover:bg-rose-100 rounded-lg font-bold flex items-center gap-1"
-                        title="Quitar archivo"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-indigo-400 bg-slate-50/50 hover:bg-indigo-50/30 rounded-2xl p-6 cursor-pointer transition group">
-                      <Upload className="w-7 h-7 text-slate-400 group-hover:text-indigo-600 transition mb-2" />
-                      <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-900 text-center">
-                        {isUploadingDoc ? 'Procesando archivo...' : 'Haz clic para seleccionar o arrastra tu certificado'}
-                      </span>
-                      <span className="text-[11px] text-slate-400 mt-1">PDF, JPG o PNG (máximo 15 MB)</span>
-                      <input
-                        type="file"
-                        accept=".pdf,image/png,image/jpeg,image/jpg"
-                        onChange={handleAcademicCertUpload}
-                        disabled={isUploadingDoc}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
-            </QuestionCard>
-
-            {/* Certificaciones Extras y Capacitaciones (1 o más documentos) */}
-            <QuestionCard
-              label="Certificaciones extras y cursos de especialización (Opcional - 1 o más documentos)"
-              required={false}
-              description="Si cuentas con diplomas de cursos, talleres o certificaciones (manejo animal, rescate, primeros auxilios, SENAPRED, etc.), puedes adjuntar uno o más archivos."
-            >
-              <div className="space-y-3">
-                {/* Lista de certificados extras ya adjuntados */}
-                {formData.certificacionesExtras && formData.certificacionesExtras.length > 0 && (
-                  <div className="space-y-2">
-                    {formData.certificacionesExtras.map((cert) => (
-                      <div
-                        key={cert.id}
-                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 animate-fade-in"
-                      >
-                        <div className="flex items-center gap-2.5 overflow-hidden">
-                          <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
-                            <FileText className="w-4 h-4" />
-                          </div>
-                          <div className="truncate">
-                            <p className="text-xs font-bold text-slate-800 truncate">{cert.nombre}</p>
-                            <p className="text-[10px] text-slate-500">{cert.tamano} • Adjuntado el {cert.fecha}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {cert.url && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (cert.url.startsWith('data:')) {
-                                  try {
-                                    const arr = cert.url.split(',');
-                                    const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
-                                    const bstr = atob(arr[1]);
-                                    let n = bstr.length;
-                                    const u8arr = new Uint8Array(n);
-                                    while (n--) u8arr[n] = bstr.charCodeAt(n);
-                                    const blob = new Blob([u8arr], { type: mime });
-                                    window.open(URL.createObjectURL(blob), '_blank');
-                                    return;
-                                  } catch (e) {
-                                    console.warn(e);
-                                  }
-                                }
-                                window.open(cert.url, '_blank', 'noopener,noreferrer');
-                              }}
-                              className="p-1.5 text-xs text-emerald-700 hover:bg-emerald-100 rounded-lg"
-                              title="Ver documento"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExtraCert(cert.id)}
-                            className="p-1.5 text-xs text-rose-600 hover:bg-rose-100 rounded-lg"
-                            title="Eliminar este documento"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Botón para adjuntar 1 o más archivos */}
-                <div>
-                  <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-bold cursor-pointer transition border border-slate-300 shadow-sm">
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{isUploadingExtra ? 'Adjuntando archivos...' : '+ Adjuntar documento / certificación adicional'}</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept=".pdf,image/png,image/jpeg,image/jpg"
-                      onChange={handleExtraCertUpload}
-                      disabled={isUploadingExtra}
-                      className="hidden"
-                    />
-                  </label>
-                  <p className="text-[10px] text-slate-400 mt-1.5">
-                    Puedes seleccionar uno o varios documentos a la vez (PDF, JPG, PNG hasta 15MB c/u).
-                  </p>
-                </div>
-              </div>
-            </QuestionCard>
-
             <QuestionCard label="Experiencia previa con animales, emergencias o voluntariado" required error={formErrors.experienciaPrevia}>
               <LongTextArea name="experienciaPrevia" value={formData.experienciaPrevia} onChange={updateField} />
             </QuestionCard>
@@ -1051,30 +794,12 @@ export const PostulacionSocio = () => {
               <LongTextArea name="cartaIntencion" value={formData.cartaIntencion} onChange={updateField} />
               <div className="mt-3 pt-3 border-t border-slate-100">
                 <label className="block text-xs font-bold text-slate-700 mb-1">Adjuntar archivo de carta de intención (opcional)</label>
-                {formData.cartaIntencionNombre ? (
-                  <div className="p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between text-xs animate-fade-in">
-                    <div className="flex items-center gap-2 truncate">
-                      <Paperclip className="w-3.5 h-3.5 text-indigo-700 flex-shrink-0" />
-                      <span className="font-semibold text-slate-800 truncate">{formData.cartaIntencionNombre}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(p => ({ ...p, cartaIntencionArchivo: null, cartaIntencionNombre: '', cartaIntencionUrl: '' }))}
-                      className="text-rose-600 hover:text-rose-800 p-1 flex-shrink-0"
-                      title="Quitar archivo adjunto"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,image/*"
-                    onChange={handleCartaArchivoUpload}
-                    disabled={isUploadingCarta}
-                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-800 hover:file:bg-indigo-100 cursor-pointer"
-                  />
-                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => updateField('cartaIntencionArchivo', e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-800 hover:file:bg-indigo-100 cursor-pointer"
+                />
               </div>
             </QuestionCard>
 

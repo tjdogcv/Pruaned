@@ -8,11 +8,7 @@ import {
   Eye, 
   FileText, 
   X, 
-  Check,
-  ExternalLink,
-  Paperclip,
-  GraduationCap,
-  Award
+  Check 
 } from 'lucide-react';
 
 export default function PostulacionesSocios() {
@@ -177,38 +173,6 @@ export default function PostulacionesSocios() {
           const socioVinculado = activePostulacionModal.estado === 'Aceptada / Incorporado'
             ? sociosList.find(s => s.rut === activePostulacionModal.rut || s.email === activePostulacionModal.email)
             : null;
-
-          const f = activePostulacionModal.formularioCompleto || activePostulacionModal;
-          const condicionAcademica = f.condicionAcademica || activePostulacionModal.condicionAcademica || '';
-          const certAcademicoNombre = f.certificadoAcademicoNombre || activePostulacionModal.certificadoAcademicoNombre || '';
-          const certAcademicoUrl = f.certificadoAcademicoUrl || activePostulacionModal.certificadoAcademicoUrl || '';
-          const extraCerts = f.certificacionesExtras || activePostulacionModal.certificacionesExtras || [];
-          const cartaNombre = f.cartaIntencionNombre || activePostulacionModal.cartaIntencionNombre || '';
-          const cartaUrl = f.cartaIntencionUrl || activePostulacionModal.cartaIntencionUrl || '';
-
-          const openDocument = (url, fileName = 'documento') => {
-            if (!url) return;
-            if (url.startsWith('data:')) {
-              try {
-                const arr = url.split(',');
-                const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
-                const bstr = atob(arr[1]);
-                let n = bstr.length;
-                const u8arr = new Uint8Array(n);
-                while (n--) {
-                  u8arr[n] = bstr.charCodeAt(n);
-                }
-                const blob = new Blob([u8arr], { type: mime });
-                const blobUrl = URL.createObjectURL(blob);
-                window.open(blobUrl, '_blank');
-                return;
-              } catch (e) {
-                console.warn('Error abriendo blob dataUrl:', e);
-              }
-            }
-            window.open(url, '_blank', 'noopener,noreferrer');
-          };
-
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-['Outfit']">
               <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
@@ -251,124 +215,8 @@ export default function PostulacionesSocios() {
                     <div><span className="font-bold text-slate-400 text-xs uppercase block">Email</span>{activePostulacionModal.email}</div>
                     <div><span className="font-bold text-slate-400 text-xs uppercase block">Teléfono</span>{activePostulacionModal.telefono || '-'}</div>
                     <div><span className="font-bold text-slate-400 text-xs uppercase block">Profesión</span>{activePostulacionModal.profesion}</div>
-                    <div><span className="font-bold text-slate-400 text-xs uppercase block">Nivel de estudios</span>{f.nivelEstudios || '-'}</div>
                     <div><span className="font-bold text-slate-400 text-xs uppercase block">Comuna</span>{activePostulacionModal.comuna}</div>
-                    <div><span className="font-bold text-slate-400 text-xs uppercase block">Domicilio</span>{f.domicilio || '-'}</div>
-                    {condicionAcademica && (
-                      <div className="col-span-2">
-                        <span className="font-bold text-slate-400 text-xs uppercase block">Condición Declarada</span>
-                        <span className="font-semibold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-md inline-block mt-0.5 text-xs border border-blue-200">
-                          {condicionAcademica}
-                        </span>
-                      </div>
-                    )}
                   </div>
-
-                  {/* SECCIÓN DOCUMENTACIÓN Y CERTIFICADOS DE RESPALDO */}
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="w-4 h-4 text-indigo-700" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                        Documentación y Certificados de Respaldo
-                      </h4>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {/* Certificado de Título / Alumno Regular */}
-                      <div className="p-3 bg-white rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-                        <div className="flex items-center gap-2.5 overflow-hidden">
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center flex-shrink-0">
-                            <FileText className="w-4 h-4" />
-                          </div>
-                          <div className="truncate">
-                            <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                              Certificado Académico (Título o Alumno Regular)
-                            </span>
-                            <span className="text-xs font-semibold text-slate-900 truncate block">
-                              {certAcademicoNombre || (certAcademicoUrl ? 'Documento adjunto' : 'Sin documento')}
-                            </span>
-                          </div>
-                        </div>
-                        {certAcademicoUrl ? (
-                          <button
-                            type="button"
-                            onClick={() => openDocument(certAcademicoUrl, certAcademicoNombre)}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" /> Ver Documento
-                          </button>
-                        ) : (
-                          <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md font-semibold">
-                            No adjuntado
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Certificaciones Extras */}
-                      <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                            Certificaciones Extras y Cursos ({extraCerts.length})
-                          </span>
-                        </div>
-                        {extraCerts.length > 0 ? (
-                          <div className="space-y-1.5">
-                            {extraCerts.map((c, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-lg text-xs border border-slate-200/60 transition">
-                                <div className="flex items-center gap-2 overflow-hidden mr-2">
-                                  <Award className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                                  <span className="font-semibold text-slate-800 truncate">{c.nombre || `Certificado ${idx + 1}`}</span>
-                                  {c.tamano && <span className="text-[10px] text-slate-400 hidden sm:inline">({c.tamano})</span>}
-                                </div>
-                                {c.url ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => openDocument(c.url, c.nombre)}
-                                    className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded text-xs flex items-center gap-1 flex-shrink-0 transition"
-                                  >
-                                    <ExternalLink className="w-3 h-3" /> Ver
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] text-slate-400">Sin URL</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-400 italic">Sin certificaciones adicionales adjuntas</p>
-                        )}
-                      </div>
-
-                      {/* Carta de intención adjunta */}
-                      {(cartaUrl || cartaNombre) && (
-                        <div className="p-3 bg-white rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-                          <div className="flex items-center gap-2.5 overflow-hidden">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center flex-shrink-0">
-                              <Paperclip className="w-4 h-4" />
-                            </div>
-                            <div className="truncate">
-                              <span className="text-[10px] font-bold uppercase text-slate-400 block">
-                                Archivo Carta de Intención
-                              </span>
-                              <span className="text-xs font-semibold text-slate-900 truncate block">
-                                {cartaNombre || 'Documento adjunto'}
-                              </span>
-                            </div>
-                          </div>
-                          {cartaUrl && (
-                            <button
-                              type="button"
-                              onClick={() => openDocument(cartaUrl, cartaNombre)}
-                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" /> Ver Archivo
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
                   {activePostulacionModal.razonesIntegracion && (
                     <div><span className="font-bold text-slate-400 text-xs uppercase block">Razones de Integración</span><p className="mt-1 p-3 bg-slate-50 rounded-lg text-xs leading-relaxed border border-slate-200">{activePostulacionModal.razonesIntegracion}</p></div>
                   )}

@@ -21,11 +21,6 @@ export const sendPostulacionEmail = async (postulacionData) => {
   }
 
   try {
-    const f = postulacionData.formularioCompleto || postulacionData;
-    const certAcad = f.certificadoAcademicoNombre ? `Adjunto (${f.certificadoAcademicoNombre})` : 'No adjuntado';
-    const numExtras = f.certificacionesExtras?.length || 0;
-    const certsExtras = numExtras > 0 ? `${numExtras} documento(s) adicional(es)` : 'Ninguna';
-
     const response = await emailjs.send(
       EMAILJS_SERVICE_ID,
       TEMPLATE_ID_POSTULACION,
@@ -35,11 +30,7 @@ export const sendPostulacionEmail = async (postulacionData) => {
         from_email: postulacionData.email,
         postulacion_id: postulacionData.id,
         rut: postulacionData.rut,
-        profesion: postulacionData.profesion,
-        condicion_academica: f.condicionAcademica || 'No especificada',
-        certificado_academico: certAcad,
-        certificaciones_extras: certsExtras,
-        message: `Nueva postulación recibida de ${postulacionData.nombreCompleto}.\nCondición: ${f.condicionAcademica || 'N/A'}\nCertificado Académico: ${certAcad}\nCertificaciones extras: ${certsExtras}`
+        profesion: postulacionData.profesion
       },
       EMAILJS_PUBLIC_KEY
     );
